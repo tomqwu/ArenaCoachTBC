@@ -1,0 +1,289 @@
+-- ArenaCleaveCoachTBC - UI layer
+-- One movable frame that shows the current recommendation, callouts, and
+-- two icon rows (friendly reminders + enemy cooldowns). All updates are
+-- event-driven; the only OnUpdate is a very low-frequency icon refresh
+-- (1Hz, guarded by elapsed accumulator). No protected actions are ever
+-- bound to any visible button.
+
+local ADDON_NAME, ns = ...
+ns = ns or {}
+ns.UI = ns.UI or {}
+
+local UI = ns.UI
+UI.frame = nil
+
+-- Resolve a localized string by key.
+local function L(key, ...)
+    local Core = ns.Core
+    if Core and Core.L then
+        local s = Core.L(key)
+        if select("#", ...) > 0 then return string.format(s, ...) end
+        return s
+    end
+    return key
+end
+
+-- Helper: create a small icon button with a texture by spell ID
+local function makeIcon(parent, size)
+    if type(CreateFrame) ~= "function" then return nil end
+    local b = CreateFrame("Frame", nil, parent)
+    b:SetSize(size, size)
+    b.tex = b:CreateTexture(nil, "ARTWORK")
+    b.tex:SetAllPoints(true)
+    b.text = b:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    b.text:SetPoint("BOTTOM", b, "BOTTOM", 0, -10)
+    b:SetScript("OnEnter", function(self)
+        if self.tooltip and GameTooltip then
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(self.tooltip)
+            GameTooltip:Show()
+        end
+    end)
+    b:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    return b
+end
+
+-- spell ID -> texture path via WoW API. Defensive on missing API.
+local function spellIcon(spellID)
+    if type(GetSpellTexture) == "function" then
+        return GetSpellTexture(spellID)
+    end
+    return nil
+end
+
+-- ============================================================
+-- Build the main frame
+-- ============================================================
+function UI:CreateFrame()
+    if self.frame then return self.frame end
+    if type(CreateFrame) ~= "function" then return nil end
+
+    local db = ArenaCleaveCoachTBCDB or {}
+    local fcfg = db.frame or { point = "CENTER", x = 0, y = 120, scale = 1.0 }
+
+    local f = CreateFrame("Frame", "ArenaCleaveCoachTBCFrame", UIParent)
+    f:SetSize(360, 170)
+    f:SetPoint(fcfg.point or "CENTER", UIParent, fcfg.point or "CENTER",
+               fcfg.x or 0, fcfg.y or 120)
+    f:SetScale(fcfg.scale or 1.0)
+    f:SetMovable(true)
+    f:SetClampedToScreen(true)
+    f:EnableMouse(true)
+
+    -- Backdrop (TBC client uses Backdrop trait built-in for Frame)
+    if f.SetBackdrop then
+        f:SetBackdrop({
+            bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+            tile = true, tileSize = 16, edgeSize = 12,
+            insets = { left = 3, right = 3, top = 3, bottom = 3 },
+        })
+        f:SetBackdropColor(0, 0, 0, 0.6)
+    end
+
+    -- Title
+    f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    f.title:SetPoint("TOP", f, "TOP", 0, -8)
+    f.title:SetText(L("UI_TITLE"))
+
+    -- Big recommendation line ("KILL: Warlock")
+    f.bigText = f:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
+    f.bigText:SetPoint("TOP", f.title, "BOTTOM", 0, -8)
+    f.bigText:SetText(L("REASON_DEFAULT"))
+
+    -- Reason / callout text
+    f.subText = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    f.subText:SetPoint("TOP", f.bigText, "BOTTOM", 0, -4)
+    f.subText:SetJustifyH("CENTER")
+    f.subText:SetWidth(340)
+    f.subText:SetText("")
+
+    -- Friendly cooldown icons row
+    f.friendlyRow = CreateFrame("Frame", nil, f)
+    f.friendlyRow:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 8, 38)
+    f.friendlyRow:SetSize(340, 24)
+
+    -- Enemy cooldown icons row
+    f.enemyRow = CreateFrame("Frame", nil, f)
+    f.enemyRow:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 8, 8)
+    f.enemyRow:SetSize(340, 24)
+
+    -- Drag handlers (respect db.locked)
+    f:SetScript("OnMouseDown", function(self, button)
+        if button == "LeftButton" and not (ArenaCleaveCoachTBCDB and ArenaCleaveCoachTBCDB.locked) then
+            self:StartMoving()
+        end
+    end)
+    f:SetScript("OnMouseUp", function(self)
+        self:StopMovingOrSizing()
+        local point, _, _, x, y = self:GetPoint()
+        if ArenaCleaveCoachTBCDB and ArenaCleaveCoachTBCDB.frame then
+            ArenaCleaveCoachTBCDB.frame.point = point
+            ArenaCleaveCoachTBCDB.frame.x = x
+            ArenaCleaveCoachTBCDB.frame.y = y
+        end
+    end)
+
+    self.frame = f
+    self:_PopulateIconRows()
+    return f
+end
+
+-- Friendly/enemy icon definitions. Each entry: { spellID, tooltip }.
+-- These are *reminder* icons (visual only); we don't bind any actions to them.
+UI.friendlyIcons = {
+    {id=30330, key="MORTAL_STRIKE",       tip="Warrior Mortal Strike"},
+    {id=8512,  key="WINDFURY_TOTEM",      tip="Shaman Windfury Totem"},
+    {id=2825,  key="BLOODLUST",           tip="Shaman Bloodlust/Heroism"},
+    {id=8177,  key="GROUNDING_TOTEM",     tip="Shaman Grounding Totem"},
+    {id=8143,  key="TREMOR_TOTEM",        tip="Shaman Tremor Totem"},
+    {id=1044,  key="BLESSING_FREEDOM",    tip="Paladin Blessing of Freedom"},
+    {id=10308, key="HAMMER_OF_JUSTICE",   tip="Paladin Hammer of Justice"},
+    {id=10278, key="BLESSING_PROTECTION", tip="Paladin Blessing of Protection"},
+    {id=33786, key="CYCLONE",             tip="Druid Cyclone"},
+    {id=17116, key="NATURES_SWIFTNESS",   tip="Druid Nature's Swiftness"},
+    {id=33206, key="PAIN_SUPPRESSION",    tip="Priest Pain Suppression"},
+    {id=10890, key="PSYCHIC_SCREAM",      tip="Priest Psychic Scream"},
+    {id=988,   key="DISPEL_MAGIC",        tip="Priest Dispel Magic"},
+    {id=10876, key="MANA_BURN",           tip="Priest Mana Burn"},
+}
+
+UI.enemyIcons = {
+    {id=42292, key="PVP_TRINKET",       tip="PvP Trinket"},
+    {id=27619, key="ICE_BLOCK",         tip="Ice Block"},
+    {id=642,   key="DIVINE_SHIELD",     tip="Divine Shield"},
+    {id=10278, key="E_BOP",             tip="Blessing of Protection"},
+    {id=33206, key="E_PAIN_SUP",        tip="Pain Suppression"},
+    {id=17116, key="E_NS",              tip="Nature's Swiftness"},
+    {id=29166, key="INNERVATE",         tip="Innervate"},
+    {id=27223, key="DEATH_COIL",        tip="Death Coil"},
+    {id=27090, key="COUNTERSPELL",      tip="Counterspell / Spell Lock"},
+}
+
+function UI:_PopulateIconRows()
+    local f = self.frame; if not f then return end
+    local ICON_SIZE = 22
+    local SPACING = 2
+
+    local function place(parent, defs)
+        local x = 0
+        local icons = {}
+        for i, d in ipairs(defs) do
+            local btn = makeIcon(parent, ICON_SIZE)
+            if btn then
+                btn:SetPoint("LEFT", parent, "LEFT", x, 0)
+                local tex = spellIcon(d.id)
+                if tex then btn.tex:SetTexture(tex) end
+                btn.tooltip = d.tip
+                btn:SetAlpha(0.4)   -- start dim
+                icons[d.key] = btn
+                x = x + ICON_SIZE + SPACING
+            end
+        end
+        return icons
+    end
+
+    f.friendlyIconMap = place(f.friendlyRow, self.friendlyIcons)
+    f.enemyIconMap    = place(f.enemyRow, self.enemyIcons)
+end
+
+-- ============================================================
+-- Apply a recommendation to the UI
+-- ============================================================
+local modeColors = {
+    OPEN   = {1.0, 1.0, 0.4},
+    KILL   = {1.0, 0.3, 0.3},
+    SWAP   = {1.0, 0.6, 0.0},
+    DEFEND = {0.4, 0.7, 1.0},
+    RESET  = {0.7, 0.7, 0.7},
+}
+
+function UI:Show()
+    if self.frame then self.frame:Show() end
+end
+function UI:Hide()
+    if self.frame then self.frame:Hide() end
+end
+function UI:Toggle()
+    if not self.frame then return end
+    if self.frame:IsShown() then self.frame:Hide() else self.frame:Show() end
+end
+
+function UI:Apply(recommendation)
+    local f = self.frame; if not f or not recommendation then return end
+
+    local mode = recommendation.mode or "RESET"
+    local color = modeColors[mode] or {1, 1, 1}
+    local label = L(mode)
+    local target = recommendation.primaryTargetName
+                or recommendation.primaryTargetClass
+                or ""
+
+    f.bigText:SetTextColor(color[1], color[2], color[3])
+    if target and target ~= "" then
+        f.bigText:SetText(string.format("%s: %s", label, target))
+    else
+        f.bigText:SetText(label)
+    end
+
+    local subParts = {}
+    if recommendation.reason then table.insert(subParts, recommendation.reason) end
+    if recommendation.callouts and #recommendation.callouts > 0 then
+        local labels = {}
+        for _, key in ipairs(recommendation.callouts) do
+            table.insert(labels, L(key))
+        end
+        table.insert(subParts, table.concat(labels, " | "))
+    end
+    f.subText:SetText(table.concat(subParts, "\n"))
+
+    -- Screen flash for URGENT (defensive)
+    if recommendation.priority == "URGENT" and ArenaCleaveCoachTBCDB
+       and ArenaCleaveCoachTBCDB.alerts and ArenaCleaveCoachTBCDB.alerts.screenFlash then
+        self:_Flash()
+    end
+end
+
+-- Subtle screen-edge flash: an overlay frame that fades out
+function UI:_Flash()
+    if type(CreateFrame) ~= "function" then return end
+    local fr = self._flash
+    if not fr then
+        fr = CreateFrame("Frame", nil, UIParent)
+        fr:SetAllPoints(UIParent)
+        fr:EnableMouse(false)
+        fr.tex = fr:CreateTexture(nil, "BACKGROUND")
+        fr.tex:SetAllPoints(true)
+        fr.tex:SetColorTexture(1, 0.2, 0.2, 0.3)
+        self._flash = fr
+    end
+    fr:SetAlpha(0.6)
+    fr:Show()
+    if fr.SetScript then
+        fr.elapsed = 0
+        fr:SetScript("OnUpdate", function(self, e)
+            self.elapsed = (self.elapsed or 0) + e
+            local a = math.max(0, 0.6 - self.elapsed * 2)
+            self:SetAlpha(a)
+            if a <= 0 then self:Hide(); self:SetScript("OnUpdate", nil) end
+        end)
+    end
+end
+
+-- Brighten / dim icons depending on a "ready set" passed in
+-- readyFriendly / readyEnemy : map keyed by the same `key` used in icon defs
+function UI:UpdateIcons(readyFriendly, readyEnemy)
+    local f = self.frame; if not f then return end
+    if f.friendlyIconMap then
+        for k, btn in pairs(f.friendlyIconMap) do
+            btn:SetAlpha(readyFriendly and readyFriendly[k] and 1.0 or 0.4)
+        end
+    end
+    if f.enemyIconMap then
+        for k, btn in pairs(f.enemyIconMap) do
+            -- For enemy icons, "ready" actually means "available to enemy"
+            -- (i.e. NOT on cooldown). Highlight = enemy can use this.
+            btn:SetAlpha(readyEnemy and readyEnemy[k] and 1.0 or 0.4)
+        end
+    end
+end
