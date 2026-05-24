@@ -611,3 +611,21 @@ H.it(g, "/acc trace bogus prints usage", function()
     end
     H.assertTrue(found)
 end)
+
+H.it(g, "/acc bugreport prints sanitised payload", function()
+    H.load("ErrorReporter.lua")
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    H.ns.ErrorReporter:Reset()
+    H.ns.ErrorReporter:Capture("boom in Player-1-AAA")
+    startCapture()
+    SlashCmdList["ARENACOACH"]("bugreport")
+    stopCapture()
+    local sawHeader, sawSanitised = false, false
+    for _, ln in ipairs(captured) do
+        if ln:find("bug report") then sawHeader = true end
+        if ln:find("Player%-%*%*%*") then sawSanitised = true end
+    end
+    H.assertTrue(sawHeader, "header missing")
+    H.assertTrue(sawSanitised, "sanitised GUID missing")
+end)

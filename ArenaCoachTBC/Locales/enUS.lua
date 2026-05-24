@@ -29,6 +29,8 @@ ns.locales.enUS = {
     HELP_SELFTEST = "/acc selftest [verbose] - run in-client validation",
     HELP_SIMULATE = "/acc simulate [key|stop] - replay a scripted scenario",
     HELP_TRACE    = "/acc trace [on|off|dump|clear|status] - decision-trace log",
+    HELP_BUGREPORT = "/acc bugreport       - print sanitised payload for GitHub issues",
+    BUGREPORT_HEADER = "Bug report payload:",
     HELP_HELP     = "/acc help             - show this help",
 
     -- SelfTest

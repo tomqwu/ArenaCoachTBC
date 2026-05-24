@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **`/acc bugreport` error reporter.** `ErrorReporter.lua` module with `Capture(err, ctx)`, `Recent(n)`, `Reset()`, `Format(maxErrors)`, `Sanitize(text)`, `SetKnownNames({...})`. Ring buffer caps at 20 captured errors. Sanitisation strips `Player-XXX-XXX` GUIDs, bare `guid-...` tokens, `Name-Realm` patterns, and any character names registered via `SetKnownNames`. `/acc bugreport` prints a markdown payload (addon version + client build + last 5 sanitised errors) ready to paste into a GitHub issue. enUS + zhCN `HELP_BUGREPORT` / `BUGREPORT_HEADER` strings.
+
 ### Quality
 - **Locale parity gate** added to CI (`tools/check_locales.lua`). Runs before the Lua test suite. Diffs every locale file's key set against `enUS` and exits non-zero with an explicit `<locale> missing N key(s):` listing. The existing `Locales_spec.lua` parity test stays in place as a second layer.
 - **Performance budget enforced as tests.** `Tests/Performance_spec.lua` asserts `StrategyEngine:Evaluate` averages <5ms per call on a 5v5 state (target <1ms; the 5x CI margin tolerates noisy GH runners) and that 100 back-to-back simulated arenas stay within a 200kb GC delta (issue's 100kb target plus 2x slack for the spec framework). Catches scoring-loop regressions and enemy/cooldown table leaks before they ship.

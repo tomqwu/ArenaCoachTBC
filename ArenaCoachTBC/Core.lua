@@ -378,6 +378,7 @@ local function helpText()
     chatPrint(Core.L("HELP_SELFTEST"))
     chatPrint(Core.L("HELP_SIMULATE"))
     chatPrint(Core.L("HELP_TRACE"))
+    chatPrint(Core.L("HELP_BUGREPORT"))
     chatPrint(Core.L("HELP_HELP"))
 end
 
@@ -423,9 +424,19 @@ local function handleSlash(input)
         Core:RunSimulator(rest)
     elseif cmd == "trace" then
         Core:HandleTrace(rest)
+    elseif cmd == "bugreport" then
+        Core:RunBugReport()
     else
         chatPrint(Core.L("DEBUG_UNKNOWN_CMD"))
     end
+end
+
+function Core:RunBugReport()
+    local ER = ns.ErrorReporter
+    if not ER then chatPrint("ErrorReporter module not loaded"); return end
+    local payload = ER:Format(5)
+    chatPrint(Core.L("BUGREPORT_HEADER") or "Bug report payload:")
+    for line in payload:gmatch("[^\n]+") do chatPrint(line) end
 end
 
 function Core:HandleTrace(rest)
