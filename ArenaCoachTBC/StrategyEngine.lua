@@ -296,6 +296,7 @@ local function shouldDefend(state)
     local obs = state.observations or {}
     if obs.enemyBloodlustActive then return true, "enemy_lust" end
     if obs.multipleBurstsDetected then return true, "multi_burst" end
+    if obs.healerUnderPressure then return true, "trained" end
 
     -- enemy comp = triple DPS, no clean opener
     local Strategies = ns.Strategies

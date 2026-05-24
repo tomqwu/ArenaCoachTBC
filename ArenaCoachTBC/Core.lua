@@ -31,6 +31,8 @@ local DEFAULTS = {
         allowDpsSwap = true,
         callBurstOnlyWhenMSActive = true,
         requireWindfuryNearby = true,
+        peelTriggerWindow = 5,    -- seconds of sliding window for "trained" detection
+        peelTriggerDamage = 3,    -- damage events in window to force DEFEND
     },
     debug = false,
 }
@@ -102,6 +104,19 @@ Core.state = {
     bracket        = 5,      -- 2 | 3 | 5; engine uses for comp filter + weights
     lastPrimaryGUID = nil,
 }
+
+-- Train-detection: ring of damage event timestamps against friendlies in the
+-- last TRAIN_WINDOW seconds. When count exceeds TRAIN_THRESHOLD, the engine
+-- forces DEFEND. Configurable via db.strategy.peelTriggerWindow / peelTriggerDamage.
+Core._friendlyGUIDs    = {}  -- guid -> true
+Core._friendlyDamageTs = {}  -- list of timestamps
+
+local function pruneFriendlyDamage(now, window)
+    local cutoff = (now or 0) - (window or 5)
+    while #Core._friendlyDamageTs > 0 and Core._friendlyDamageTs[1] < cutoff do
+        table.remove(Core._friendlyDamageTs, 1)
+    end
+end
 
 -- Read the current arena bracket from the WoW battlefield API.
 -- Returns 2/3/5 if in an arena queue or active arena; falls back to the
@@ -214,11 +229,14 @@ function Core:RefreshFriendlies()
     if type(UnitExists) ~= "function" then return end
     local units = { "player", "party1", "party2", "party3", "party4" }
     self.state.friendlies = self.state.friendlies or {}
+    local guids = {}
     for _, u in ipairs(units) do
         local model = self.state.friendlies[u] or newFriendly(u)
         refreshUnit(model, u)
         self.state.friendlies[u] = model
+        if model.guid then guids[model.guid] = true end
     end
+    Core._friendlyGUIDs = guids
 end
 
 -- ============================================================
@@ -229,6 +247,15 @@ function Core:Evaluate()
         return
     end
     self.state.config = _G.ArenaCoachTBCDB
+    -- Refresh train-detection signal before scoring.
+    local now = (type(GetTime) == "function") and GetTime() or 0
+    local strat = (_G.ArenaCoachTBCDB.strategy) or {}
+    local window    = strat.peelTriggerWindow or 5
+    local threshold = strat.peelTriggerDamage or 3
+    pruneFriendlyDamage(now, window)
+    self.state.observations = self.state.observations or {}
+    self.state.observations.healerUnderPressure = (#Core._friendlyDamageTs >= threshold)
+
     local rec = ns.StrategyEngine and ns.StrategyEngine:Evaluate(self.state) or nil
     if not rec then return end
     self.state.lastPrimaryGUID = rec.primaryTarget
@@ -259,6 +286,13 @@ local function onCLEU()
     if ns.DRTracker and ns.Spells and ns.Spells.CATEGORIES then
         local category = ns.Spells.CATEGORIES[spellID]
         if category then ns.DRTracker:OnCC(subEvent, destGUID, spellID, category, ts) end
+    end
+
+    -- Train detection: collect damage events landing on our friendlies.
+    -- Pruned to the configured window in Evaluate.
+    if subEvent and Core._friendlyGUIDs[destGUID]
+       and (subEvent:find("_DAMAGE$") or subEvent == "SWING_DAMAGE") then
+        table.insert(Core._friendlyDamageTs, ts or 0)
     end
 
     -- Trinket tracking
