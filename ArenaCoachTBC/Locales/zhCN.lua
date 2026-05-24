@@ -28,6 +28,7 @@ ns.locales.zhCN = {
     HELP_ENEMY    = "/acc enemy <c1> ... <c5> - 模拟敌方阵容",
     HELP_SELFTEST = "/acc selftest [verbose] - 客户端内自检",
     HELP_SIMULATE = "/acc simulate [key|stop] - 回放脚本化场景",
+    HELP_TRACE    = "/acc trace [on|off|dump|clear|status] - 决策追踪日志",
     HELP_HELP     = "/acc help             - 显示帮助",
 
     -- SelfTest

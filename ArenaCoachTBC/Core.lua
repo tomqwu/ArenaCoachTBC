@@ -34,8 +34,39 @@ local DEFAULTS = {
         peelTriggerWindow = 5,    -- seconds of sliding window for "trained" detection
         peelTriggerDamage = 3,    -- damage events in window to force DEFEND
     },
+    trace = {
+        enabled  = false,
+        maxLines = 200,
+        log      = {},
+    },
     debug = false,
 }
+
+local TRACE_DEFAULT_CAP = 200
+
+local function appendTrace(rec, state)
+    local db = _G.ArenaCoachTBCDB
+    if not (db and db.trace and db.trace.enabled and rec) then return end
+    db.trace.log = db.trace.log or {}
+    local cap = db.trace.maxLines or TRACE_DEFAULT_CAP
+    local snapshot = {
+        ts             = (type(GetTime) == "function") and GetTime() or os.time(),
+        mode           = rec.mode,
+        primaryClass   = rec.primaryTargetClass,
+        primaryName    = rec.primaryTargetName,
+        secondaryClass = rec.secondaryTargetClass,
+        reason         = rec.reason,
+        confidence     = rec.confidence,
+        priority       = rec.priority,
+        comp           = rec.comp,
+        ownArchetype   = rec.ownArchetype,
+        bracket        = state and state.bracket,
+        combatPhase    = state and state.combatPhase,
+        callouts       = rec.callouts and table.concat(rec.callouts, ",") or "",
+    }
+    table.insert(db.trace.log, snapshot)
+    while #db.trace.log > cap do table.remove(db.trace.log, 1) end
+end
 
 local function deepMerge(dest, src)
     for k, v in pairs(src) do
@@ -261,6 +292,7 @@ function Core:Evaluate()
     self.state.lastPrimaryGUID = rec.primaryTarget
     if ns.UI then ns.UI:Apply(rec) end
     if ns.WeakAuraBridge then ns.WeakAuraBridge:Publish(rec, self.state) end
+    appendTrace(rec, self.state)
     Core.DebugPrint(string.format(
         "Evaluate -> mode=%s target=%s comp=%s own=%s conf=%.2f",
         tostring(rec.mode), tostring(rec.primaryTargetClass),
@@ -345,6 +377,7 @@ local function helpText()
     chatPrint(Core.L("HELP_ENEMY"))
     chatPrint(Core.L("HELP_SELFTEST"))
     chatPrint(Core.L("HELP_SIMULATE"))
+    chatPrint(Core.L("HELP_TRACE"))
     chatPrint(Core.L("HELP_HELP"))
 end
 
@@ -388,8 +421,43 @@ local function handleSlash(input)
         Core:RunSelfTest((rest or ""):lower() == "verbose")
     elseif cmd == "simulate" then
         Core:RunSimulator(rest)
+    elseif cmd == "trace" then
+        Core:HandleTrace(rest)
     else
         chatPrint(Core.L("DEBUG_UNKNOWN_CMD"))
+    end
+end
+
+function Core:HandleTrace(rest)
+    local db = _G.ArenaCoachTBCDB
+    if not db then Core:InitDB(); db = _G.ArenaCoachTBCDB end
+    db.trace = db.trace or { enabled = false, maxLines = 200, log = {} }
+    local arg = ((rest or ""):match("^%S*") or ""):lower()
+    if arg == "" or arg == "status" then
+        chatPrint(string.format("trace: %s (%d entries, cap %d)",
+            db.trace.enabled and "ON" or "OFF",
+            #(db.trace.log or {}),
+            db.trace.maxLines or 200))
+    elseif arg == "on" then
+        db.trace.enabled = true
+        chatPrint("trace ON (cap " .. (db.trace.maxLines or 200) .. ")")
+    elseif arg == "off" then
+        db.trace.enabled = false
+        chatPrint("trace OFF")
+    elseif arg == "clear" then
+        db.trace.log = {}
+        chatPrint("trace log cleared")
+    elseif arg == "dump" then
+        local log = db.trace.log or {}
+        local last = log[#log]
+        if not last then chatPrint("trace log is empty"); return end
+        chatPrint(string.format(
+            "trace[%d]: mode=%s target=%s reason=%s comp=%s bracket=%s callouts=[%s]",
+            #log, tostring(last.mode), tostring(last.primaryClass),
+            tostring(last.reason), tostring(last.comp),
+            tostring(last.bracket), tostring(last.callouts)))
+    else
+        chatPrint("usage: /acc trace on|off|status|dump|clear")
     end
 end
 

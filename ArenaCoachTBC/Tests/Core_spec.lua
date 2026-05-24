@@ -526,3 +526,88 @@ H.it(g, "train detection ignores damage on non-friendly destGUIDs", function()
     EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
     H.assertEq(#Core._friendlyDamageTs, 0)
 end)
+
+H.it(g, "trace records snapshots when enabled and stays under cap", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    _G.ArenaCoachTBCDB.trace.enabled = true
+    _G.ArenaCoachTBCDB.trace.maxLines = 3
+    _G.ArenaCoachTBCDB.trace.log = {}
+    H.setUnit("player", { class = "WARRIOR" })
+    H.setUnit("arena1", { class = "PRIEST", hp = 100, hpMax = 100 })
+    Core:RefreshFriendlies()
+    Core:RefreshArenaEnemies()
+    for i = 1, 5 do Core:Evaluate() end
+    H.assertEq(#_G.ArenaCoachTBCDB.trace.log, 3, "should cap at 3 entries")
+end)
+
+H.it(g, "trace records nothing when disabled", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    _G.ArenaCoachTBCDB.trace.enabled = false
+    _G.ArenaCoachTBCDB.trace.log = {}
+    Core:Evaluate()
+    H.assertEq(#_G.ArenaCoachTBCDB.trace.log, 0)
+end)
+
+H.it(g, "/acc trace on / off toggles flag", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    startCapture()
+    SlashCmdList["ARENACOACH"]("trace on")
+    H.assertTrue(_G.ArenaCoachTBCDB.trace.enabled)
+    SlashCmdList["ARENACOACH"]("trace off")
+    H.assertFalse(_G.ArenaCoachTBCDB.trace.enabled)
+    stopCapture()
+end)
+
+H.it(g, "/acc trace clear empties the log", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    _G.ArenaCoachTBCDB.trace.log = { {ts=1}, {ts=2} }
+    startCapture()
+    SlashCmdList["ARENACOACH"]("trace clear")
+    stopCapture()
+    H.assertEq(#_G.ArenaCoachTBCDB.trace.log, 0)
+end)
+
+H.it(g, "/acc trace dump prints last entry summary", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    _G.ArenaCoachTBCDB.trace.log = { { mode="KILL", primaryClass="MAGE", reason="r",
+                                       comp="RMP", bracket=3, callouts="A,B" } }
+    startCapture()
+    SlashCmdList["ARENACOACH"]("trace dump")
+    stopCapture()
+    local found = false
+    for _, ln in ipairs(captured) do
+        if ln:find("mode=KILL") and ln:find("comp=RMP") then found = true end
+    end
+    H.assertTrue(found, "dump should show mode + comp; got: " .. table.concat(captured, "|"))
+end)
+
+H.it(g, "/acc trace status without args prints state", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    startCapture()
+    SlashCmdList["ARENACOACH"]("trace")
+    stopCapture()
+    local found = false
+    for _, ln in ipairs(captured) do
+        if ln:find("trace:") then found = true end
+    end
+    H.assertTrue(found)
+end)
+
+H.it(g, "/acc trace bogus prints usage", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    startCapture()
+    SlashCmdList["ARENACOACH"]("trace nonsense-arg")
+    stopCapture()
+    local found = false
+    for _, ln in ipairs(captured) do
+        if ln:find("usage:") then found = true end
+    end
+    H.assertTrue(found)
+end)
