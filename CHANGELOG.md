@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`/acc record` CLEU recording + `tools/replay.lua`.** When `record` is on (default off), every CLEU event passed through `Core.onCLEU` is appended to `ArenaCoachTBCDB.record.events` (ring buffer, default cap 1000). `tools/replay.lua <SavedVariables.lua>` re-runs the captured log through the StrategyEngine offline and prints periodic recommendation snapshots, so a maintainer can second-guess specific calls without recreating the arena. `/acc record on/off/status/dump/clear`. enUS + zhCN `HELP_RECORD` strings.
 - **`/acc bugreport` error reporter.** `ErrorReporter.lua` module with `Capture(err, ctx)`, `Recent(n)`, `Reset()`, `Format(maxErrors)`, `Sanitize(text)`, `SetKnownNames({...})`. Ring buffer caps at 20 captured errors. Sanitisation strips `Player-XXX-XXX` GUIDs, bare `guid-...` tokens, `Name-Realm` patterns, and any character names registered via `SetKnownNames`. `/acc bugreport` prints a markdown payload (addon version + client build + last 5 sanitised errors) ready to paste into a GitHub issue. enUS + zhCN `HELP_BUGREPORT` / `BUGREPORT_HEADER` strings.
 
 ### Quality
