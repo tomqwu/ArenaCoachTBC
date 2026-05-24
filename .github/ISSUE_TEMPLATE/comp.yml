@@ -1,0 +1,57 @@
+name: Comp request
+description: Request a new named enemy comp entry.
+title: "[comp] "
+labels: ["data", "needs-triage"]
+body:
+  - type: input
+    id: comp_name
+    attributes:
+      label: Comp shorthand
+      description: "Standard arena name (e.g. RMP, TSG, WLD, Jungle, Shatterplay)."
+      placeholder: "TSG"
+    validations:
+      required: true
+  - type: dropdown
+    id: bracket
+    attributes:
+      label: Bracket
+      options:
+        - "2v2"
+        - "3v3"
+        - "5v5"
+    validations:
+      required: true
+  - type: textarea
+    id: classes
+    attributes:
+      label: Class + spec composition
+      placeholder: |
+        Warrior (Arms)
+        Death Knight - N/A in TBC, use Retribution Paladin
+        Holy Paladin
+    validations:
+      required: true
+  - type: textarea
+    id: kill_priority
+    attributes:
+      label: Typical kill priority + reasoning
+      placeholder: "Kill the paladin first - cleave damage forces hard cast Flash of Light..."
+    validations:
+      required: true
+  - type: textarea
+    id: openers
+    attributes:
+      label: Their typical openers / win condition
+    validations:
+      required: true
+  - type: textarea
+    id: our_responses
+    attributes:
+      label: How each own archetype should react
+      description: "What changes for BURST_CLEAVE vs SUSTAINED_CLEAVE vs CASTER_CLEAVE vs DRAIN_TEAM?"
+  - type: textarea
+    id: sample_log
+    attributes:
+      label: Sample match log (optional)
+      description: "Output from `/acc record on` during a real match against this comp."
+      render: shell
