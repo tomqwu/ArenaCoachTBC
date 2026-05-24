@@ -27,6 +27,9 @@ jobs:
           done
           exit $fail
 
+      - name: Locale parity gate
+        run: lua5.1 tools/check_locales.lua
+
       - name: Run test suite with coverage
         run: |
           rm -f luacov.stats.out luacov.report.out
