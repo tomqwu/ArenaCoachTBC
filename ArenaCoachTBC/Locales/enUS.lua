@@ -27,10 +27,15 @@ ns.locales.enUS = {
     HELP_STRAT    = "/acc strategy safe|balanced|greedy - set aggression",
     HELP_ENEMY    = "/acc enemy <c1> ... <c5> - simulate enemy comp",
     HELP_SELFTEST = "/acc selftest [verbose] - run in-client validation",
+    HELP_SIMULATE = "/acc simulate [key|stop] - replay a scripted scenario",
     HELP_HELP     = "/acc help             - show this help",
 
     -- SelfTest
     SELFTEST_HEADER = "ArenaCoachTBC self-test:",
+
+    -- Simulator
+    SIMULATE_HEADER  = "Available scenarios (/acc simulate <key>):",
+    SIMULATE_STOPPED = "simulation stopped",
 
     -- Recommendation reasons / callouts
     REASON_DEFAULT       = "Awaiting opener...",

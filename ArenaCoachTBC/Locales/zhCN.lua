@@ -27,10 +27,15 @@ ns.locales.zhCN = {
     HELP_STRAT    = "/acc strategy safe|balanced|greedy - 设定策略激进度",
     HELP_ENEMY    = "/acc enemy <c1> ... <c5> - 模拟敌方阵容",
     HELP_SELFTEST = "/acc selftest [verbose] - 客户端内自检",
+    HELP_SIMULATE = "/acc simulate [key|stop] - 回放脚本化场景",
     HELP_HELP     = "/acc help             - 显示帮助",
 
     -- SelfTest
     SELFTEST_HEADER = "ArenaCoachTBC 自检：",
+
+    -- Simulator
+    SIMULATE_HEADER  = "可用场景（/acc simulate <key>）：",
+    SIMULATE_STOPPED = "模拟已停止",
 
     -- Recommendation reasons / callouts
     REASON_DEFAULT       = "等待开局...",
