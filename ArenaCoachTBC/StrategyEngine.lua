@@ -44,6 +44,7 @@ SE.weights = {
     major_defensive_down =  15,
     no_immunity          =  10,
     purgeable_defensive  =  10,
+    kill_defensive_soon  = -10,  -- penalty when target's major defensive comes off CD within ~15s
     ms_active            =  25,
     our_hoj_ready        =  15,
     our_bloodlust        =  15,
@@ -116,6 +117,24 @@ local function activeImmunity(enemy)
         end
     end
     return nil
+end
+
+-- Returns the seconds remaining until this enemy's soonest major defensive
+-- comes off cooldown, based on observed casts. nil means "no defensive has
+-- ever been observed used" - treat as already-available (no penalty).
+local function nextMajorDefensiveCD(enemy)
+    if not enemy or not enemy.guid then return nil end
+    local CT = ns.CooldownTracker
+    local S  = ns.Spells
+    if not CT or not S or not S.IMMUNITY_BUFFS then return nil end
+    local soonest = nil
+    for spellID, _ in pairs(S.IMMUNITY_BUFFS) do
+        local rem = CT:GetRemaining(enemy.guid, spellID)
+        if rem and rem > 0 and (not soonest or rem < soonest) then
+            soonest = rem
+        end
+    end
+    return soonest
 end
 
 local function hasPurgeableBuff(enemy)
@@ -211,6 +230,13 @@ local function scoreEnemy(enemy, state)
     end
     if enemy.majorDefensiveDown then
         add(w.major_defensive_down, "major_defensive_down")
+    end
+    -- Penalty when their major defensive (Ice Block / Divine Shield / BoP)
+    -- is about to come off CD - committing burst into a soon-immune target
+    -- is wasted effort.
+    local nextDef = nextMajorDefensiveCD(enemy)
+    if nextDef and nextDef < 15 then
+        add(w.kill_defensive_soon, "kill_defensive_soon")
     end
     if not activeImmunity(enemy) then
         add(w.no_immunity, "no_immunity")
@@ -314,11 +340,48 @@ end
 -- ============================================================
 -- Build callouts (locale keys) from comp + current state
 -- ============================================================
+-- CC-callout -> DR category. Used to suppress CC suggestions when the
+-- relevant DR is already in immune territory.
+local CC_CALLOUT_CATEGORY = {
+    CALL_HOJ_KILL    = "STUN",
+    CALL_CYCLONE_OFF = "CYCLONE",
+}
+
+-- For a CC callout, return the enemy whose DR we should check. nil means
+-- "no specific target" (callout always allowed).
+local function ccTargetFor(key, primaryTarget, state)
+    if key == "CALL_HOJ_KILL" then return primaryTarget end
+    if key == "CALL_CYCLONE_OFF" then
+        -- Off-healer: any healer enemy that isn't the primary kill target.
+        for _, e in pairs(state.enemies or {}) do
+            if isHealer(e) and isAlive(e)
+               and (not primaryTarget or e.guid ~= primaryTarget.guid) then
+                return e
+            end
+        end
+    end
+    return nil
+end
+
+-- Returns true if a CC callout is still worth firing. nil/no-data = allow.
+-- DR mult of 0 = immune; we suppress.
+local function drAllowsCallout(key, primaryTarget, state)
+    local cat = CC_CALLOUT_CATEGORY[key]
+    if not cat then return true end
+    local target = ccTargetFor(key, primaryTarget, state)
+    if not target or not target.guid then return true end
+    local DR = ns.DRTracker
+    if not DR or not DR.NextMultiplier then return true end
+    local mult = DR:NextMultiplier(target.guid, cat)
+    if mult == nil then return true end  -- no observed DR yet
+    return mult > 0
+end
+
 local function buildCallouts(state, comp, primaryTarget, mode)
     local out = {}
     local seen = {}
     local function push(key)
-        if key and not seen[key] then
+        if key and not seen[key] and drAllowsCallout(key, primaryTarget, state) then
             table.insert(out, key); seen[key] = true
         end
     end

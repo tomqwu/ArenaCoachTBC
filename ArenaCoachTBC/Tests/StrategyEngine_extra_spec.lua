@@ -200,48 +200,76 @@ H.it(g, "Evaluate consumes state.bracket so scoring picks up overrides", functio
     H.assertNotNil(rec)  -- engine still produces a rec under bracket=2
 end)
 
-H.it(g, "low_mana_healer weight applies when healer mana < 25", function()
-    local state = SE:BuildTestState({"PRIEST","WARRIOR"})
+H.it(g, "kill_defensive_soon penalty fires when major defensive <15s away", function()
+    H.load("CooldownTracker.lua")
+    local CT = H.ns.CooldownTracker
+    local state = SE:BuildTestState({"MAGE","PRIEST"})
     state.combatPhase = "ACTIVE"
-    local p = findEnemyByClass(state, "PRIEST")
-    p.manaPct = 20
-    p.roleGuess = "HEALER"
-    local rec = SE:Evaluate(state)
-    H.assertNotNil(rec)
-    -- The priest should be the top-scored target; the breakdown should
-    -- include the low_mana_healer contribution.
-    local sawWeight = false
-    for _, c in ipairs(p._contrib or {}) do
-        if c.key == "low_mana_healer" then sawWeight = true end
+    local m = findEnemyByClass(state, "MAGE")
+    H._gameTime = 1000
+    CT:Clear()
+    -- used at t=705, ready at t=1005 -> remaining = 5
+    CT:_record(m.guid, 27619, 300, 705)
+    SE:Evaluate(state)
+    local sawPenalty = false
+    for _, c in ipairs(m._contrib or {}) do
+        if c.key == "kill_defensive_soon" then sawPenalty = true end
     end
-    H.assertTrue(sawWeight, "low_mana_healer not in score breakdown")
+    H.assertTrue(sawPenalty, "expected kill_defensive_soon penalty")
+    CT:Clear()
 end)
 
-H.it(g, "low_mana_healer weight does NOT apply at full mana", function()
-    local state = SE:BuildTestState({"PRIEST","WARRIOR"})
+H.it(g, "kill_defensive_soon penalty does NOT fire when defensive >30s away", function()
+    H.load("CooldownTracker.lua")
+    local CT = H.ns.CooldownTracker
+    local state = SE:BuildTestState({"MAGE","PRIEST"})
     state.combatPhase = "ACTIVE"
-    local p = findEnemyByClass(state, "PRIEST")
-    p.manaPct = 80
-    p.roleGuess = "HEALER"
+    local m = findEnemyByClass(state, "MAGE")
+    H._gameTime = 1000
+    CT:Clear()
+    -- Used at t=940, ready at t=1240 -> remaining 240 seconds
+    CT:_record(m.guid, 27619, 300, 940)
     SE:Evaluate(state)
-    for _, c in ipairs(p._contrib or {}) do
-        if c.key == "low_mana_healer" then
-            error("low_mana_healer fired at 80% mana")
+    for _, c in ipairs(m._contrib or {}) do
+        if c.key == "kill_defensive_soon" then
+            error("penalty unexpectedly applied at rem=240s")
         end
     end
+    CT:Clear()
 end)
 
-H.it(g, "CALL_LOW_MANA_PUSH callout emitted when low-mana healer is primary", function()
+H.it(g, "CALL_HOJ_KILL is suppressed when STUN DR is immune on primary target", function()
+    H.load("DRTracker.lua")
+    local DR = H.ns.DRTracker
+    DR:Clear()
     local state = SE:BuildTestState({"PRIEST","WARRIOR"})
     state.combatPhase = "ACTIVE"
+    state.observations = { hojReady = true }
     local p = findEnemyByClass(state, "PRIEST")
-    p.manaPct = 15
-    p.roleGuess = "HEALER"
+    p.guid = "guid-priest-dr"
+    H._gameTime = 1000
+    DR:OnCC("SPELL_AURA_APPLIED", p.guid, 10308, "STUN", 999)
+    DR:OnCC("SPELL_AURA_APPLIED", p.guid, 10308, "STUN", 998)
+    DR:OnCC("SPELL_AURA_APPLIED", p.guid, 10308, "STUN", 997)
     local rec = SE:Evaluate(state)
     H.assertNotNil(rec)
-    local found = false
+    local hojIn = false
     for _, c in ipairs(rec.callouts or {}) do
-        if c == "CALL_LOW_MANA_PUSH" then found = true end
+        if c == "CALL_HOJ_KILL" then hojIn = true end
     end
-    H.assertTrue(found, "expected CALL_LOW_MANA_PUSH in: " .. table.concat(rec.callouts or {}, ","))
+    H.assertFalse(hojIn, "CALL_HOJ_KILL should be suppressed at full DR immunity")
+end)
+
+H.it(g, "CALL_HOJ_KILL is allowed when no STUN DR observed", function()
+    H.load("DRTracker.lua")
+    H.ns.DRTracker:Clear()
+    local state = SE:BuildTestState({"PRIEST","WARRIOR"})
+    state.combatPhase = "ACTIVE"
+    state.observations = { hojReady = true }
+    local rec = SE:Evaluate(state)
+    local hojIn = false
+    for _, c in ipairs(rec.callouts or {}) do
+        if c == "CALL_HOJ_KILL" then hojIn = true end
+    end
+    H.assertTrue(hojIn, "CALL_HOJ_KILL should fire when DR is clean")
 end)
