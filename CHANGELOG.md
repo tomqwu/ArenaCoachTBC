@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `## Interface-BCC: 20504` directive in `ArenaCoachTBC.toc` so the packager builds a BCC-flavoured zip without a duplicate TOC.
 - `CooldownTracker` now tracks **Will of the Forsaken** (7744, Undead racial) as a separate 120s cooldown. Surfaces via the existing `CT:IsReady(guid, 7744)` / `CT:GetRemaining(guid, 7744)` API. Aura-applied events are also caught, so WotF use is recorded even if the cast event is missed.
 - `Spells.CC_BREAK_RACIALS` exposes the set of racials that act as fear/CC-breaks (currently just WotF). Engine consumers can iterate this when reasoning about "any CC-break ready" without hardcoding race-specific IDs.
+- `/acc selftest [verbose]` — runs ~10 fast in-client assertions covering Spells data, CooldownTracker round-trip, DRTracker, StrategyEngine, Strategies/OwnComps identification, locale resolution, EventBus emission, and the WeakAura bridge. Reports `SelfTest: N passed, M failed`. Useful when a client patch or another addon clobbers state.
+- `SelfTest.lua` module with `Register` / `Reset` / `Run(verbose, printer)` / `RegisterDefaults`. Composable so future modules can register their own checks.
 
 ### Changed
 - Renamed `S.PVP_TRINKET` (which was incorrectly set to 7744 / Will of the Forsaken) to `S.WILL_OF_THE_FORSAKEN`. The actual PvP trinket effect remains `S.PVP_TRINKET_EFFECT = 42292`. No callers were affected — the old symbol was unreferenced outside the data file.

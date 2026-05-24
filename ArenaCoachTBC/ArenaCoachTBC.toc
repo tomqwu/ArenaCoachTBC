@@ -24,5 +24,6 @@ StrategyEngine.lua
 UI.lua
 Options.lua
 WeakAuraBridge.lua
+SelfTest.lua
 
 Core.lua
