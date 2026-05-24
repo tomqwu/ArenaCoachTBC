@@ -28,6 +28,7 @@ ns.locales.enUS = {
     HELP_ENEMY    = "/acc enemy <c1> ... <c5> - simulate enemy comp",
     HELP_SELFTEST = "/acc selftest [verbose] - run in-client validation",
     HELP_SIMULATE = "/acc simulate [key|stop] - replay a scripted scenario",
+    HELP_TRACE    = "/acc trace [on|off|dump|clear|status] - decision-trace log",
     HELP_HELP     = "/acc help             - show this help",
 
     -- SelfTest
