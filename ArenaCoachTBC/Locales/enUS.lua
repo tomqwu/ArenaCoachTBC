@@ -70,6 +70,7 @@ ns.locales.enUS = {
     CALL_AVOID_OVERCHASE = "Avoid overchase",
     CALL_PEEL_PRIEST     = "Peel for Priest",
     CALL_PEEL_DRUID      = "Peel for Druid",
+    CALL_LOW_MANA_PUSH   = "Healer low mana - push now",
 
     -- UI labels
     UI_TITLE             = "Arena Coach",

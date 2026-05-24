@@ -39,6 +39,7 @@ SE.weights = {
     role_cloth_dps       =  15,
     role_melee_overext   =  10,
     health_below_50      =  30,
+    low_mana_healer      =  20,
     trinket_down         =  20,
     major_defensive_down =  15,
     no_immunity          =  10,
@@ -202,6 +203,9 @@ local function scoreEnemy(enemy, state)
     if (enemy.healthPct or 100) < 50 then
         add(w.health_below_50, "health_below_50")
     end
+    if isHealer(enemy) and enemy.manaPct and enemy.manaPct < 25 then
+        add(w.low_mana_healer, "low_mana_healer")
+    end
     if enemy.hasTrinket == false then
         add(w.trinket_down, "trinket_down")
     end
@@ -334,6 +338,10 @@ local function buildCallouts(state, comp, primaryTarget, mode)
         if primaryTarget and hasPurgeableBuff(primaryTarget) then push("CALL_PURGE") end
         if primaryTarget and primaryTarget.class == "PRIEST" then
             push("CALL_EARTHSHOCK_HEAL")
+        end
+        if primaryTarget and isHealer(primaryTarget)
+           and primaryTarget.manaPct and primaryTarget.manaPct < 25 then
+            push("CALL_LOW_MANA_PUSH")
         end
     elseif mode == "OPEN" then
         if cfg.preferHealerOpen then push("CALL_HOJ_KILL") end
