@@ -445,3 +445,31 @@ H.it(g, "Strategies:Identify reflects updated roleGuess after a cast", function(
     EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
     H.assertEq(Core.state.enemies.arena1.roleGuess, "CASTER")
 end)
+
+H.it(g, "UpdateBracket reads GetBattlefieldStatus and sets state.bracket", function()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    -- Stub the WoW battlefield API to look like an active 3v3.
+    _G.GetMaxBattlefieldID  = function() return 2 end
+    _G.GetBattlefieldStatus = function(i)
+        if i == 1 then return "none" end
+        return "active", "Nagrand Arena", nil, nil, nil, 3
+    end
+    Core:UpdateBracket()
+    H.assertEq(Core.state.bracket, 3)
+    -- Cleanup so subsequent specs don't see the stubs.
+    _G.GetMaxBattlefieldID, _G.GetBattlefieldStatus = nil, nil
+end)
+
+H.it(g, "UpdateBracket keeps previous bracket when no API present", function()
+    Core.state.bracket = 5
+    _G.GetMaxBattlefieldID, _G.GetBattlefieldStatus = nil, nil
+    H.assertEq(Core:UpdateBracket(), 5)
+end)
+
+H.it(g, "UpdateBracket falls back to previous when no active battlefield", function()
+    _G.GetMaxBattlefieldID  = function() return 1 end
+    _G.GetBattlefieldStatus = function() return "none" end
+    Core.state.bracket = 5
+    H.assertEq(Core:UpdateBracket(), 5)
+    _G.GetMaxBattlefieldID, _G.GetBattlefieldStatus = nil, nil
+end)

@@ -99,8 +99,27 @@ Core.state = {
     config         = nil,    -- bound to SavedVariables on init
     enemyClassList = {},
     combatPhase    = "PRE",  -- PRE, ACTIVE, POST
+    bracket        = 5,      -- 2 | 3 | 5; engine uses for comp filter + weights
     lastPrimaryGUID = nil,
 }
+
+-- Read the current arena bracket from the WoW battlefield API.
+-- Returns 2/3/5 if in an arena queue or active arena; falls back to the
+-- previously known bracket (default 5) when no battlefield is active.
+function Core:UpdateBracket()
+    local prev = self.state.bracket or 5
+    if type(GetMaxBattlefieldID) ~= "function" or type(GetBattlefieldStatus) ~= "function" then
+        return prev
+    end
+    for i = 1, GetMaxBattlefieldID() do
+        local status, _mapName, _instanceID, _minLvl, _maxLvl, teamSize = GetBattlefieldStatus(i)
+        if (status == "active" or status == "confirm") and teamSize and teamSize > 0 then
+            self.state.bracket = teamSize
+            return teamSize
+        end
+    end
+    return prev
+end
 
 -- ============================================================
 -- Build / update enemy & friendly tables from arena units
@@ -421,6 +440,7 @@ end
 local function onPlayerEnteringWorld()
     Core:InitDB()
     Core:RefreshFriendlies()
+    Core:UpdateBracket()
     if ns.UI and not ns.UI.frame then ns.UI:CreateFrame() end
     if ns.Spells and ns.Spells.RefreshNames then ns.Spells:RefreshNames() end
     Core:Evaluate()
@@ -428,6 +448,7 @@ end
 
 local function onArenaOpponentUpdate()
     Core:RefreshArenaEnemies()
+    Core:UpdateBracket()
     -- Phase transitions: we go PRE -> ACTIVE on first enemy seen
     Core.state.combatPhase = "ACTIVE"
     Core:Evaluate()
@@ -476,6 +497,7 @@ function Core:Boot()
     EB:Subscribe("PLAYER_ENTERING_WORLD", onPlayerEnteringWorld)
     EB:Subscribe("ARENA_OPPONENT_UPDATE", onArenaOpponentUpdate)
     EB:Subscribe("GROUP_ROSTER_UPDATE",   onGroupRosterUpdate)
+    EB:Subscribe("UPDATE_BATTLEFIELD_STATUS", function() Core:UpdateBracket() end)
     EB:Subscribe("UNIT_AURA",             onUnitAura)
     EB:Subscribe("PLAYER_REGEN_DISABLED", onRegenDisabled)
     EB:Subscribe("PLAYER_REGEN_ENABLED",  onRegenEnabled)

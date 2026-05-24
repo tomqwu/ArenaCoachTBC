@@ -65,6 +65,9 @@ end
 function API.GetCombatPhase()
     return WAB._state and WAB._state.combatPhase
 end
+function API.GetBracket()
+    return WAB._state and WAB._state.bracket
+end
 
 -- ----- Debug / version -----
 function API.GetDebugState()

@@ -29,6 +29,10 @@ local SE = ns.StrategyEngine
 
 -- ============================================================
 -- Scoring weights (kept here as named constants to make tuning trivial)
+-- Per-bracket overrides live in SE.bracketWeights; SE:GetWeights(bracket)
+-- merges default + overrides. Engine call sites use this everywhere
+-- instead of reading SE.weights directly so future bracket-tuning lands
+-- without touching call sites.
 -- ============================================================
 SE.weights = {
     role_healer          =  25,
@@ -53,6 +57,30 @@ SE.weights = {
     our_healer_cc        =  -25,
     our_team_low_hp      =  -30,
 }
+
+-- Per-bracket weight overrides. Only list keys that DIFFER from default.
+-- 2v2: healer kill is the entire game plan -> overweight role_healer.
+-- 3v3: swap targets matter; healer slightly less unique.
+-- 5v5: defaults are tuned for 5v5 cleave; no overrides needed.
+SE.bracketWeights = {
+    [2] = { role_healer = 40, role_cloth_dps = 18 },
+    [3] = { role_healer = 30 },
+    [5] = {},
+}
+
+local function copyTable(t)
+    local out = {}
+    for k, v in pairs(t) do out[k] = v end
+    return out
+end
+
+function SE:GetWeights(bracket)
+    local merged = copyTable(self.weights)
+    if bracket and self.bracketWeights[bracket] then
+        for k, v in pairs(self.bracketWeights[bracket]) do merged[k] = v end
+    end
+    return merged
+end
 
 -- ============================================================
 -- Helpers
@@ -151,7 +179,7 @@ end
 -- Scoring
 -- ============================================================
 local function scoreEnemy(enemy, state)
-    local w = SE.weights
+    local w = SE:GetWeights(state and state.bracket)
     local score = 0
     local contrib = {}  -- ordered list of {reasonKey, points}
     local function add(pts, key)
@@ -241,7 +269,7 @@ local function shouldDefend(state)
 
     -- enemy comp = triple DPS, no clean opener
     local Strategies = ns.Strategies
-    local comp = Strategies and Strategies:Identify(state.enemyClassList or {}, state.enemies)
+    local comp = Strategies and Strategies:Identify(state.enemyClassList or {}, state.enemies, state.bracket)
     if comp and comp.defaultMode == "DEFEND" then
         if (state.combatPhase or "PRE") == "PRE" then
             return true, "triple_dps_pre"
@@ -374,7 +402,7 @@ function SE:Evaluate(state)
     state._ownArchetype = ownArchetype
 
     local Strategies = ns.Strategies
-    local comp = Strategies and Strategies:Identify(classes, state.enemies) or nil
+    local comp = Strategies and Strategies:Identify(classes, state.enemies, state.bracket) or nil
     if Strategies and Strategies.ApplyOwnVariant and ownArchetype then
         comp = Strategies:ApplyOwnVariant(comp, ownArchetype.id)
     end

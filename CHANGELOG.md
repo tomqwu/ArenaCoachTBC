@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **M2 bracket infrastructure.** `Core:UpdateBracket()` reads `GetBattlefieldStatus` and sets `state.bracket` (2, 3, or 5). Hooked to `UPDATE_BATTLEFIELD_STATUS`, `PLAYER_ENTERING_WORLD`, and `ARENA_OPPONENT_UPDATE` so the bracket is fresh whenever the engine evaluates.
+- `Strategies:Identify(list, enemies, bracket)` now accepts an optional bracket arg. Comps can declare `bracket = 2|3|5` to opt into bracket-specific matching; bracket-tagged comps win over agnostic ones when both match.
+- `SE:GetWeights(bracket)` returns the default scoring weights merged with any per-bracket overrides from `SE.bracketWeights`. 2v2 boosts `role_healer` to 40 (single-target healer kills win games); 3v3 raises it to 30. 5v5 uses defaults.
+- `WeakAuraBridge.GetBracket()` exposes the current bracket to WeakAuras consumers.
+
+### Added
 - M1 foundations: LICENSE (MIT), CONTRIBUTING guide, issue templates, PR template, manual smoke checklist.
 - Release pipeline: `.pkgmeta` + `.github/workflows/release.yml`.
   - **Every push to `main` auto-tags `v{base}-dev.{run_number}` and publishes a GitHub Pre-release** with the addon zip attached and notes extracted from the `[Unreleased]` section of `CHANGELOG.md`. Pick up the latest testable build from the [Releases page](https://github.com/tomqwu/wow_tbc_arena_pvp_strategy/releases).
