@@ -26,7 +26,11 @@ ns.locales.enUS = {
     HELP_RESET    = "/acc reset            - reset SavedVariables",
     HELP_STRAT    = "/acc strategy safe|balanced|greedy - set aggression",
     HELP_ENEMY    = "/acc enemy <c1> ... <c5> - simulate enemy comp",
+    HELP_SELFTEST = "/acc selftest [verbose] - run in-client validation",
     HELP_HELP     = "/acc help             - show this help",
+
+    -- SelfTest
+    SELFTEST_HEADER = "ArenaCoachTBC self-test:",
 
     -- Recommendation reasons / callouts
     REASON_DEFAULT       = "Awaiting opener...",

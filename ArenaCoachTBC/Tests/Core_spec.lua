@@ -187,6 +187,33 @@ H.it(g, "slash command /acc help prints help", function()
     H.assertTrue(#captured >= 5, "help should print many lines")
 end)
 
+H.it(g, "RunSelfTest produces output and reports a summary", function()
+    H.load("SelfTest.lua")
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    startCapture()
+    Core:RunSelfTest(false)
+    stopCapture()
+    H.assertTrue(#captured >= 2, "expected header + summary, got " .. #captured)
+    local lastLine = captured[#captured]
+    H.assertNotNil(lastLine:find("SelfTest:"), "summary line missing: " .. lastLine)
+end)
+
+H.it(g, "slash command /acc selftest verbose dispatches", function()
+    H.load("SelfTest.lua")
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    startCapture()
+    SlashCmdList["ARENACOACH"]("selftest verbose")
+    stopCapture()
+    -- verbose mode emits at least one PASS line plus the summary
+    local sawPass, sawSummary = false, false
+    for _, ln in ipairs(captured) do
+        if ln:find("PASS  ") then sawPass = true end
+        if ln:find("SelfTest:") then sawSummary = true end
+    end
+    H.assertTrue(sawPass, "verbose mode should print PASS lines")
+    H.assertTrue(sawSummary, "summary should be printed")
+end)
+
 H.it(g, "/acc toggle / lock / unlock all run", function()
     _G.ArenaCoachTBCDB = nil; Core:InitDB()
     startCapture()

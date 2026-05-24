@@ -280,6 +280,7 @@ local function helpText()
     chatPrint(Core.L("HELP_RESET"))
     chatPrint(Core.L("HELP_STRAT"))
     chatPrint(Core.L("HELP_ENEMY"))
+    chatPrint(Core.L("HELP_SELFTEST"))
     chatPrint(Core.L("HELP_HELP"))
 end
 
@@ -319,9 +320,19 @@ local function handleSlash(input)
         Core:RunTestMode()
     elseif cmd == "enemy" then
         Core:RunEnemySim(rest)
+    elseif cmd == "selftest" then
+        Core:RunSelfTest((rest or ""):lower() == "verbose")
     else
         chatPrint(Core.L("DEBUG_UNKNOWN_CMD"))
     end
+end
+
+function Core:RunSelfTest(verbose)
+    local ST = ns.SelfTest
+    if not ST then chatPrint("SelfTest module not loaded"); return end
+    if ST.RegisterDefaults and (#ST.checks == 0) then ST:RegisterDefaults() end
+    chatPrint(Core.L("SELFTEST_HEADER"))
+    return ST:Run(verbose, chatPrint)
 end
 
 -- ============================================================
