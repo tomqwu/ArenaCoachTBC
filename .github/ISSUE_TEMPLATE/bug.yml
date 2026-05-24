@@ -1,0 +1,72 @@
+name: Bug report
+description: Something the addon is doing wrong in-game.
+title: "[bug] "
+labels: ["bug", "needs-triage"]
+body:
+  - type: input
+    id: client_version
+    attributes:
+      label: Client version
+      description: "Output of `/run print(GetBuildInfo())` inside WoW."
+      placeholder: "2.5.4 (45745) — TBC Classic"
+    validations:
+      required: true
+  - type: input
+    id: addon_version
+    attributes:
+      label: ArenaCoachTBC version
+      description: "Output of `/run print(GetAddOnMetadata('ArenaCoachTBC','Version'))`."
+      placeholder: "1.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: bracket
+    attributes:
+      label: Bracket
+      options:
+        - "2v2"
+        - "3v3"
+        - "5v5"
+        - "Skirmish / world PvP"
+        - "Other / N/A"
+    validations:
+      required: true
+  - type: textarea
+    id: comp_faced
+    attributes:
+      label: Comp faced
+      description: "Your team + enemy team (class + spec if known)."
+      placeholder: |
+        Own: War/Sham/Mage/Priest/Pala
+        Enemy: Rogue/Mage/Priest/Warlock/Druid
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      placeholder: "Engine should have called swap to mage when his Ice Block was on CD..."
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      placeholder: "Engine stayed on rogue kill target the entire match..."
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Errors / logs
+      description: "Paste any BugSack errors, /acc trace dump output, or chat-frame messages."
+      render: shell
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Confirmation
+      options:
+        - label: I tested with all other addons disabled.
+          required: false
+        - label: I ran `/acc selftest` and it passed.
+          required: false

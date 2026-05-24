@@ -1,0 +1,43 @@
+name: Feature request
+description: Suggest a new capability or improvement.
+title: "[feature] "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: "Describe the gap or the painful situation in-arena that this feature would address."
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behaviour
+      description: "What should the addon do? Be specific: callouts, scoring weight, new UI, slash command, etc."
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Where does this fit?
+      options:
+        - "Capability (engine logic, new comp, new inference)"
+        - "Ship (packaging, UI, audio, options)"
+        - "Quality (tests, docs, perf, locale)"
+        - "Unsure"
+    validations:
+      required: true
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Confirmation
+      options:
+        - label: This does NOT propose automated casting, targeting, or chat output.
+          required: true
+        - label: I checked the ROADMAP.md and this isn't already planned.
+          required: false
