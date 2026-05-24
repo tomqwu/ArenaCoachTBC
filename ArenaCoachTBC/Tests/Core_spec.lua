@@ -629,3 +629,78 @@ H.it(g, "/acc bugreport prints sanitised payload", function()
     H.assertTrue(sawHeader, "header missing")
     H.assertTrue(sawSanitised, "sanitised GUID missing")
 end)
+
+H.it(g, "record captures CLEU events when enabled", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    _G.ArenaCoachTBCDB.record.enabled = true
+    _G.ArenaCoachTBCDB.record.events = {}
+    H.fireCLEU(100, "SPELL_CAST_SUCCESS", false, "guid-a", "Src",
+               nil, nil, "guid-b", "Dst", nil, nil, 30330, "Mortal Strike")
+    EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
+    H.assertEq(#_G.ArenaCoachTBCDB.record.events, 1)
+    H.assertEq(_G.ArenaCoachTBCDB.record.events[1].spell, 30330)
+end)
+
+H.it(g, "record honours the maxEvents cap", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    _G.ArenaCoachTBCDB.record.enabled = true
+    _G.ArenaCoachTBCDB.record.maxEvents = 3
+    _G.ArenaCoachTBCDB.record.events = {}
+    for i = 1, 5 do
+        H.fireCLEU(i, "SPELL_CAST_SUCCESS", false, "guid-a", "Src",
+                   nil, nil, "guid-b", "Dst", nil, nil, 30330, "MS")
+        EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
+    end
+    H.assertEq(#_G.ArenaCoachTBCDB.record.events, 3)
+    H.assertEq(_G.ArenaCoachTBCDB.record.events[1].ts, 3)
+end)
+
+H.it(g, "/acc record on / off toggles flag", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    startCapture()
+    SlashCmdList["ARENACOACH"]("record on")
+    H.assertTrue(_G.ArenaCoachTBCDB.record.enabled)
+    SlashCmdList["ARENACOACH"]("record off")
+    H.assertFalse(_G.ArenaCoachTBCDB.record.enabled)
+    stopCapture()
+end)
+
+H.it(g, "/acc record clear empties events", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    _G.ArenaCoachTBCDB.record.events = { {ts=1}, {ts=2}, {ts=3} }
+    startCapture()
+    SlashCmdList["ARENACOACH"]("record clear")
+    stopCapture()
+    H.assertEq(#_G.ArenaCoachTBCDB.record.events, 0)
+end)
+
+H.it(g, "/acc record dump prints summary when events exist", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    _G.ArenaCoachTBCDB.record.events = { { ts=100, sub="SPELL_CAST_SUCCESS", spell=30330 } }
+    startCapture()
+    SlashCmdList["ARENACOACH"]("record dump")
+    stopCapture()
+    local found = false
+    for _, ln in ipairs(captured) do
+        if ln:find("1 events") and ln:find("spell=30330") then found = true end
+    end
+    H.assertTrue(found, "dump output missing: " .. table.concat(captured, "|"))
+end)
+
+H.it(g, "/acc record bogus prints usage", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    startCapture()
+    SlashCmdList["ARENACOACH"]("record nonsense-arg")
+    stopCapture()
+    local found = false
+    for _, ln in ipairs(captured) do
+        if ln:find("usage:") then found = true end
+    end
+    H.assertTrue(found)
+end)

@@ -39,8 +39,33 @@ local DEFAULTS = {
         maxLines = 200,
         log      = {},
     },
+    record = {
+        enabled   = false,
+        maxEvents = 1000,
+        events    = {},
+    },
     debug = false,
 }
+
+local RECORD_DEFAULT_CAP = 1000
+
+-- Append a CLEU event to the recording buffer when enabled. Used by the
+-- companion tools/replay.lua to re-run the engine on captured logs.
+local function appendRecord(subEvent, ts, srcGUID, destGUID, spellID, spellName)
+    local db = _G.ArenaCoachTBCDB
+    if not (db and db.record and db.record.enabled and subEvent) then return end
+    db.record.events = db.record.events or {}
+    local cap = db.record.maxEvents or RECORD_DEFAULT_CAP
+    table.insert(db.record.events, {
+        ts    = ts or 0,
+        sub   = subEvent,
+        src   = srcGUID,
+        dst   = destGUID,
+        spell = spellID,
+        name  = spellName,
+    })
+    while #db.record.events > cap do table.remove(db.record.events, 1) end
+end
 
 local TRACE_DEFAULT_CAP = 200
 
@@ -309,6 +334,9 @@ local function onCLEU()
           spellID, spellName = CombatLogGetCurrentEventInfo()
     if not subEvent then return end
 
+    -- Recording (for offline replay)
+    appendRecord(subEvent, ts, sourceGUID, destGUID, spellID, spellName)
+
     -- Cooldown tracking
     if ns.CooldownTracker then
         ns.CooldownTracker:OnCombatLogEvent(subEvent, sourceGUID, destGUID, spellID)
@@ -378,6 +406,7 @@ local function helpText()
     chatPrint(Core.L("HELP_SELFTEST"))
     chatPrint(Core.L("HELP_SIMULATE"))
     chatPrint(Core.L("HELP_TRACE"))
+    chatPrint(Core.L("HELP_RECORD"))
     chatPrint(Core.L("HELP_BUGREPORT"))
     chatPrint(Core.L("HELP_HELP"))
 end
@@ -424,6 +453,8 @@ local function handleSlash(input)
         Core:RunSimulator(rest)
     elseif cmd == "trace" then
         Core:HandleTrace(rest)
+    elseif cmd == "record" then
+        Core:HandleRecord(rest)
     elseif cmd == "bugreport" then
         Core:RunBugReport()
     else
@@ -437,6 +468,37 @@ function Core:RunBugReport()
     local payload = ER:Format(5)
     chatPrint(Core.L("BUGREPORT_HEADER") or "Bug report payload:")
     for line in payload:gmatch("[^\n]+") do chatPrint(line) end
+end
+
+function Core:HandleRecord(rest)
+    local db = _G.ArenaCoachTBCDB
+    if not db then Core:InitDB(); db = _G.ArenaCoachTBCDB end
+    db.record = db.record or { enabled = false, maxEvents = 1000, events = {} }
+    local arg = ((rest or ""):match("^%S*") or ""):lower()
+    if arg == "" or arg == "status" then
+        chatPrint(string.format("record: %s (%d events, cap %d)",
+            db.record.enabled and "ON" or "OFF",
+            #(db.record.events or {}),
+            db.record.maxEvents or 1000))
+    elseif arg == "on" then
+        db.record.enabled = true
+        chatPrint("record ON (cap " .. (db.record.maxEvents or 1000) .. ")")
+    elseif arg == "off" then
+        db.record.enabled = false
+        chatPrint("record OFF")
+    elseif arg == "clear" then
+        db.record.events = {}
+        chatPrint("recording cleared")
+    elseif arg == "dump" then
+        local n = #(db.record.events or {})
+        if n == 0 then chatPrint("recording is empty"); return end
+        local last = db.record.events[n]
+        chatPrint(string.format("record: %d events, last: %s spell=%s @t=%s",
+            n, tostring(last.sub), tostring(last.spell), tostring(last.ts)))
+        chatPrint("Use tools/replay.lua against your SavedVariables file for full analysis.")
+    else
+        chatPrint("usage: /acc record on|off|status|dump|clear")
+    end
 end
 
 function Core:HandleTrace(rest)
