@@ -53,6 +53,8 @@ CT.defaults = {
     [23989] = 300, -- Readiness
     -- Universal PvP trinket effect
     [42292] = 120, -- PvP medallion
+    -- Racial CC-breaks (not on the same cooldown as the trinket in TBC)
+    [7744]  = 120, -- Will of the Forsaken (Undead)
 }
 
 local function now()
@@ -117,6 +119,10 @@ function CT:OnCombatLogEvent(subEvent, sourceGUID, destGUID, spellID, ...)
         -- PvP trinket use shows up as an aura applied to self
         if spellID == 42292 then
             self:_record(destGUID, 42292)
+        end
+        -- Will of the Forsaken: also catch the aura in case the cast event is missed
+        if spellID == 7744 then
+            self:_record(destGUID, 7744)
         end
         -- Ice Block / Divine Shield are casts but also auras - record from aura too
         if spellID == 27619 or spellID == 642 or spellID == 10278 then

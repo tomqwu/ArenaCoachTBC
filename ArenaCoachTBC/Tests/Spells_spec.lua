@@ -38,6 +38,19 @@ H.it(g, "PURGEABLE includes Blessing of Freedom + Icy Veins", function()
     H.assertNotNil(S.PURGEABLE[S.ICY_VEINS])
 end)
 
+H.it(g, "PVP_TRINKET_EFFECT is 42292 (shared trinket aura)", function()
+    H.assertEq(S.PVP_TRINKET_EFFECT, 42292)
+end)
+
+H.it(g, "WILL_OF_THE_FORSAKEN is 7744 (Undead racial, distinct from trinket)", function()
+    H.assertEq(S.WILL_OF_THE_FORSAKEN, 7744)
+end)
+
+H.it(g, "CC_BREAK_RACIALS lists WotF but not the shared trinket effect", function()
+    H.assertNotNil(S.CC_BREAK_RACIALS[S.WILL_OF_THE_FORSAKEN])
+    H.assertNil(S.CC_BREAK_RACIALS[S.PVP_TRINKET_EFFECT])
+end)
+
 H.it(g, "Name() returns name when GetSpellInfo exists", function()
     H.assertEq(S:Name(30330), "Spell30330")
 end)
