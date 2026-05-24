@@ -1,0 +1,18 @@
+package-as: ArenaCoachTBC
+
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown
+
+enable-nolib-creation: no
+
+ignore:
+  - .gitignore
+  - .luacheckrc
+  - luacov.report.out
+  - luacov.stats.out
+  - .github
+  - .claude
+  - docs
+  - ROADMAP.md
+  - ArenaCoachTBC/Tests

@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - M1 foundations: LICENSE (MIT), CONTRIBUTING guide, issue templates, PR template, manual smoke checklist.
+- Release pipeline: `.pkgmeta` + `.github/workflows/release.yml` using `BigWigsMods/packager` so tags `v*` auto-publish to CurseForge, Wago, and GitHub Releases.
+- `## Interface-BCC: 20504` directive in `ArenaCoachTBC.toc` so the packager builds a BCC-flavoured zip without a duplicate TOC.
+
+### Notes
+- An Anniversary-flavour TOC is deferred until the interface version for that client is confirmed (tracked in #8).
 
 ## [1.1.0] - 2026-05-24
 

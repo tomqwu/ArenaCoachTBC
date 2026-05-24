@@ -79,10 +79,20 @@ sample log of a match.
 
 ## Release process (maintainers only)
 
-1. Update `CHANGELOG.md`: move `[Unreleased]` items into a new dated version.
-2. Bump `## Version:` in `ArenaCoachTBC.toc` (semver).
-3. Tag `vX.Y.Z`, push tag — the release workflow handles CurseForge + Wago upload.
-4. Run the `docs/manual-smoke.md` checklist against a live client before tagging.
+1. Run the `docs/manual-smoke.md` checklist against a live client.
+2. Update `CHANGELOG.md`: move `[Unreleased]` items into a new dated version section, refresh the comparison links at the bottom.
+3. Bump `## Version:` in `ArenaCoachTBC/ArenaCoachTBC.toc` (semver).
+4. Tag `vX.Y.Z`, push tag — `.github/workflows/release.yml` invokes [`BigWigsMods/packager`](https://github.com/BigWigsMods/packager) which reads `.pkgmeta`, builds the zip, and uploads to all configured destinations.
+
+### Required repository secrets
+
+| Secret | Purpose | Get it from |
+|---|---|---|
+| `CF_API_KEY` | CurseForge upload token | https://www.curseforge.com/account/api-tokens |
+| `WAGO_API_TOKEN` | Wago.io upload token | https://addons.wago.io/account/apikeys |
+| `GITHUB_TOKEN` | Auto-provisioned by Actions, used for the GitHub Release | (no action needed) |
+
+Set the first two under **Settings → Secrets and variables → Actions**.
 
 ## Operating principles
 
