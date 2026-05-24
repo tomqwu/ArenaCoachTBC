@@ -1,4 +1,5 @@
 ## Interface: 20504
+## Interface-BCC: 20504
 ## Title: ArenaCoachTBC
 ## Notes: Strategy coach for TBC Classic arena - dynamically adapts to your team comp (advice only, no automation)
 ## Notes-zhCN: TBC怀旧服竞技场战术教练，自适应队伍阵容（仅提示，不自动施法）

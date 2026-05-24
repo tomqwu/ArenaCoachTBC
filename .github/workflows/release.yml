@@ -1,0 +1,112 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build + publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version + tag
+        id: v
+        run: |
+          set -euo pipefail
+          base=$(grep '^## Version:' ArenaCoachTBC/ArenaCoachTBC.toc | awk '{print $3}')
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            tag="${GITHUB_REF#refs/tags/}"
+            kind="release"
+            prerelease="false"
+          else
+            tag="v${base}-dev.${GITHUB_RUN_NUMBER}"
+            kind="dev"
+            prerelease="true"
+          fi
+          echo "tag=$tag"             >> "$GITHUB_OUTPUT"
+          echo "kind=$kind"           >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+          echo "Resolved tag=$tag kind=$kind prerelease=$prerelease"
+
+      - name: Extract release notes from CHANGELOG.md
+        run: |
+          set -euo pipefail
+          if [[ "${{ steps.v.outputs.kind }}" == "release" ]]; then
+            version_no_v="${{ steps.v.outputs.tag }}"
+            version_no_v="${version_no_v#v}"
+            awk -v ver="$version_no_v" '
+              $0 ~ "^## \\[" ver "\\]" { flag = 1; next }
+              flag && /^## \[/         { flag = 0 }
+              flag                     { print }
+            ' CHANGELOG.md > /tmp/notes.md
+          else
+            awk '
+              /^## \[Unreleased\]/ { flag = 1; next }
+              flag && /^## \[/     { flag = 0 }
+              flag                 { print }
+            ' CHANGELOG.md > /tmp/notes.md
+          fi
+          if [[ ! -s /tmp/notes.md ]]; then
+            printf '_No notes found in CHANGELOG.md - commit summary:_\n\n%s\n' \
+              "$(git log -1 --pretty=format:'%s%n%n%b')" > /tmp/notes.md
+          fi
+          {
+            echo ""
+            echo "### How to test"
+            echo ""
+            echo "1. Download \`ArenaCoachTBC-${{ steps.v.outputs.tag }}.zip\` below."
+            echo "2. Extract into \`<WoW>/_classic_/Interface/AddOns/\`."
+            echo "3. \`/reload\` in-game, then \`/acc help\` to see commands."
+            echo "4. \`/acc selftest\` for in-client validation (after PR #40 lands)."
+          } >> /tmp/notes.md
+
+      - name: Create and push dev tag
+        if: steps.v.outputs.kind == 'dev'
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag "${{ steps.v.outputs.tag }}" "$GITHUB_SHA"
+          git push origin "${{ steps.v.outputs.tag }}"
+
+      - name: Run BigWigs packager (builds zip; uploads to CF/Wago if secrets set)
+        uses: BigWigsMods/packager@v2
+        env:
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+          WAGO_API_TOKEN: ${{ secrets.WAGO_API_TOKEN }}
+          # GITHUB_OAUTH intentionally NOT set - we publish via softprops below
+          # so dev builds get pre-releases with structured notes.
+
+      - name: Locate built zip
+        id: zip
+        run: |
+          set -euo pipefail
+          path=$(ls -1 .release/*.zip 2>/dev/null | head -n1 || true)
+          if [[ -z "$path" ]]; then
+            echo "No zip produced by packager in .release/" >&2
+            ls -la .release/ || true
+            exit 1
+          fi
+          echo "path=$path" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.v.outputs.tag }}
+          name: ArenaCoachTBC ${{ steps.v.outputs.tag }}
+          body_path: /tmp/notes.md
+          prerelease: ${{ steps.v.outputs.prerelease }}
+          fail_on_unmatched_files: true
+          files: ${{ steps.zip.outputs.path }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
