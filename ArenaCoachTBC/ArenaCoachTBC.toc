@@ -16,6 +16,7 @@ Data\Spells.lua
 Data\Classes.lua
 Data\OwnComps.lua
 Data\Strategies.lua
+Data\SpellSpecHints.lua
 
 EventBus.lua
 CooldownTracker.lua
