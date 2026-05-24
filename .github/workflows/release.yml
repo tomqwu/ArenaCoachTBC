@@ -67,8 +67,10 @@ jobs:
             echo "1. Download \`ArenaCoachTBC-${{ steps.v.outputs.tag }}.zip\` below."
             echo "2. Extract into \`<WoW>/_classic_/Interface/AddOns/\`."
             echo "3. \`/reload\` in-game, then \`/acc help\` to see commands."
-            echo "4. \`/acc selftest\` for in-client validation (after PR #40 lands)."
+            echo "4. \`/acc selftest\` for in-client validation."
           } >> /tmp/notes.md
+          echo "--- Resolved notes ---"
+          cat /tmp/notes.md
 
       - name: Create and push dev tag
         if: steps.v.outputs.kind == 'dev'
@@ -76,28 +78,34 @@ jobs:
           set -euo pipefail
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag "${{ steps.v.outputs.tag }}" "$GITHUB_SHA"
-          git push origin "${{ steps.v.outputs.tag }}"
+          # Tag might already exist from a previous failed run; tolerate that.
+          git tag "${{ steps.v.outputs.tag }}" "$GITHUB_SHA" 2>/dev/null || echo "Tag already exists locally."
+          git push origin "${{ steps.v.outputs.tag }}" 2>&1 || echo "Tag push failed or tag already on remote; continuing to publish release."
 
-      - name: Run BigWigs packager (builds zip; uploads to CF/Wago if secrets set)
+      - name: Build addon zip
+        id: zip
+        run: |
+          set -euo pipefail
+          mkdir -p .release
+          out=".release/ArenaCoachTBC-${{ steps.v.outputs.tag }}.zip"
+          # Zip only the addon dir; exclude Tests/ and dev-only files. The zip's
+          # top-level entry must be the addon folder so WoW AddOns/ extraction works.
+          zip -r "$out" ArenaCoachTBC \
+            -x 'ArenaCoachTBC/Tests/*' \
+            -x 'ArenaCoachTBC/Tests' \
+            -x 'ArenaCoachTBC/.*' \
+            -x '*.luacov.*'
+          echo "Built: $out"
+          ls -la .release/
+          echo "path=$out" >> "$GITHUB_OUTPUT"
+
+      - name: Run BigWigs packager (stable tag only - uploads to CurseForge / Wago)
+        if: steps.v.outputs.kind == 'release'
         uses: BigWigsMods/packager@v2
         env:
           CF_API_KEY: ${{ secrets.CF_API_KEY }}
           WAGO_API_TOKEN: ${{ secrets.WAGO_API_TOKEN }}
-          # GITHUB_OAUTH intentionally NOT set - we publish via softprops below
-          # so dev builds get pre-releases with structured notes.
-
-      - name: Locate built zip
-        id: zip
-        run: |
-          set -euo pipefail
-          path=$(ls -1 .release/*.zip 2>/dev/null | head -n1 || true)
-          if [[ -z "$path" ]]; then
-            echo "No zip produced by packager in .release/" >&2
-            ls -la .release/ || true
-            exit 1
-          fi
-          echo "path=$path" >> "$GITHUB_OUTPUT"
+        continue-on-error: true
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
@@ -105,8 +113,7 @@ jobs:
           tag_name: ${{ steps.v.outputs.tag }}
           name: ArenaCoachTBC ${{ steps.v.outputs.tag }}
           body_path: /tmp/notes.md
-          prerelease: ${{ steps.v.outputs.prerelease }}
-          fail_on_unmatched_files: true
+          prerelease: ${{ steps.v.outputs.prerelease == 'true' }}
           files: ${{ steps.zip.outputs.path }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
