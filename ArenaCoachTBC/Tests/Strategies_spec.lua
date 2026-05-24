@@ -133,3 +133,56 @@ H.it(g, "Identify with bracket-only catalog returns nil when bracket mismatches"
     H.assertNil(ST:Identify({"MAGE", "PRIEST"}, nil, 5))
     ST.comps = saved
 end)
+
+H.it(g, "2v2 catalog contains at least 8 bracket-tagged entries", function()
+    local found = {}
+    for _, c in ipairs(ST.comps) do
+        if c.bracket == 2 then table.insert(found, c.id) end
+    end
+    H.assertTrue(#found >= 8, "expected >=8 2v2 comps, got " .. #found)
+end)
+
+H.it(g, "3v3 catalog contains at least 10 bracket-tagged entries", function()
+    local found = {}
+    for _, c in ipairs(ST.comps) do
+        if c.bracket == 3 then table.insert(found, c.id) end
+    end
+    H.assertTrue(#found >= 10, "expected >=10 3v3 comps, got " .. #found)
+end)
+
+H.it(g, "every bracket-tagged comp has core, openTarget, callouts", function()
+    for _, c in ipairs(ST.comps) do
+        if c.bracket then
+            H.assertNotNil(c.id,         "comp missing id")
+            H.assertNotNil(c.label,      c.id .. " missing label")
+            H.assertNotNil(c.core,       c.id .. " missing core")
+            H.assertNotNil(c.openTarget, c.id .. " missing openTarget")
+            H.assertNotNil(c.callouts,   c.id .. " missing callouts")
+        end
+    end
+end)
+
+H.it(g, "bracket=2 RP comp matches when ROGUE+PRIEST present", function()
+    local m = ST:Identify({"ROGUE","PRIEST"}, nil, 2)
+    H.assertNotNil(m)
+    H.assertEq(m.bracket, 2)
+end)
+
+H.it(g, "bracket=3 RMP comp matches when ROGUE+MAGE+PRIEST present", function()
+    local m = ST:Identify({"ROGUE","MAGE","PRIEST"}, nil, 3)
+    H.assertNotNil(m)
+    H.assertEq(m.id, "RMP_3V3")
+end)
+
+H.it(g, "every bracket-tagged comp references existing locale keys", function()
+    H.load("Locales/enUS.lua")
+    local L = H.ns.locales and H.ns.locales.enUS
+    H.assertNotNil(L, "enUS locale failed to load")
+    for _, c in ipairs(ST.comps) do
+        if c.bracket and c.callouts then
+            for _, key in ipairs(c.callouts) do
+                H.assertNotNil(L[key], c.id .. " uses missing locale key " .. key)
+            end
+        end
+    end
+end)

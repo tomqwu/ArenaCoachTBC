@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **M2 catalog data.** 9 named 2v2 comps (RP / RD / Drainteam / Shatter / Enh+Priest / Hunter+Priest / War+Druid / War+Holy / SP+Pala) and 10 named 3v3 comps (RMP / WLD / Jungle / Shatterplay / LSD / RPH / Thunder cleave / Pala cleave / Ele Sham / Hunter+Lock+Priest) all tagged `bracket = 2|3`. Bracket-tagged comps win over agnostic ones when both match, so `/acc enemy rogue priest` in a 2v2 picks the `RP_2V2` entry instead of falling back to the generic catalog.
 - **M2 bracket infrastructure.** `Core:UpdateBracket()` reads `GetBattlefieldStatus` and sets `state.bracket` (2, 3, or 5). Hooked to `UPDATE_BATTLEFIELD_STATUS`, `PLAYER_ENTERING_WORLD`, and `ARENA_OPPONENT_UPDATE` so the bracket is fresh whenever the engine evaluates.
 - `Strategies:Identify(list, enemies, bracket)` now accepts an optional bracket arg. Comps can declare `bracket = 2|3|5` to opt into bracket-specific matching; bracket-tagged comps win over agnostic ones when both match.
 - `SE:GetWeights(bracket)` returns the default scoring weights merged with any per-bracket overrides from `SE.bracketWeights`. 2v2 boosts `role_healer` to 40 (single-target healer kills win games); 3v3 raises it to 30. 5v5 uses defaults.
