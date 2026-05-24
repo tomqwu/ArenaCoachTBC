@@ -173,3 +173,29 @@ H.it(g, "Team avg HP < 45 applies penalty", function()
     local rec = SE:Evaluate(state)
     H.assertNotNil(rec)
 end)
+
+H.it(g, "GetWeights returns defaults when bracket is nil", function()
+    local w = SE:GetWeights(nil)
+    H.assertEq(w.role_healer, SE.weights.role_healer)
+end)
+
+H.it(g, "GetWeights merges bracket overrides over defaults", function()
+    -- 2v2 boosts role_healer; the merged value should reflect that without
+    -- mutating the underlying default table.
+    local w = SE:GetWeights(2)
+    H.assertEq(w.role_healer, 40)
+    H.assertEq(SE.weights.role_healer, 25, "default table should not mutate")
+end)
+
+H.it(g, "GetWeights for 5v5 yields the default values (no overrides)", function()
+    local w = SE:GetWeights(5)
+    H.assertEq(w.role_healer, SE.weights.role_healer)
+end)
+
+H.it(g, "Evaluate consumes state.bracket so scoring picks up overrides", function()
+    local state = SE:BuildTestState({"PRIEST","WARRIOR"})
+    state.combatPhase = "ACTIVE"
+    state.bracket = 2
+    local rec = SE:Evaluate(state)
+    H.assertNotNil(rec)  -- engine still produces a rec under bracket=2
+end)

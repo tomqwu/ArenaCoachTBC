@@ -19,6 +19,9 @@ local ST = ns.Strategies
 --   id          : short name
 --   label       : friendly description
 --   core        : minimal set of classes that defines this comp
+--   bracket     : optional 2|3|5. Only matches when state.bracket equals this
+--                 value; nil means bracket-agnostic (matches anywhere).
+--                 Bracket-specific entries win over agnostic ones.
 --   openTarget  : class to suggest opening on (if alive)
 --   swapTarget  : class to consider swapping to
 --   threats     : { class -> top danger note }
@@ -253,12 +256,25 @@ end
 -- Optionally accepts the enemies map so per-enemy roleGuess overrides take
 -- effect (used by the live engine; tests rely on this too).
 -- Returns the matching entry, or nil if none.
-function ST:Identify(enemyClassList, enemies)
+-- Identify the enemy comp.
+--   enemyClassList : array of CLASS strings (legacy callers)
+--   enemies        : optional map of unit -> enemy table (preferred; lets us
+--                    consume e.roleGuess from spec inference)
+--   bracket        : optional 2/3/5. When set, comps with a different `bracket`
+--                    field are skipped. Comps with no bracket field are
+--                    bracket-agnostic and always considered.
+function ST:Identify(enemyClassList, enemies, bracket)
     if not enemyClassList or #enemyClassList == 0 then return nil end
 
     local Classes = ns.Classes
     local presence = {}
     local healers, dps = 0, 0
+
+    local function bracketMatches(comp)
+        if comp.bracket == nil then return true end
+        if bracket == nil then return true end  -- caller didn't filter
+        return comp.bracket == bracket
+    end
 
     -- Prefer the enemies table when available so roleGuess overrides win.
     if enemies and next(enemies) then
@@ -288,29 +304,37 @@ function ST:Identify(enemyClassList, enemies)
     -- mana drain), regardless of which specific dps classes are on the field.
     if healers == 0 then
         for _, comp in ipairs(self.comps) do
-            if comp.dynamic == "TRIPLE_DPS" then return comp end
+            if comp.dynamic == "TRIPLE_DPS" and bracketMatches(comp) then return comp end
         end
     end
     if healers >= 2 then
         for _, comp in ipairs(self.comps) do
-            if comp.dynamic == "DOUBLE_HEALER" then return comp end
+            if comp.dynamic == "DOUBLE_HEALER" and bracketMatches(comp) then return comp end
         end
     end
 
-    -- Static signature match (need all `core` classes present)
-    for _, comp in ipairs(self.comps) do
-        if not comp.dynamic then
-            local ok = true
-            local coreCount = 0
-            for cls, _ in pairs(comp.core) do
-                coreCount = coreCount + 1
-                if not presence[cls] then ok = false; break end
-            end
-            if ok and coreCount > 0 then
-                return comp
+    -- Static signature match (need all `core` classes present).
+    -- Bracket-specific comps win over bracket-agnostic ones when both match,
+    -- so we walk twice: first only comps with the requested bracket, then
+    -- the bracket-agnostic fallbacks.
+    local function tryMatch(filterFn)
+        for _, comp in ipairs(self.comps) do
+            if not comp.dynamic and filterFn(comp) then
+                local ok = true
+                local coreCount = 0
+                for cls, _ in pairs(comp.core) do
+                    coreCount = coreCount + 1
+                    if not presence[cls] then ok = false; break end
+                end
+                if ok and coreCount > 0 then return comp end
             end
         end
+        return nil
     end
 
-    return nil
+    if bracket then
+        local m = tryMatch(function(c) return c.bracket == bracket end)
+        if m then return m end
+    end
+    return tryMatch(function(c) return c.bracket == nil end)
 end

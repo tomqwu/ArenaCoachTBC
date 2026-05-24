@@ -104,3 +104,32 @@ H.it(g, "comps catalog contains expanded entries", function()
         H.assertTrue(ids[expected], "missing comp: " .. expected)
     end
 end)
+
+H.it(g, "Identify accepts a bracket arg and skips non-matching brackets", function()
+    -- Install a temporary bracket-2 comp; Identify with bracket=3 should miss it.
+    local saved = ST.comps
+    ST.comps = {
+        { id = "DEMO_2V2", core = { MAGE = true, PRIEST = true }, bracket = 2 },
+        { id = "GENERIC",  core = { MAGE = true, PRIEST = true } },
+    }
+    local m = ST:Identify({"MAGE", "PRIEST"}, nil, 3)
+    H.assertEq(m.id, "GENERIC", "should fall back to generic when bracket=3 and demo is 2v2")
+
+    -- With bracket=2, the bracket-specific comp wins.
+    m = ST:Identify({"MAGE", "PRIEST"}, nil, 2)
+    H.assertEq(m.id, "DEMO_2V2", "bracket=2 should pick the bracket-tagged comp")
+
+    -- No bracket arg = bracket-agnostic, still finds whichever comes first.
+    m = ST:Identify({"MAGE", "PRIEST"}, nil, nil)
+    H.assertNotNil(m, "nil bracket should match any comp")
+    ST.comps = saved
+end)
+
+H.it(g, "Identify with bracket-only catalog returns nil when bracket mismatches", function()
+    local saved = ST.comps
+    ST.comps = {
+        { id = "ONLY_2V2", core = { MAGE = true, PRIEST = true }, bracket = 2 },
+    }
+    H.assertNil(ST:Identify({"MAGE", "PRIEST"}, nil, 5))
+    ST.comps = saved
+end)

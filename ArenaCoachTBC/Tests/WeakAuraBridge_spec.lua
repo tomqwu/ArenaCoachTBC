@@ -154,3 +154,13 @@ H.it(g, "Publish triggers WeakAuras.ScanEvents when present", function()
     H.assertEq(got, sampleRec)
     _G.WeakAuras = nil
 end)
+
+H.it(g, "GetBracket returns the published state.bracket", function()
+    WAB:Publish(sampleRec, { bracket = 3, combatPhase = "ACTIVE" })
+    H.assertEq(_G.ArenaCoachTBC.GetBracket(), 3)
+end)
+
+H.it(g, "GetBracket returns nil when no state", function()
+    WAB._state = nil
+    H.assertNil(_G.ArenaCoachTBC.GetBracket())
+end)
