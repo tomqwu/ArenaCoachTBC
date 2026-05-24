@@ -69,6 +69,13 @@ function API.GetBracket()
     return WAB._state and WAB._state.bracket
 end
 
+-- Locale helper for WeakAura templates that want to render callouts in
+-- the active language without re-implementing the locale fallback.
+function API.L(key)
+    if ns.Core and ns.Core.L then return ns.Core.L(key) end
+    return key
+end
+
 -- ----- Debug / version -----
 function API.GetDebugState()
     return {
