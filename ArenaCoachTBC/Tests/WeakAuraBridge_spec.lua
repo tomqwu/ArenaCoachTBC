@@ -164,3 +164,19 @@ H.it(g, "GetBracket returns nil when no state", function()
     WAB._state = nil
     H.assertNil(_G.ArenaCoachTBC.GetBracket())
 end)
+
+H.it(g, "L resolves callout keys via Core when present", function()
+    -- Load Core so the L delegate has the locale table to read from.
+    H.load("Locales/enUS.lua")
+    H.load("Core.lua")
+    local resolved = _G.ArenaCoachTBC.L("CALL_HOJ_KILL")
+    H.assertEq(resolved, "HoJ kill target")
+end)
+
+H.it(g, "L falls back to the key when Core is missing", function()
+    -- Temporarily wipe the Core reference and ensure L doesn't crash.
+    local savedCore = H.ns.Core
+    H.ns.Core = nil
+    H.assertEq(_G.ArenaCoachTBC.L("NOT_A_REAL_KEY"), "NOT_A_REAL_KEY")
+    H.ns.Core = savedCore
+end)
