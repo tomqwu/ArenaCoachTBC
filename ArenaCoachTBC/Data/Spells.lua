@@ -72,9 +72,15 @@ S.SHADOW_WORD_DEATH  = 32996
 -- ============================================================
 
 -- Universal
-S.PVP_TRINKET        = 7744   -- "Will of the Forsaken" / generic Insignia is class-bound;
-                              -- we additionally rely on aura-id of "PvP Trinket" effect (42292)
-S.PVP_TRINKET_EFFECT = 42292  -- The shared Medallion trinket effect
+S.PVP_TRINKET_EFFECT   = 42292  -- Shared aura applied by Medallion / Insignia of the Horde or Alliance,
+                                -- Stormpike's / Defiler's Insignia, and other PvP-trinket items.
+                                -- 2-minute cooldown, breaks stun + fear + movement impairing.
+
+-- Racial CC-breaks. In TBC, these are NOT on the same cooldown as the PvP trinket,
+-- so the engine tracks them as separate cooldowns. Every Man for Himself doesn't exist
+-- in TBC (WotLK introduced it).
+S.WILL_OF_THE_FORSAKEN = 7744   -- Undead racial - 5s immunity to fear/sleep/charm, 2m CD.
+                                -- Source: https://www.wowhead.com/tbc/spell=7744
 
 -- Mage
 S.ICE_BLOCK          = 27619
@@ -182,6 +188,12 @@ S.CATEGORIES = {
     -- Cyclone is its own DR
     [S.CYCLONE]           = "CYCLONE",
     [S.E_CYCLONE]         = "CYCLONE",
+}
+
+-- Racials that act as fear/CC breaks. Distinct from S.PVP_TRINKET_EFFECT.
+-- Engine consumers should check both when reasoning about "can this enemy break a fear right now".
+S.CC_BREAK_RACIALS = {
+    [S.WILL_OF_THE_FORSAKEN] = "Will of the Forsaken",
 }
 
 -- Spells that grant total immunity to physical/magic damage

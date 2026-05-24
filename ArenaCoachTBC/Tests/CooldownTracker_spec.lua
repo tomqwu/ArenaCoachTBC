@@ -99,3 +99,27 @@ H.it(g, "_record ignores nil guid or spellID", function()
     CT:_record("a", nil)
     H.assertNil(next(CT:ForUnit("a")))
 end)
+
+H.it(g, "tracks Will of the Forsaken from SPELL_CAST_SUCCESS for 120s", function()
+    CT:Clear()
+    H._gameTime = 1000
+    CT:OnCombatLogEvent("SPELL_CAST_SUCCESS", "guid-undead", "guid-undead", 7744)
+    H.assertEq(CT:GetRemaining("guid-undead", 7744), 120)
+    H.assertFalse(CT:IsReady("guid-undead", 7744))
+end)
+
+H.it(g, "tracks Will of the Forsaken from SPELL_AURA_APPLIED too", function()
+    CT:Clear()
+    H._gameTime = 2000
+    CT:OnCombatLogEvent("SPELL_AURA_APPLIED", "src", "guid-undead", 7744)
+    H.assertEq(CT:GetRemaining("guid-undead", 7744), 120)
+end)
+
+H.it(g, "WotF and PvP trinket are tracked as separate cooldowns", function()
+    CT:Clear()
+    H._gameTime = 3000
+    CT:OnCombatLogEvent("SPELL_AURA_APPLIED", "src", "guid-u", 42292)
+    -- Trinket on CD, but WotF still ready
+    H.assertFalse(CT:IsReady("guid-u", 42292))
+    H.assertTrue(CT:IsReady("guid-u", 7744))
+end)
