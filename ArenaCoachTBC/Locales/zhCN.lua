@@ -70,6 +70,7 @@ ns.locales.zhCN = {
     CALL_AVOID_OVERCHASE = "别追太深",
     CALL_PEEL_PRIEST     = "保牧师",
     CALL_PEEL_DRUID      = "保德鲁伊",
+    CALL_LOW_MANA_PUSH   = "治疗蓝量低 - 压上",
 
     -- UI labels
     UI_TITLE             = "竞技场教练",

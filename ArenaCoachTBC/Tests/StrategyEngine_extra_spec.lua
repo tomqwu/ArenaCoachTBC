@@ -199,3 +199,49 @@ H.it(g, "Evaluate consumes state.bracket so scoring picks up overrides", functio
     local rec = SE:Evaluate(state)
     H.assertNotNil(rec)  -- engine still produces a rec under bracket=2
 end)
+
+H.it(g, "low_mana_healer weight applies when healer mana < 25", function()
+    local state = SE:BuildTestState({"PRIEST","WARRIOR"})
+    state.combatPhase = "ACTIVE"
+    local p = findEnemyByClass(state, "PRIEST")
+    p.manaPct = 20
+    p.roleGuess = "HEALER"
+    local rec = SE:Evaluate(state)
+    H.assertNotNil(rec)
+    -- The priest should be the top-scored target; the breakdown should
+    -- include the low_mana_healer contribution.
+    local sawWeight = false
+    for _, c in ipairs(p._contrib or {}) do
+        if c.key == "low_mana_healer" then sawWeight = true end
+    end
+    H.assertTrue(sawWeight, "low_mana_healer not in score breakdown")
+end)
+
+H.it(g, "low_mana_healer weight does NOT apply at full mana", function()
+    local state = SE:BuildTestState({"PRIEST","WARRIOR"})
+    state.combatPhase = "ACTIVE"
+    local p = findEnemyByClass(state, "PRIEST")
+    p.manaPct = 80
+    p.roleGuess = "HEALER"
+    SE:Evaluate(state)
+    for _, c in ipairs(p._contrib or {}) do
+        if c.key == "low_mana_healer" then
+            error("low_mana_healer fired at 80% mana")
+        end
+    end
+end)
+
+H.it(g, "CALL_LOW_MANA_PUSH callout emitted when low-mana healer is primary", function()
+    local state = SE:BuildTestState({"PRIEST","WARRIOR"})
+    state.combatPhase = "ACTIVE"
+    local p = findEnemyByClass(state, "PRIEST")
+    p.manaPct = 15
+    p.roleGuess = "HEALER"
+    local rec = SE:Evaluate(state)
+    H.assertNotNil(rec)
+    local found = false
+    for _, c in ipairs(rec.callouts or {}) do
+        if c == "CALL_LOW_MANA_PUSH" then found = true end
+    end
+    H.assertTrue(found, "expected CALL_LOW_MANA_PUSH in: " .. table.concat(rec.callouts or {}, ","))
+end)
