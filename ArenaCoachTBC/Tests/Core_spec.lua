@@ -473,3 +473,56 @@ H.it(g, "UpdateBracket falls back to previous when no active battlefield", funct
     H.assertEq(Core:UpdateBracket(), 5)
     _G.GetMaxBattlefieldID, _G.GetBattlefieldStatus = nil, nil
 end)
+
+H.it(g, "train detection accumulates damage on friendlies", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    H.setUnit("player", { class = "WARRIOR", guid = "guid-me", hp = 100, hpMax = 100 })
+    Core:RefreshFriendlies()
+    -- Three damage events on player in quick succession
+    H._gameTime = 100
+    for i = 1, 3 do
+        H.fireCLEU(100 + i, "SPELL_DAMAGE", false, "enemy-src", "Source",
+                   nil, nil, "guid-me", "Me", nil, nil, 30330, "Mortal Strike", nil, 1000)
+        EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
+    end
+    H.assertEq(#Core._friendlyDamageTs, 3)
+end)
+
+H.it(g, "train detection forces DEFEND when threshold exceeded", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    H.setUnit("player", { class = "WARRIOR", guid = "guid-me", hp = 100, hpMax = 100 })
+    Core:RefreshFriendlies()
+    H._gameTime = 200
+    -- Inject 4 damage events directly (above default threshold of 3)
+    Core._friendlyDamageTs = { 200, 200, 200, 200 }
+    local rec = Core:Evaluate()
+    H.assertEq(rec.mode, "DEFEND")
+end)
+
+H.it(g, "train detection prunes events outside window", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    H.setUnit("player", { class = "WARRIOR", guid = "guid-me", hp = 100, hpMax = 100 })
+    Core:RefreshFriendlies()
+    -- Old events from 100s ago, current time 200s; window default = 5s
+    Core._friendlyDamageTs = { 100, 101, 102, 103, 104 }
+    H._gameTime = 200
+    Core:Evaluate()
+    H.assertEq(#Core._friendlyDamageTs, 0, "old events should be pruned")
+end)
+
+H.it(g, "train detection ignores damage on non-friendly destGUIDs", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    -- Player exists but the damage event targets some random GUID
+    H.setUnit("player", { class = "WARRIOR", guid = "guid-me", hp = 100, hpMax = 100 })
+    Core:RefreshFriendlies()
+    Core._friendlyDamageTs = {}
+    H._gameTime = 300
+    H.fireCLEU(300, "SPELL_DAMAGE", false, "enemy-src", "Source",
+               nil, nil, "guid-stranger", "Stranger", nil, nil, 30330, "MS", nil, 1000)
+    EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
+    H.assertEq(#Core._friendlyDamageTs, 0)
+end)
