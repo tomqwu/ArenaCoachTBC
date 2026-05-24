@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Quality
+- **Performance budget enforced as tests.** `Tests/Performance_spec.lua` asserts `StrategyEngine:Evaluate` averages <5ms per call on a 5v5 state (target <1ms; the 5x CI margin tolerates noisy GH runners) and that 100 back-to-back simulated arenas stay within a 200kb GC delta (issue's 100kb target plus 2x slack for the spec framework). Catches scoring-loop regressions and enemy/cooldown table leaks before they ship.
+
 ### Added
 - **Train detection.** Core tracks damage events landing on our friendlies in a sliding window. When `peelTriggerDamage` (default 3) events arrive within `peelTriggerWindow` (default 5s), `state.observations.healerUnderPressure = true` and the engine forces DEFEND mode with reason `trained`. Both thresholds are configurable via `db.strategy.peelTriggerWindow` / `peelTriggerDamage`. `Core._friendlyGUIDs` is updated by every `RefreshFriendlies` so CLEU damage matching is fast.
 - **DR-aware callouts.** `buildCallouts` consults `DRTracker:NextMultiplier` before emitting CC-related callouts. `CALL_HOJ_KILL` is suppressed when the kill target's STUN DR is in immune territory; `CALL_CYCLONE_OFF` is suppressed when the off-healer's CYCLONE DR is immune. No history = full multiplier = callout allowed (so the first cast still fires).

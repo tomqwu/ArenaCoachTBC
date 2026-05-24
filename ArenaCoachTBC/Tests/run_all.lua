@@ -40,6 +40,7 @@ local specs = {
     "Coverage_extras_spec.lua",
     "SelfTest_spec.lua",
     "Simulator_spec.lua",
+    "Performance_spec.lua",
 }
 
 for _, spec in ipairs(specs) do
