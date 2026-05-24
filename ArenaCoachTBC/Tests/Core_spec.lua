@@ -399,3 +399,49 @@ H.it(g, "CLEU SPELL_AURA_REMOVED clears important buffs", function()
     EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
     H.assertNil(Core.state.enemies.arena1.importantBuffs[27619])
 end)
+
+H.it(g, "CLEU SPELL_CAST_SUCCESS updates specGuess via SpellSpecHints", function()
+    H.load("Data/SpellSpecHints.lua")
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    H.setUnit("arena1", { class = "PRIEST", guid = "guid-pr", hp = 100, hpMax = 100 })
+    Core:RefreshArenaEnemies()
+    H.assertNil(Core.state.enemies.arena1.specGuess)
+    H.fireCLEU(0, "SPELL_CAST_SUCCESS", false, "guid-pr", "Priest",
+               nil, nil, "guid-target", "Target", nil, nil, H.ns.Spells.MIND_FLAY, "Mind Flay")
+    EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
+    H.assertEq(Core.state.enemies.arena1.specGuess, "SHADOW")
+    H.assertEq(Core.state.enemies.arena1.roleGuess, "CASTER")
+end)
+
+H.it(g, "CLEU SPELL_CAST_SUCCESS does nothing for unmatched spell IDs", function()
+    H.load("Data/SpellSpecHints.lua")
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    H.setUnit("arena1", { class = "PRIEST", guid = "guid-pr-fresh", hp = 100, hpMax = 100 })
+    Core:RefreshArenaEnemies()
+    -- Previous tests may have set specGuess on this unit slot - reset it
+    Core.state.enemies.arena1.specGuess = nil
+    Core.state.enemies.arena1.roleGuess = nil
+    H.fireCLEU(0, "SPELL_CAST_SUCCESS", false, "guid-pr-fresh", "Priest",
+               nil, nil, nil, nil, nil, nil, 9999999, "Unknown")
+    EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
+    H.assertNil(Core.state.enemies.arena1.specGuess)
+end)
+
+H.it(g, "Strategies:Identify reflects updated roleGuess after a cast", function()
+    H.load("Data/SpellSpecHints.lua")
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    -- Priest defaults to HEALER role, but a Mind Flay reveals SHADOW/CASTER.
+    -- Strategies:Identify should consume the updated roleGuess on the next call.
+    H.setUnit("arena1", { class = "PRIEST", guid = "guid-pr", hp = 100, hpMax = 100 })
+    H.setUnit("arena2", { class = "WARRIOR", guid = "guid-w", hp = 100, hpMax = 100 })
+    H.setUnit("arena3", { class = "MAGE", guid = "guid-m", hp = 100, hpMax = 100 })
+    Core:RefreshArenaEnemies()
+    -- Before the cast, the priest is HEALER by default. After Mind Flay, CASTER.
+    H.fireCLEU(0, "SPELL_CAST_SUCCESS", false, "guid-pr", "Priest",
+               nil, nil, nil, nil, nil, nil, H.ns.Spells.MIND_FLAY, "Mind Flay")
+    EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
+    H.assertEq(Core.state.enemies.arena1.roleGuess, "CASTER")
+end)

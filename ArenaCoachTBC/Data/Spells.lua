@@ -146,6 +146,17 @@ S.E_INTIMIDATING     = 5246
 S.E_SPELL_REFLECT    = 23920
 
 -- ============================================================
+-- Spec-defining casts (used by SpellSpecHints inference)
+-- Max-rank TBC 2.4.3 IDs unless noted. Issue #2 will audit live.
+-- ============================================================
+S.SHADOWFORM         = 15473   -- Priest shadowform aura - SHADOW
+S.MIND_FLAY          = 25387   -- Rank 7 - SHADOW
+S.HOLY_SHOCK         = 33072   -- Rank 5 - HOLY paladin
+S.EARTH_SHIELD       = 32594   -- Rank 3 (TBC max) - RESTORATION shaman
+S.BLOODTHIRST        = 30335   -- Rank 6 - FURY warrior
+S.MANGLE_CAT         = 33983   -- Rank 3 - FERAL druid (cat form)
+
+-- ============================================================
 -- Categorised lookups
 -- ============================================================
 

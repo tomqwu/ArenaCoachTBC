@@ -250,6 +250,16 @@ local function onCLEU()
         end
     end
 
+    -- Spec inference from observed casts
+    if subEvent == "SPELL_CAST_SUCCESS" and ns.SpellSpecHints then
+        for _, e in pairs(Core.state.enemies or {}) do
+            if e.guid == sourceGUID then
+                ns.SpellSpecHints:Apply(e, spellID)
+                break
+            end
+        end
+    end
+
     -- Immunity / major defensives book-keeping on auras
     if subEvent == "SPELL_AURA_APPLIED" or subEvent == "SPELL_AURA_REFRESH" then
         for _, e in pairs(Core.state.enemies or {}) do
