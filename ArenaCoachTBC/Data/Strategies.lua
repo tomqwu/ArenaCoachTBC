@@ -212,6 +212,170 @@ ST.comps = {
             "CALL_PEEL_DRUID",
         },
     },
+
+    -- ============================================================
+    -- 2v2 catalog (bracket = 2). Two-character comps where the
+    -- entire game plan is shaped by the missing third slot: peel
+    -- limited, swap window narrow, mana wars decisive.
+    -- ============================================================
+    {
+        id = "RP_2V2", bracket = 2,
+        label = "Rogue / Disc Priest - burst-and-fade",
+        core  = { ROGUE = true, PRIEST = true },
+        openTarget = "PRIEST", swapTarget = "ROGUE",
+        threats = { ROGUE = "Cheap > Kidney burst window" },
+        callouts = { "CALL_TREMOR_FEAR", "CALL_MANA_BURN_PLAN" },
+    },
+    {
+        id = "RD_2V2", bracket = 2,
+        label = "Rogue / Resto Druid - DoT + sustained",
+        core  = { ROGUE = true, DRUID = true },
+        openTarget = "DRUID", swapTarget = "ROGUE",
+        threats = { DRUID = "HoTs + cyclone" },
+        callouts = { "CALL_CYCLONE_OFF", "CALL_PURGE" },
+    },
+    {
+        id = "DRAIN_2V2", bracket = 2,
+        label = "Drainteam - Affliction + Disc Priest",
+        core  = { WARLOCK = true, PRIEST = true },
+        openTarget = "PRIEST", swapTarget = "WARLOCK",
+        threats = { WARLOCK = "UA + fear chain", PRIEST = "Mana Burn" },
+        callouts = { "CALL_TREMOR_FEAR", "CALL_GROUND_DC", "CALL_MANA_BURN_PLAN" },
+    },
+    {
+        id = "SHATTER_2V2", bracket = 2,
+        label = "Shatter - Frost Mage + Disc Priest",
+        core  = { MAGE = true, PRIEST = true },
+        openTarget = "MAGE", swapTarget = "PRIEST",
+        threats = { MAGE = "Nova > Sheep > Frostbolt shatter" },
+        callouts = { "CALL_DISP_FROST", "CALL_GROUND_POLY", "CALL_TREMOR_FEAR" },
+    },
+    {
+        id = "ENH_PRIEST_2V2", bracket = 2,
+        label = "Enhancement Shaman + Disc Priest",
+        core  = { SHAMAN = true, PRIEST = true },
+        openTarget = "PRIEST", swapTarget = "SHAMAN",
+        threats = { SHAMAN = "Windfury procs + purge our buffs" },
+        callouts = { "CALL_PURGE", "CALL_TREMOR_FEAR", "CALL_MANA_BURN_PLAN" },
+    },
+    {
+        id = "HUNTER_PRIEST_2V2", bracket = 2,
+        label = "BM Hunter + Disc Priest",
+        core  = { HUNTER = true, PRIEST = true },
+        openTarget = "PRIEST", swapTarget = "HUNTER",
+        threats = { HUNTER = "Trap juggle + sustained ranged" },
+        callouts = { "CALL_MANA_BURN_PLAN", "CALL_AVOID_OVERCHASE" },
+    },
+    {
+        id = "WAR_DRUID_2V2", bracket = 2,
+        label = "Warrior + Resto Druid",
+        core  = { WARRIOR = true, DRUID = true },
+        openTarget = "DRUID", swapTarget = "WARRIOR",
+        threats = { WARRIOR = "MS pressure into HoT", DRUID = "Cyclone peel" },
+        callouts = { "CALL_FREEDOM_WAR", "CALL_CYCLONE_OFF" },
+    },
+    {
+        id = "WAR_HOLY_2V2", bracket = 2,
+        label = "Warrior + Holy Paladin",
+        core  = { WARRIOR = true, PALADIN = true },
+        openTarget = "PALADIN", swapTarget = "WARRIOR",
+        threats = { PALADIN = "BoP + Freedom save", WARRIOR = "MS chain" },
+        callouts = { "CALL_PURGE", "CALL_HOJ_KILL", "CALL_BOP_READY" },
+    },
+    {
+        id = "SP_PALA_2V2", bracket = 2,
+        label = "Shadow Priest + Holy Paladin",
+        core  = { PRIEST = true, PALADIN = true },
+        openTarget = "PALADIN", swapTarget = "PRIEST",
+        threats = { PRIEST = "Mana Burn + Shadow pressure" },
+        callouts = { "CALL_PURGE", "CALL_HOJ_KILL", "CALL_MANA_BURN_PLAN" },
+    },
+
+    -- ============================================================
+    -- 3v3 catalog (bracket = 3). Adds bracket-tagged variants of
+    -- comps where 3v3 play differs sharply from 5v5 (smaller
+    -- enemy pool, swap windows narrower, single-target focus).
+    -- ============================================================
+    {
+        id = "RMP_3V3", bracket = 3,
+        label = "RMP (Rogue / Mage / Priest)",
+        core  = { ROGUE = true, MAGE = true, PRIEST = true },
+        openTarget = "PRIEST", swapTarget = "MAGE",
+        threats = { MAGE = "Sheep > Nova kill train", PRIEST = "Pain Sup save", ROGUE = "Kidney follow-up" },
+        callouts = { "CALL_GROUND_POLY", "CALL_TREMOR_FEAR", "CALL_DISP_FROST", "CALL_PURGE" },
+    },
+    {
+        id = "WLD_3V3", bracket = 3,
+        label = "WLD (Warrior / Lock / Druid)",
+        core  = { WARRIOR = true, WARLOCK = true, DRUID = true },
+        openTarget = "DRUID", swapTarget = "WARLOCK",
+        threats = { WARLOCK = "Howl into UA pressure", WARRIOR = "MS into fear" },
+        callouts = { "CALL_FREEDOM_WAR", "CALL_TREMOR_FEAR", "CALL_CYCLONE_OFF" },
+    },
+    {
+        id = "JUNGLE_3V3", bracket = 3,
+        label = "Jungle (Hunter / Feral / Healer)",
+        core  = { HUNTER = true, DRUID = true, PRIEST = true },
+        openTarget = "PRIEST", swapTarget = "HUNTER",
+        threats = { HUNTER = "Trap juggle", DRUID = "Cyclone-into-bleed pressure" },
+        callouts = { "CALL_TREMOR_FEAR", "CALL_MANA_BURN_PLAN" },
+    },
+    {
+        id = "SHATTERPLAY_3V3", bracket = 3,
+        label = "Shatterplay (Mage / SPriest / Resto Druid)",
+        core  = { MAGE = true, PRIEST = true, DRUID = true },
+        openTarget = "DRUID", swapTarget = "MAGE",
+        threats = { MAGE = "Shatter combo", PRIEST = "Shadow pressure + mana burn" },
+        callouts = { "CALL_PURGE", "CALL_CYCLONE_OFF", "CALL_GROUND_POLY" },
+    },
+    {
+        id = "LSD_3V3", bracket = 3,
+        label = "LSD (Lock / Shaman / Druid)",
+        core  = { WARLOCK = true, SHAMAN = true, DRUID = true },
+        openTarget = "DRUID", swapTarget = "WARLOCK",
+        threats = { SHAMAN = "Purge + Earth Shock", WARLOCK = "UA + drains" },
+        callouts = { "CALL_PURGE", "CALL_TREMOR_FEAR", "CALL_GROUND_DC" },
+    },
+    {
+        id = "RPH_3V3", bracket = 3,
+        label = "RPH (Rogue / Ret / Healer)",
+        core  = { ROGUE = true, PALADIN = true, PRIEST = true },
+        openTarget = "PRIEST", swapTarget = "ROGUE",
+        threats = { ROGUE = "Kidney burst", PALADIN = "Cleanse + HoJ" },
+        callouts = { "CALL_PURGE", "CALL_HOJ_KILL", "CALL_TREMOR_FEAR" },
+    },
+    {
+        id = "WMH_3V3", bracket = 3,
+        label = "Thunder cleave (Warrior / Mage / Healer)",
+        core  = { WARRIOR = true, MAGE = true, PRIEST = true },
+        openTarget = "PRIEST", swapTarget = "MAGE",
+        threats = { MAGE = "Sheep into shatter", WARRIOR = "MS chain" },
+        callouts = { "CALL_FREEDOM_WAR", "CALL_DISP_FROST", "CALL_PURGE" },
+    },
+    {
+        id = "PALA_CLEAVE_3V3", bracket = 3,
+        label = "Pala cleave (Warrior / Ret / Healer)",
+        core  = { WARRIOR = true, PALADIN = true, DRUID = true },
+        openTarget = "DRUID", swapTarget = "PALADIN",
+        threats = { WARRIOR = "MS into peel chain" },
+        callouts = { "CALL_FREEDOM_WAR", "CALL_PURGE", "CALL_CYCLONE_OFF" },
+    },
+    {
+        id = "ELE_SHAMAN_3V3", bracket = 3,
+        label = "Ele Shaman + Mage + Healer",
+        core  = { SHAMAN = true, MAGE = true, PRIEST = true },
+        openTarget = "PRIEST", swapTarget = "SHAMAN",
+        threats = { SHAMAN = "LB + shock burst", MAGE = "Sheep + nova" },
+        callouts = { "CALL_PURGE", "CALL_GROUND_POLY", "CALL_TREMOR_FEAR" },
+    },
+    {
+        id = "HUNTER_LOCK_PRIEST_3V3", bracket = 3,
+        label = "Hunter / Lock / Priest",
+        core  = { HUNTER = true, WARLOCK = true, PRIEST = true },
+        openTarget = "PRIEST", swapTarget = "WARLOCK",
+        threats = { HUNTER = "Trap juggle", WARLOCK = "Fear chain + UA" },
+        callouts = { "CALL_TREMOR_FEAR", "CALL_GROUND_DC", "CALL_MANA_BURN_PLAN" },
+    },
 }
 
 -- Predefined enemy comps for /acc test
