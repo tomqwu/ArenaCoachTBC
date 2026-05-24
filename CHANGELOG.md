@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Quality
+- **Locale parity gate** added to CI (`tools/check_locales.lua`). Runs before the Lua test suite. Diffs every locale file's key set against `enUS` and exits non-zero with an explicit `<locale> missing N key(s):` listing. The existing `Locales_spec.lua` parity test stays in place as a second layer.
 - **Performance budget enforced as tests.** `Tests/Performance_spec.lua` asserts `StrategyEngine:Evaluate` averages <5ms per call on a 5v5 state (target <1ms; the 5x CI margin tolerates noisy GH runners) and that 100 back-to-back simulated arenas stay within a 200kb GC delta (issue's 100kb target plus 2x slack for the spec framework). Catches scoring-loop regressions and enemy/cooldown table leaks before they ship.
 
 ### Added
