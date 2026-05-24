@@ -26,6 +26,7 @@ UI.lua
 Options.lua
 WeakAuraBridge.lua
 SelfTest.lua
+ErrorReporter.lua
 Simulator.lua
 Data\SimScenarios.lua
 
