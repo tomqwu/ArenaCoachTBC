@@ -291,6 +291,7 @@ local function helpText()
     chatPrint(Core.L("HELP_STRAT"))
     chatPrint(Core.L("HELP_ENEMY"))
     chatPrint(Core.L("HELP_SELFTEST"))
+    chatPrint(Core.L("HELP_SIMULATE"))
     chatPrint(Core.L("HELP_HELP"))
 end
 
@@ -332,9 +333,33 @@ local function handleSlash(input)
         Core:RunEnemySim(rest)
     elseif cmd == "selftest" then
         Core:RunSelfTest((rest or ""):lower() == "verbose")
+    elseif cmd == "simulate" then
+        Core:RunSimulator(rest)
     else
         chatPrint(Core.L("DEBUG_UNKNOWN_CMD"))
     end
+end
+
+function Core:RunSimulator(rest)
+    local SIM = ns.Simulator
+    if not SIM then chatPrint("Simulator module not loaded"); return end
+    local arg = (rest or ""):match("^%S*") or ""
+    arg = arg:lower()
+    if arg == "" or arg == "list" then
+        chatPrint(Core.L("SIMULATE_HEADER"))
+        for _, key in ipairs(SIM:List()) do
+            local s = SIM:Get(key)
+            chatPrint(string.format("  %s - %s", key, (s and s.label) or "?"))
+        end
+        return
+    end
+    if arg == "stop" then
+        SIM:Stop()
+        chatPrint(Core.L("SIMULATE_STOPPED") or "simulation stopped")
+        return
+    end
+    local ok, err = SIM:Run(arg)
+    if not ok then chatPrint(err or "simulation failed") end
 end
 
 function Core:RunSelfTest(verbose)
