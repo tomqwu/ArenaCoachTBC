@@ -1,4 +1,4 @@
--- ArenaCleaveCoachTBC - Centralized spell ID database
+-- ArenaCoachTBC - Centralized spell ID database
 -- Spell IDs are sourced from TBC 2.4.3 / TBC Classic 2.5.x.
 -- They may need adjustment for TBC Anniversary; update here only.
 -- All IDs intentionally kept as data so we can refresh via GetSpellInfo(id)

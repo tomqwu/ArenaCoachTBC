@@ -1,4 +1,4 @@
--- ArenaCleaveCoachTBC - Diminishing returns tracker
+-- ArenaCoachTBC - Diminishing returns tracker
 -- TBC has 6 DR categories; we follow the standard arena convention:
 --   1st: full duration, 2nd: half, 3rd: quarter, 4th: immune
 -- Reset time after the *last* CC ends defaults to 15-18 seconds. Made

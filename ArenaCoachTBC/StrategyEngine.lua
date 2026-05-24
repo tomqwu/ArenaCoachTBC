@@ -1,4 +1,4 @@
--- ArenaCleaveCoachTBC - Strategy engine
+-- ArenaCoachTBC - Strategy engine
 -- This file is the brain of the addon. It is intentionally framework-free so
 -- it can be unit-tested outside WoW with stubs (see Tests/StrategyEngine_spec.lua).
 --
@@ -89,16 +89,6 @@ local function activeImmunity(enemy)
     return nil
 end
 
-local function hasMajorDefensive(enemy)
-    if not enemy.importantBuffs then return false end
-    local Spells = ns.Spells
-    if not Spells or not Spells.MAJOR_DEFENSIVES then return false end
-    for spellID, _ in pairs(enemy.importantBuffs) do
-        if Spells.MAJOR_DEFENSIVES[spellID] then return true end
-    end
-    return false
-end
-
 local function hasPurgeableBuff(enemy)
     if not enemy.importantBuffs then return false end
     local Spells = ns.Spells
@@ -107,15 +97,6 @@ local function hasPurgeableBuff(enemy)
         if Spells.PURGEABLE[spellID] then return true end
     end
     return false
-end
-
--- Pull a friendly by class (returns first match or nil)
-local function findFriendly(friendlies, class)
-    if not friendlies then return nil end
-    for _, f in pairs(friendlies) do
-        if f.class == class then return f end
-    end
-    return nil
 end
 
 -- Lowest HP healer in our group, or nil
@@ -381,8 +362,22 @@ function SE:Evaluate(state)
         state.enemyClassList = classes
     end
 
+    -- Detect our own team capabilities + archetype so we can give
+    -- comp-aware advice instead of hardcoding "warrior provides MS".
+    local OwnComps = ns.OwnComps
+    local ownCaps, ownArchetype
+    if OwnComps then
+        ownCaps      = OwnComps:Infer(state.friendlies)
+        ownArchetype = OwnComps:Identify(state.friendlies, ownCaps)
+    end
+    state._ownCaps      = ownCaps
+    state._ownArchetype = ownArchetype
+
     local Strategies = ns.Strategies
     local comp = Strategies and Strategies:Identify(classes, state.enemies) or nil
+    if Strategies and Strategies.ApplyOwnVariant and ownArchetype then
+        comp = Strategies:ApplyOwnVariant(comp, ownArchetype.id)
+    end
 
     -- Score every alive enemy
     local scored = {}
@@ -421,10 +416,9 @@ function SE:Evaluate(state)
         reason = "defensive: " .. (select(2, shouldDefend(state)) or "unknown")
     elseif mode == "RESET" then
         reason = "reset / no clear target"
-    elseif topTarget then
-        reason = string.format("%s [%s]", topTarget.class or "?", table.concat(reasonParts, ", "))
     else
-        reason = "no target"
+        -- KILL / SWAP / OPEN always have a topTarget (decideMode invariant)
+        reason = string.format("%s [%s]", topTarget.class or "?", table.concat(reasonParts, ", "))
     end
 
     -- Burst guidance
@@ -461,6 +455,10 @@ function SE:Evaluate(state)
         callouts        = callouts,
         priority        = priority,
         comp            = comp and comp.id or nil,
+        compLabel       = comp and comp.label or nil,
+        ownArchetype    = ownArchetype and ownArchetype.id or nil,
+        ownArchetypeLabel = ownArchetype and ownArchetype.label or nil,
+        ownCapabilities = ownCaps,
         burstAllowed    = burstOK,
         burstBlockedBy  = (not burstOK) and burstWhy or nil,
         _topScore       = topTarget and topTarget._score or 0,

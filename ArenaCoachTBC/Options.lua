@@ -1,4 +1,4 @@
--- ArenaCleaveCoachTBC - Options
+-- ArenaCoachTBC - Options
 -- Slash-command-driven configuration. We keep a thin InterfaceOptionsPanel
 -- shell so the addon shows up in the Blizzard options panel and links the
 -- user to /acc help.
@@ -9,25 +9,15 @@ ns.Options = ns.Options or {}
 
 local OPT = ns.Options
 
--- Pull localized string (delegated to Core)
-local function L(key, ...)
-    if ns.Core and ns.Core.L then
-        local s = ns.Core.L(key)
-        if select("#", ...) > 0 then return string.format(s, ...) end
-        return s
-    end
-    return key
-end
-
 function OPT:BuildPanel()
     if type(CreateFrame) ~= "function" then return nil end
 
-    local panel = CreateFrame("Frame", "ArenaCleaveCoachTBCOptionsPanel", UIParent)
-    panel.name = "ArenaCleaveCoachTBC"
+    local panel = CreateFrame("Frame", "ArenaCoachTBCOptionsPanel", UIParent)
+    panel.name = "ArenaCoachTBC"
 
     local title = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
     title:SetPoint("TOPLEFT", 16, -16)
-    title:SetText("ArenaCleaveCoachTBC")
+    title:SetText("ArenaCoachTBC")
 
     local desc = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
     desc:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
@@ -45,8 +35,8 @@ function OPT:BuildPanel()
     enabled:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, -24)
     enabled.Text:SetText("Enabled")
     enabled:SetScript("OnClick", function(self)
-        if ArenaCleaveCoachTBCDB then
-            ArenaCleaveCoachTBCDB.enabled = self:GetChecked() and true or false
+        if ArenaCoachTBCDB then
+            ArenaCoachTBCDB.enabled = self:GetChecked() and true or false
         end
     end)
 
@@ -55,8 +45,8 @@ function OPT:BuildPanel()
     lockcb:SetPoint("TOPLEFT", enabled, "BOTTOMLEFT", 0, -4)
     lockcb.Text:SetText("Lock frame")
     lockcb:SetScript("OnClick", function(self)
-        if ArenaCleaveCoachTBCDB then
-            ArenaCleaveCoachTBCDB.locked = self:GetChecked() and true or false
+        if ArenaCoachTBCDB then
+            ArenaCoachTBCDB.locked = self:GetChecked() and true or false
         end
     end)
 
@@ -65,8 +55,8 @@ function OPT:BuildPanel()
     sound:SetPoint("TOPLEFT", lockcb, "BOTTOMLEFT", 0, -4)
     sound.Text:SetText("Play sound on urgent callout")
     sound:SetScript("OnClick", function(self)
-        if ArenaCleaveCoachTBCDB then
-            ArenaCleaveCoachTBCDB.alerts.sound = self:GetChecked() and true or false
+        if ArenaCoachTBCDB then
+            ArenaCoachTBCDB.alerts.sound = self:GetChecked() and true or false
         end
     end)
 
@@ -75,8 +65,8 @@ function OPT:BuildPanel()
     debug:SetPoint("TOPLEFT", sound, "BOTTOMLEFT", 0, -4)
     debug.Text:SetText("Debug logging")
     debug:SetScript("OnClick", function(self)
-        if ArenaCleaveCoachTBCDB then
-            ArenaCleaveCoachTBCDB.debug = self:GetChecked() and true or false
+        if ArenaCoachTBCDB then
+            ArenaCoachTBCDB.debug = self:GetChecked() and true or false
         end
     end)
 
@@ -85,8 +75,8 @@ function OPT:BuildPanel()
     pchat:SetPoint("TOPLEFT", debug, "BOTTOMLEFT", 0, -4)
     pchat.Text:SetText("Print callouts to party chat")
     pchat:SetScript("OnClick", function(self)
-        if ArenaCleaveCoachTBCDB then
-            ArenaCleaveCoachTBCDB.alerts.partyChat = self:GetChecked() and true or false
+        if ArenaCoachTBCDB then
+            ArenaCoachTBCDB.alerts.partyChat = self:GetChecked() and true or false
         end
     end)
 
@@ -97,7 +87,7 @@ function OPT:BuildPanel()
 
     -- Refresh widgets from DB when panel is shown
     panel:SetScript("OnShow", function()
-        local db = ArenaCleaveCoachTBCDB or {}
+        local db = ArenaCoachTBCDB or {}
         enabled:SetChecked(db.enabled ~= false)
         lockcb:SetChecked(db.locked == true)
         sound:SetChecked(db.alerts and db.alerts.sound ~= false)
@@ -120,5 +110,5 @@ end
 
 function OPT:Apply(db)
     -- Hooks for any future computed-side-effects. The widgets already
-    -- write straight to ArenaCleaveCoachTBCDB, so nothing else to do here yet.
+    -- write straight to ArenaCoachTBCDB, so nothing else to do here yet.
 end

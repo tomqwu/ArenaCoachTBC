@@ -1,4 +1,4 @@
--- ArenaCleaveCoachTBC - English (en-US) locale
+-- ArenaCoachTBC - English (en-US) locale
 local ADDON_NAME, ns = ...
 ns = ns or {}
 ns.locales = ns.locales or {}
@@ -18,7 +18,7 @@ ns.locales.enUS = {
     PRIO_URGENT   = "URGENT",
 
     -- Slash/help
-    HELP_HEADER   = "ArenaCleaveCoachTBC commands:",
+    HELP_HEADER   = "ArenaCoachTBC commands:",
     HELP_TOGGLE   = "/acc toggle           - show/hide frame",
     HELP_LOCK     = "/acc lock / unlock    - lock or unlock the frame",
     HELP_TEST     = "/acc test             - run sample enemy comps",
@@ -63,7 +63,7 @@ ns.locales.enUS = {
     CALL_PEEL_DRUID      = "Peel for Druid",
 
     -- UI labels
-    UI_TITLE             = "Arena Cleave Coach",
+    UI_TITLE             = "Arena Coach",
     UI_NO_ARENA          = "Out of arena",
     UI_FRIENDLY_CDS      = "Friendly cooldowns",
     UI_ENEMY_CDS         = "Enemy cooldowns",

@@ -1,4 +1,4 @@
--- ArenaCleaveCoachTBC - UI layer
+-- ArenaCoachTBC - UI layer
 -- One movable frame that shows the current recommendation, callouts, and
 -- two icon rows (friendly reminders + enemy cooldowns). All updates are
 -- event-driven; the only OnUpdate is a very low-frequency icon refresh
@@ -58,10 +58,10 @@ function UI:CreateFrame()
     if self.frame then return self.frame end
     if type(CreateFrame) ~= "function" then return nil end
 
-    local db = ArenaCleaveCoachTBCDB or {}
+    local db = ArenaCoachTBCDB or {}
     local fcfg = db.frame or { point = "CENTER", x = 0, y = 120, scale = 1.0 }
 
-    local f = CreateFrame("Frame", "ArenaCleaveCoachTBCFrame", UIParent)
+    local f = CreateFrame("Frame", "ArenaCoachTBCFrame", UIParent)
     f:SetSize(360, 170)
     f:SetPoint(fcfg.point or "CENTER", UIParent, fcfg.point or "CENTER",
                fcfg.x or 0, fcfg.y or 120)
@@ -110,17 +110,17 @@ function UI:CreateFrame()
 
     -- Drag handlers (respect db.locked)
     f:SetScript("OnMouseDown", function(self, button)
-        if button == "LeftButton" and not (ArenaCleaveCoachTBCDB and ArenaCleaveCoachTBCDB.locked) then
+        if button == "LeftButton" and not (ArenaCoachTBCDB and ArenaCoachTBCDB.locked) then
             self:StartMoving()
         end
     end)
     f:SetScript("OnMouseUp", function(self)
         self:StopMovingOrSizing()
         local point, _, _, x, y = self:GetPoint()
-        if ArenaCleaveCoachTBCDB and ArenaCleaveCoachTBCDB.frame then
-            ArenaCleaveCoachTBCDB.frame.point = point
-            ArenaCleaveCoachTBCDB.frame.x = x
-            ArenaCleaveCoachTBCDB.frame.y = y
+        if ArenaCoachTBCDB and ArenaCoachTBCDB.frame then
+            ArenaCoachTBCDB.frame.point = point
+            ArenaCoachTBCDB.frame.x = x
+            ArenaCoachTBCDB.frame.y = y
         end
     end)
 
@@ -238,8 +238,8 @@ function UI:Apply(recommendation)
     f.subText:SetText(table.concat(subParts, "\n"))
 
     -- Screen flash for URGENT (defensive)
-    if recommendation.priority == "URGENT" and ArenaCleaveCoachTBCDB
-       and ArenaCleaveCoachTBCDB.alerts and ArenaCleaveCoachTBCDB.alerts.screenFlash then
+    if recommendation.priority == "URGENT" and ArenaCoachTBCDB
+       and ArenaCoachTBCDB.alerts and ArenaCoachTBCDB.alerts.screenFlash then
         self:_Flash()
     end
 end

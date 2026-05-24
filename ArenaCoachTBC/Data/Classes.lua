@@ -1,4 +1,4 @@
--- ArenaCleaveCoachTBC - Class/spec/role classification data
+-- ArenaCoachTBC - Class/spec/role classification data
 -- These tables map class -> default role assumptions used by the
 -- strategy engine. Spec guesses are best-effort because TBC has no
 -- direct API for inspecting opposing arena specs without inspecting.

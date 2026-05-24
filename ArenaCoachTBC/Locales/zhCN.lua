@@ -1,4 +1,4 @@
--- ArenaCleaveCoachTBC - Simplified Chinese (zh-CN) locale
+-- ArenaCoachTBC - Simplified Chinese (zh-CN) locale
 local ADDON_NAME, ns = ...
 ns = ns or {}
 ns.locales = ns.locales or {}
@@ -18,7 +18,7 @@ ns.locales.zhCN = {
     PRIO_URGENT   = "紧急",
 
     -- Slash/help
-    HELP_HEADER   = "ArenaCleaveCoachTBC 命令：",
+    HELP_HEADER   = "ArenaCoachTBC 命令：",
     HELP_TOGGLE   = "/acc toggle           - 显示/隐藏框体",
     HELP_LOCK     = "/acc lock / unlock    - 锁定/解锁框体",
     HELP_TEST     = "/acc test             - 跑测试敌方阵容",
@@ -63,7 +63,7 @@ ns.locales.zhCN = {
     CALL_PEEL_DRUID      = "保德鲁伊",
 
     -- UI labels
-    UI_TITLE             = "竞技场近战教练",
+    UI_TITLE             = "竞技场教练",
     UI_NO_ARENA          = "未在竞技场",
     UI_FRIENDLY_CDS      = "己方冷却",
     UI_ENEMY_CDS         = "敌方冷却",

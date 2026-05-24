@@ -1,4 +1,4 @@
--- ArenaCleaveCoachTBC - Tiny event bus
+-- ArenaCoachTBC - Tiny event bus
 -- Wraps a single WoW frame for game-event listening, plus an in-addon
 -- pub/sub for "logical" notifications (e.g. "ENEMY_BURST_DETECTED").
 -- Keeps OnUpdate usage to zero on the bus itself.
@@ -23,7 +23,7 @@ local function ensureFrame()
         function frame:SetScript(kind, fn) self._scripts[kind] = fn end
         return frame
     end
-    frame = CreateFrame("Frame", "ArenaCleaveCoachTBCEventFrame")
+    frame = CreateFrame("Frame", "ArenaCoachTBCEventFrame")
     frame:SetScript("OnEvent", function(_, event, ...)
         EB:Dispatch(event, ...)
     end)

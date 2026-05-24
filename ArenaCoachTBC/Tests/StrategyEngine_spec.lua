@@ -1,6 +1,6 @@
--- ArenaCleaveCoachTBC - StrategyEngine unit tests
+-- ArenaCoachTBC - StrategyEngine unit tests
 -- Run from the addon root directory with vanilla Lua 5.1+:
---     lua ArenaCleaveCoachTBC/Tests/StrategyEngine_spec.lua
+--     lua ArenaCoachTBC/Tests/StrategyEngine_spec.lua
 -- (or `lua5.1 Tests/StrategyEngine_spec.lua` from inside the addon dir)
 --
 -- These tests stub the WoW API (GetTime, UnitClass, UnitHealth, etc.)
@@ -29,7 +29,7 @@ _G.CombatLogGetCurrentEventInfo = function() return nil end
 -- ============================================================
 -- Module loader
 -- ============================================================
-local ADDON_NAME = "ArenaCleaveCoachTBC"
+local ADDON_NAME = "ArenaCoachTBC"
 local ns = {}
 
 -- Resolve the addon root relative to this script's path.
@@ -222,9 +222,9 @@ test("WeakAuraBridge exposes API after evaluate", function()
     local state = SE:BuildTestState({ "WARRIOR", "ROGUE", "PRIEST", "MAGE", "WARLOCK" })
     local rec = SE:Evaluate(state)
     ns.WeakAuraBridge:Publish(rec)
-    assertTrue(_G.ArenaCleaveCoachTBC, "global bridge installed")
-    assertTrue(_G.ArenaCleaveCoachTBC.GetRecommendation(), "GetRecommendation returns last rec")
-    assertEq(_G.ArenaCleaveCoachTBC.GetPrimaryTarget(), rec.primaryTarget, "GetPrimaryTarget matches")
+    assertTrue(_G.ArenaCoachTBC, "global bridge installed")
+    assertTrue(_G.ArenaCoachTBC.GetRecommendation(), "GetRecommendation returns last rec")
+    assertEq(_G.ArenaCoachTBC.GetPrimaryTarget(), rec.primaryTarget, "GetPrimaryTarget matches")
 end)
 
 -- ============================================================

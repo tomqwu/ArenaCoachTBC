@@ -1,4 +1,4 @@
--- ArenaCleaveCoachTBC - Core
+-- ArenaCoachTBC - Core
 -- Wires the modules together:
 --   - Initializes SavedVariables on PLAYER_LOGIN
 --   - Subscribes to WoW events via EventBus
@@ -47,16 +47,16 @@ local function deepMerge(dest, src)
 end
 
 function Core:InitDB()
-    _G.ArenaCleaveCoachTBCDB = _G.ArenaCleaveCoachTBCDB or {}
-    deepMerge(_G.ArenaCleaveCoachTBCDB, DEFAULTS)
-    return _G.ArenaCleaveCoachTBCDB
+    _G.ArenaCoachTBCDB = _G.ArenaCoachTBCDB or {}
+    deepMerge(_G.ArenaCoachTBCDB, DEFAULTS)
+    return _G.ArenaCoachTBCDB
 end
 
 -- ============================================================
 -- Localization
 -- ============================================================
 function Core:CurrentLocale()
-    local db = _G.ArenaCleaveCoachTBCDB or {}
+    local db = _G.ArenaCoachTBCDB or {}
     local lang = db.language or "auto"
     if lang == "auto" and type(GetLocale) == "function" then
         lang = GetLocale()
@@ -77,7 +77,7 @@ end
 -- Debug
 -- ============================================================
 function Core.DebugPrint(msg)
-    local db = _G.ArenaCleaveCoachTBCDB
+    local db = _G.ArenaCoachTBCDB
     if db and db.debug and type(print) == "function" then
         print((Core.L("DEBUG_PREFIX") or "[ACC]") .. " " .. tostring(msg))
     end
@@ -206,18 +206,19 @@ end
 -- Evaluate + publish
 -- ============================================================
 function Core:Evaluate()
-    if not _G.ArenaCleaveCoachTBCDB or _G.ArenaCleaveCoachTBCDB.enabled == false then
+    if not _G.ArenaCoachTBCDB or _G.ArenaCoachTBCDB.enabled == false then
         return
     end
-    self.state.config = _G.ArenaCleaveCoachTBCDB
+    self.state.config = _G.ArenaCoachTBCDB
     local rec = ns.StrategyEngine and ns.StrategyEngine:Evaluate(self.state) or nil
     if not rec then return end
     self.state.lastPrimaryGUID = rec.primaryTarget
     if ns.UI then ns.UI:Apply(rec) end
-    if ns.WeakAuraBridge then ns.WeakAuraBridge:Publish(rec) end
+    if ns.WeakAuraBridge then ns.WeakAuraBridge:Publish(rec, self.state) end
     Core.DebugPrint(string.format(
-        "Evaluate -> mode=%s target=%s conf=%.2f",
-        tostring(rec.mode), tostring(rec.primaryTargetClass), rec.confidence or 0))
+        "Evaluate -> mode=%s target=%s comp=%s own=%s conf=%.2f",
+        tostring(rec.mode), tostring(rec.primaryTargetClass),
+        tostring(rec.comp), tostring(rec.ownArchetype), rec.confidence or 0))
     return rec
 end
 
@@ -285,8 +286,8 @@ end
 local function trim(s) return (s or ""):match("^%s*(.-)%s*$") end
 
 local function handleSlash(input)
-    local db = _G.ArenaCleaveCoachTBCDB
-    if not db then Core:InitDB(); db = _G.ArenaCleaveCoachTBCDB end
+    local db = _G.ArenaCoachTBCDB
+    if not db then Core:InitDB(); db = _G.ArenaCoachTBCDB end
     input = trim(input or "")
     if input == "" or input == "help" then return helpText() end
 
@@ -303,7 +304,7 @@ local function handleSlash(input)
         db.debug = not db.debug
         chatPrint(db.debug and Core.L("DEBUG_ENABLED") or Core.L("DEBUG_DISABLED"))
     elseif cmd == "reset" then
-        _G.ArenaCleaveCoachTBCDB = nil
+        _G.ArenaCoachTBCDB = nil
         chatPrint(Core.L("DEBUG_RESET_DONE"))
     elseif cmd == "strategy" then
         local mode = (rest or ""):lower()
@@ -344,7 +345,7 @@ function Core:RunTestMode()
         local rec = SE:Evaluate(state)
         chatPrint("  " .. recToString(rec))
         if ns.UI then ns.UI:Apply(rec) end
-        if ns.WeakAuraBridge then ns.WeakAuraBridge:Publish(rec) end
+        if ns.WeakAuraBridge then ns.WeakAuraBridge:Publish(rec, ns.Core.state) end
     end
 end
 
@@ -365,7 +366,7 @@ function Core:RunEnemySim(rest)
     local rec = SE:Evaluate(state)
     chatPrint("sim: " .. recToString(rec))
     if ns.UI then ns.UI:Apply(rec) end
-    if ns.WeakAuraBridge then ns.WeakAuraBridge:Publish(rec) end
+    if ns.WeakAuraBridge then ns.WeakAuraBridge:Publish(rec, ns.Core.state) end
 end
 
 -- ============================================================
@@ -437,9 +438,9 @@ function Core:Boot()
 
     -- Slash commands
     if type(SlashCmdList) == "table" then
-        _G.SLASH_ARENACLEAVECOACH1 = "/acc"
-        _G.SLASH_ARENACLEAVECOACH2 = "/arenacleavecoach"
-        SlashCmdList["ARENACLEAVECOACH"] = handleSlash
+        _G.SLASH_ARENACOACH1 = "/acc"
+        _G.SLASH_ARENACOACH2 = "/arenacoach"
+        SlashCmdList["ARENACOACH"] = handleSlash
     end
 
     if ns.Options and ns.Options.BuildPanel then ns.Options:BuildPanel() end

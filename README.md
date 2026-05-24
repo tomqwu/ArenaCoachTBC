@@ -1,6 +1,6 @@
 # wow_tbc_arena_pvp_strategy
 
-A World of Warcraft addon — **ArenaCleaveCoachTBC** — that coaches a 5v5
+A World of Warcraft addon — **ArenaCoachTBC** — that coaches a 5v5
 melee cleave team during TBC Classic / TBC Anniversary arena.
 
 Team comp it's tuned for:
@@ -27,15 +27,15 @@ Team comp it's tuned for:
   Death Coil, NS, Innervate, Counterspell, etc.) from the combat log
 - Tracks basic DR categories (STUN, FEAR, DISORIENT, INCAPACITATE,
   ROOT, CYCLONE) with a configurable reset window
-- Publishes the live recommendation through `_G.ArenaCleaveCoachTBC`
+- Publishes the live recommendation through `_G.ArenaCoachTBC`
   and `WeakAuras.ScanEvents("ACC_RECOMMENDATION", rec)` so a WA can
   render it
 
 ## Repository layout
 
 ```
-ArenaCleaveCoachTBC/        <- the actual addon folder (drop in Interface/AddOns/)
-├── ArenaCleaveCoachTBC.toc
+ArenaCoachTBC/        <- the actual addon folder (drop in Interface/AddOns/)
+├── ArenaCoachTBC.toc
 ├── Core.lua                 -- event wiring + slash commands + state
 ├── EventBus.lua             -- tiny pub/sub over one WoW frame
 ├── StrategyEngine.lua       -- scoring + recommendation builder (tested)
@@ -43,7 +43,7 @@ ArenaCleaveCoachTBC/        <- the actual addon folder (drop in Interface/AddOns
 ├── DRTracker.lua            -- diminishing return categories
 ├── UI.lua                   -- movable frame + icon rows
 ├── Options.lua              -- Blizzard interface panel
-├── WeakAuraBridge.lua       -- exposes _G.ArenaCleaveCoachTBC API
+├── WeakAuraBridge.lua       -- exposes _G.ArenaCoachTBC API
 ├── Data/
 │   ├── Spells.lua           -- centralized spell ID database
 │   ├── Classes.lua          -- class -> role / armor / specs
@@ -55,12 +55,12 @@ ArenaCleaveCoachTBC/        <- the actual addon folder (drop in Interface/AddOns
 
 ## Quick start
 
-1. Copy the `ArenaCleaveCoachTBC` folder into
+1. Copy the `ArenaCoachTBC` folder into
    `<WoW>/_classic_/Interface/AddOns/`.
 2. Log in, `/acc help`, drag the frame, `/acc lock`.
 3. Try `/acc test` to see recommendations for five sample enemy comps.
 
-See **[ArenaCleaveCoachTBC/README.md](ArenaCleaveCoachTBC/README.md)**
+See **[ArenaCoachTBC/README.md](ArenaCoachTBC/README.md)**
 for the full slash-command list, scoring weights, WeakAura snippets,
 spell-ID extension guide, and limitations.
 
@@ -69,7 +69,7 @@ spell-ID extension guide, and limitations.
 The strategy engine runs outside the WoW client with stubbed APIs:
 
 ```bash
-lua5.1 ArenaCleaveCoachTBC/Tests/StrategyEngine_spec.lua
+lua5.1 ArenaCoachTBC/Tests/StrategyEngine_spec.lua
 ```
 
 Expected:

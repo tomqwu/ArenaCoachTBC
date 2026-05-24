@@ -1,4 +1,4 @@
--- ArenaCleaveCoachTBC - Cooldown tracker
+-- ArenaCoachTBC - Cooldown tracker
 -- Records observed spell casts from the combat log and answers queries like
 -- "is enemy X's Ice Block ready?". This is intentionally conservative -- when
 -- a cooldown is uncertain we report nil and let the strategy engine decide

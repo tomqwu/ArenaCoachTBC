@@ -1,0 +1,27 @@
+## Interface: 20504
+## Title: ArenaCoachTBC
+## Notes: Strategy coach for TBC Classic arena - dynamically adapts to your team comp (advice only, no automation)
+## Notes-zhCN: TBC怀旧服竞技场战术教练，自适应队伍阵容（仅提示，不自动施法）
+## Author: ACC Team
+## Version: 1.1.0
+## SavedVariables: ArenaCoachTBCDB
+## X-Category: PvP
+## X-License: MIT
+
+Locales\enUS.lua
+Locales\zhCN.lua
+
+Data\Spells.lua
+Data\Classes.lua
+Data\OwnComps.lua
+Data\Strategies.lua
+
+EventBus.lua
+CooldownTracker.lua
+DRTracker.lua
+StrategyEngine.lua
+UI.lua
+Options.lua
+WeakAuraBridge.lua
+
+Core.lua

@@ -1,0 +1,49 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lua-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Lua 5.1 + luarocks
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.1 luarocks
+          sudo luarocks install luacov
+
+      - name: Syntax-check every .lua file
+        run: |
+          cd ArenaCoachTBC
+          fail=0
+          for f in $(find . -name '*.lua'); do
+            if ! luac5.1 -p "$f"; then echo "SYNTAX FAIL: $f"; fail=1; fi
+          done
+          exit $fail
+
+      - name: Run test suite with coverage
+        run: |
+          rm -f luacov.stats.out luacov.report.out
+          lua5.1 -lluacov ArenaCoachTBC/Tests/run_all.lua
+          luacov
+
+      - name: Enforce minimum coverage (99%)
+        run: |
+          total=$(grep -E '^Total' luacov.report.out | awk '{print $NF}' | tr -d '%')
+          echo "Coverage: $total%"
+          awk -v t="$total" 'BEGIN { if (t+0 < 99.0) { print "Coverage below 99%"; exit 1 } }'
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: luacov-report
+          path: |
+            luacov.report.out
+            luacov.stats.out

@@ -1,4 +1,4 @@
--- ArenaCleaveCoachTBC - Composition signature -> recommended openers and callouts
+-- ArenaCoachTBC - Composition signature -> recommended openers and callouts
 -- The intent is to keep "what to do vs this comp" data-driven so it can be
 -- expanded without touching the engine.
 --
@@ -15,17 +15,21 @@ ns.Strategies = ns.Strategies or {}
 
 local ST = ns.Strategies
 
--- Canonical comp catalog
--- Each entry:
---   id       : short name
---   label    : friendly description
---   core     : minimal set of classes that defines this comp
---   openTarget: class to suggest opening on (if alive)
---   swapTarget: class to consider swapping to
---   threats  : { class -> top danger note }
---   callouts : ordered list of callout keys (resolved via locale)
+-- Canonical comp catalog. Each entry can specify:
+--   id          : short name
+--   label       : friendly description
+--   core        : minimal set of classes that defines this comp
+--   openTarget  : class to suggest opening on (if alive)
+--   swapTarget  : class to consider swapping to
+--   threats     : { class -> top danger note }
+--   callouts    : ordered list of callout keys (resolved via locale)
 --   defensiveTriggers : optional list of trigger names that force DEFEND
+--   ownVariants : optional { ownArchetype -> overrides } so a single enemy
+--                 entry can give different advice to different own teams.
 ST.comps = {
+    -- ============================================================
+    -- "RMP" family (rogue + mage + priest), the canonical TBC comp.
+    -- ============================================================
     {
         id    = "RMP",
         label = "Rogue / Mage / Priest",
@@ -43,7 +47,22 @@ ST.comps = {
             "CALL_FREEDOM_WAR",
             "CALL_DISP_POLY",
         },
+        ownVariants = {
+            MELEE_CLEAVE = { openTarget = "PRIEST", swapTarget = "MAGE" },
+            DRAIN        = { openTarget = nil,     swapTarget = "PRIEST", note = "drain mage mana, force defensives" },
+            JUNGLE       = { openTarget = "MAGE",  swapTarget = "PRIEST", note = "scatter+fear chain on mage" },
+        },
     },
+    -- WMS = Warrior / Mage / Shaman ("Battlecleave")
+    {
+        id    = "WMS",
+        label = "Warrior / Mage / Shaman (Battlecleave)",
+        core  = { WARRIOR = true, MAGE = true, SHAMAN = true },
+        openTarget = "MAGE",
+        swapTarget = "SHAMAN",
+        callouts = { "CALL_PURGE", "CALL_TREMOR_FEAR", "CALL_FREEDOM_WAR" },
+    },
+    -- Warlock/Druid/X
     {
         id    = "WLD",
         label = "Warlock / Druid / X",
@@ -51,7 +70,7 @@ ST.comps = {
         openTarget = "WARLOCK",
         swapTarget = "DRUID",
         threats = {
-            WARLOCK = "Fear / Death Coil",
+            WARLOCK = "Fear / Death Coil / Unstable Affliction",
             DRUID   = "Cyclone / kite",
         },
         callouts = {
@@ -60,7 +79,32 @@ ST.comps = {
             "CALL_PURGE",
             "CALL_HOJ_KILL",
         },
+        ownVariants = {
+            MELEE_CLEAVE = { openTarget = "WARLOCK", swapTarget = "DRUID" },
+            DRAIN        = { openTarget = nil, note = "outlast, mana burn druid" },
+        },
     },
+    -- Warlock / Shaman cleave
+    {
+        id    = "WLS",
+        label = "Warlock / Shaman",
+        core  = { WARLOCK = true, SHAMAN = true },
+        openTarget = "SHAMAN",
+        swapTarget = "WARLOCK",
+        callouts = { "CALL_PURGE", "CALL_TREMOR_FEAR" },
+    },
+    -- Warlock / Paladin "drain"
+    {
+        id    = "WLP",
+        label = "Warlock / Paladin (Drain)",
+        core  = { WARLOCK = true, PALADIN = true },
+        openTarget = "PALADIN",
+        swapTarget = "WARLOCK",
+        callouts = { "CALL_PURGE", "CALL_MANA_BURN_PLAN" },
+    },
+    -- ============================================================
+    -- Hunter comps
+    -- ============================================================
     {
         id    = "HUNTER_COMP",
         label = "Hunter / Druid / X",
@@ -78,6 +122,39 @@ ST.comps = {
         },
     },
     {
+        id    = "BEAST_CLEAVE",
+        label = "Hunter / Warrior",
+        core  = { HUNTER = true, WARRIOR = true },
+        openTarget = "HUNTER",
+        swapTarget = "WARRIOR",
+        callouts = { "CALL_FREEDOM_WAR", "CALL_AVOID_OVERCHASE" },
+    },
+    -- ============================================================
+    -- Paladin / Warrior / X "TSG"
+    -- ============================================================
+    {
+        id    = "TSG",
+        label = "Warrior / DK-style melee (TSG analog)",
+        core  = { WARRIOR = true, PALADIN = true },
+        openTarget = "PALADIN",
+        swapTarget = "WARRIOR",
+        callouts = { "CALL_PURGE", "CALL_HOJ_KILL" },
+    },
+    -- ============================================================
+    -- Rogue + Druid "RLS"-style (Rogue/Lock-or-Mage/Shaman) approximations
+    -- ============================================================
+    {
+        id    = "RLS",
+        label = "Rogue / Caster / Shaman",
+        core  = { ROGUE = true, SHAMAN = true },
+        openTarget = "SHAMAN",
+        swapTarget = "ROGUE",
+        callouts = { "CALL_PURGE", "CALL_TREMOR_FEAR" },
+    },
+    -- ============================================================
+    -- Mirror melee cleave
+    -- ============================================================
+    {
         id    = "MIRROR_MELEE",
         label = "Mirror melee cleave",
         core  = { WARRIOR = true, SHAMAN = true, PALADIN = true, DRUID = true, PRIEST = true },
@@ -93,10 +170,24 @@ ST.comps = {
             "CALL_EARTHSHOCK_HEAL",
         },
     },
+    -- ============================================================
+    -- Caster cleave / triple caster
+    -- ============================================================
+    {
+        id    = "TRIPLE_CASTER",
+        label = "Triple caster",
+        core  = { MAGE = true, WARLOCK = true, PRIEST = true },
+        openTarget = "WARLOCK",
+        swapTarget = "MAGE",
+        callouts = { "CALL_GROUND_POLY", "CALL_PURGE", "CALL_TREMOR_FEAR" },
+    },
+    -- ============================================================
+    -- Dynamic comps (resolved on healer-count, not class set)
+    -- ============================================================
     {
         id    = "DOUBLE_HEALER",
         label = "Double healer",
-        core  = {}, -- detected dynamically (>= 2 healers)
+        core  = {},
         dynamic = "DOUBLE_HEALER",
         openTarget = nil,
         callouts = {
@@ -108,7 +199,7 @@ ST.comps = {
     {
         id    = "TRIPLE_DPS",
         label = "Triple DPS / no healer",
-        core  = {}, -- detected dynamically (0 healers)
+        core  = {},
         dynamic = "TRIPLE_DPS",
         defaultMode = "DEFEND",
         callouts = {
@@ -143,6 +234,20 @@ ST.testComps = {
         classes = { "ROGUE", "MAGE", "WARLOCK", "PRIEST", "SHAMAN" },
     },
 }
+
+-- Apply the variant overrides for a given own archetype on top of a comp
+-- entry. Returns a shallow-merged copy. Safe to call with `nil` ownArchetype.
+function ST:ApplyOwnVariant(comp, ownArchetypeId)
+    if not comp then return comp end
+    if not ownArchetypeId or not comp.ownVariants then return comp end
+    local v = comp.ownVariants[ownArchetypeId]
+    if not v then return comp end
+    local out = {}
+    for k, val in pairs(comp) do out[k] = val end
+    for k, val in pairs(v) do out[k] = val end
+    out._variantApplied = ownArchetypeId
+    return out
+end
 
 -- Look up the best-fit comp for a given enemy class array.
 -- Optionally accepts the enemies map so per-enemy roleGuess overrides take
