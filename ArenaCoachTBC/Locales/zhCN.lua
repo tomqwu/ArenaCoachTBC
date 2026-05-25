@@ -108,6 +108,13 @@ ns.locales.zhCN = {
     CALL_SAVE_TREMOR_HOJ      = "对方习惯换人解恐惧 - 留陷阱图腾对审判",
     CALL_BURST_BLOCK_INCOMING = "对方可能冰块 - 暂停爆发",
 
+    -- M10 #69: pattern recognition callouts
+    CALL_PATTERN_RMP_CHEAP_BLIND     = "肾击+致盲连击 - 剥离并使用饰品",
+    CALL_PATTERN_SHATTER_NOVA_SHEEP  = "冰法连击 - 解冰环",
+    CALL_PATTERN_FEAR_INTO_POLY      = "恐惧+羊群组合即将到来 - 准备解控",
+    CALL_PATTERN_HUNTER_TRAP_SCATTER = "陷阱+驱散连击 - 准备群驱散",
+    CALL_PATTERN_HOJ_INTO_INTERCEPT  = "审判+截击叠加目标 - 切防御",
+
     -- Debug
     DEBUG_PREFIX         = "[ACC]",
     DEBUG_ENABLED        = "调试开启",

@@ -108,6 +108,13 @@ ns.locales.enUS = {
     CALL_SAVE_TREMOR_HOJ      = "They trinket Fear - save Tremor for HoJ",
     CALL_BURST_BLOCK_INCOMING = "Ice Block expected - hold burst",
 
+    -- M10 #69: pattern recognition callouts (recurring kill setups)
+    CALL_PATTERN_RMP_CHEAP_BLIND     = "Kidney+Blind chain detected - peel and trinket",
+    CALL_PATTERN_SHATTER_NOVA_SHEEP  = "Shatter setup detected - trinket the nova",
+    CALL_PATTERN_FEAR_INTO_POLY      = "Fear+Sheep chain incoming - tremor / fear ward up",
+    CALL_PATTERN_HUNTER_TRAP_SCATTER = "Trap+Scatter chain detected - mass dispel ready",
+    CALL_PATTERN_HOJ_INTO_INTERCEPT  = "HoJ+Intercept on the priority - swap defensive",
+
     -- Debug
     DEBUG_PREFIX         = "[ACC]",
     DEBUG_ENABLED        = "debug enabled",
