@@ -286,6 +286,7 @@ ArenaCoachTBC/
 │   ├── OwnComps.lua         -- capability inference + archetype detection
 │   └── Strategies.lua       -- enemy comp catalog + ownVariants
 ├── StrategyEngine.lua       -- scoring + recommendation
+├── Chain.lua                -- CC chain primitive (DR + CD aware)
 ├── CooldownTracker.lua
 ├── DRTracker.lua
 ├── UI.lua
