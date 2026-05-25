@@ -148,13 +148,72 @@ S.E_SPELL_REFLECT    = 23920
 -- ============================================================
 -- Spec-defining casts (used by SpellSpecHints inference)
 -- Max-rank TBC 2.4.3 IDs unless noted. Issue #2 will audit live.
+-- Mix of: direct casts, applied auras (Shadowform, Moonkin, Tree of
+-- Life, Soul Link), and talent-only spells (Vampiric Touch, Mutilate,
+-- Conflagrate, etc.) — see SpellSpecHints.byID for the spec mapping.
 -- ============================================================
-S.SHADOWFORM         = 15473   -- Priest shadowform aura - SHADOW
-S.MIND_FLAY          = 25387   -- Rank 7 - SHADOW
-S.HOLY_SHOCK         = 33072   -- Rank 5 - HOLY paladin
-S.EARTH_SHIELD       = 32594   -- Rank 3 (TBC max) - RESTORATION shaman
-S.BLOODTHIRST        = 30335   -- Rank 6 - FURY warrior
-S.MANGLE_CAT         = 33983   -- Rank 3 - FERAL druid (cat form)
+
+-- Priest
+S.SHADOWFORM         = 15473   -- aura - SHADOW
+S.MIND_FLAY          = 25387   -- rank 7 - SHADOW
+S.VAMPIRIC_TOUCH     = 34917   -- rank 3 - SHADOW talent
+S.VAMPIRIC_EMBRACE   = 15286   -- aura - SHADOW talent
+S.SILENCE_PRIEST     = 15487   -- 41-pt SHADOW talent
+S.CIRCLE_OF_HEALING  = 34866   -- rank 5 - HOLY talent
+S.SPIRIT_OF_REDEMPTION = 27827 -- aura - HOLY talent
+S.POWER_INFUSION     = 10060   -- DISC talent
+
+-- Paladin
+S.HOLY_SHOCK         = 33072   -- rank 5 - HOLY
+S.DIVINE_FAVOR       = 20216   -- HOLY talent
+S.HOLY_SHIELD        = 27179   -- rank 5 - PROTECTION talent
+S.AVENGERS_SHIELD    = 32699   -- rank 3 - PROTECTION talent
+
+-- Shaman
+S.EARTH_SHIELD       = 32594   -- rank 3 - RESTORATION
+S.ELEMENTAL_MASTERY  = 16166   -- ELEMENTAL talent
+S.MANA_TIDE_TOTEM    = 16190   -- RESTORATION talent
+S.TIDAL_FORCE        = 17359   -- RESTORATION talent
+
+-- Warrior
+S.BLOODTHIRST        = 30335   -- rank 6 - FURY
+S.SHIELD_SLAM        = 30356   -- rank 6 - PROTECTION talent
+S.LAST_STAND         = 12975   -- PROTECTION talent
+
+-- Druid
+S.MANGLE_CAT         = 33983   -- rank 3 - FERAL (cat form)
+S.MANGLE_BEAR        = 33878   -- rank 3 - FERAL (bear form)
+S.MOONKIN_FORM       = 24858   -- aura - BALANCE talent
+S.TREE_OF_LIFE       = 33891   -- aura - RESTORATION talent
+
+-- Warlock
+S.SIPHON_LIFE        = 30911   -- rank 6 - AFFLICTION talent
+S.SOUL_LINK          = 19028   -- aura - DEMONOLOGY talent
+S.CONFLAGRATE        = 27266   -- rank 6 - DESTRUCTION talent
+S.SHADOWBURN         = 30546   -- rank 8 - DESTRUCTION talent
+S.SHADOWFURY         = 30414   -- rank 3 - DESTRUCTION talent
+
+-- Mage (treat ICY_VEINS above as FROST hint too)
+S.ARCANE_POWER       = 12042   -- ARCANE talent
+S.SLOW               = 31589   -- ARCANE talent
+S.PRESENCE_OF_MIND   = 12043   -- ARCANE talent
+S.PYROBLAST          = 33938   -- rank 10 - FIRE talent
+S.COMBUSTION         = 11129   -- FIRE talent
+S.DRAGONS_BREATH     = 33043   -- rank 4 - FIRE talent
+S.SUMMON_WATER_ELEM  = 31687   -- FROST talent
+
+-- Rogue
+S.MUTILATE           = 34412   -- ASSASSINATION talent
+S.COLD_BLOOD         = 14177   -- ASSASSINATION talent
+S.BLADE_FLURRY       = 13877   -- COMBAT talent
+S.ADRENALINE_RUSH    = 13750   -- COMBAT talent
+S.SHADOWSTEP         = 36554   -- SUBTLETY talent
+S.HEMORRHAGE         = 26864   -- rank 4 - SUBTLETY talent
+
+-- Hunter
+S.BESTIAL_WRATH      = 19574   -- BEAST_MASTERY talent
+S.INTIMIDATION       = 19577   -- BEAST_MASTERY talent
+S.SILENCING_SHOT     = 34490   -- MARKSMANSHIP talent
 
 -- ============================================================
 -- Categorised lookups

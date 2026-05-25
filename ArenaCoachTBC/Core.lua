@@ -570,8 +570,15 @@ local function onCLEU()
         end
     end
 
-    -- Spec inference from observed casts
-    if subEvent == "SPELL_CAST_SUCCESS" and ns.SpellSpecHints then
+    -- Spec inference from observed casts AND from applied auras.
+    -- Aura events catch spec-defining auras (Shadowform, Moonkin Form,
+    -- Tree of Life, Soul Link, Vampiric Embrace, Spirit of Redemption)
+    -- that never fire SPELL_CAST_SUCCESS on a unit already in form.
+    if ns.SpellSpecHints and (
+        subEvent == "SPELL_CAST_SUCCESS"
+        or subEvent == "SPELL_AURA_APPLIED"
+        or subEvent == "SPELL_AURA_REFRESH"
+    ) then
         for _, e in pairs(Core.state.enemies or {}) do
             if e.guid == sourceGUID then
                 ns.SpellSpecHints:Apply(e, spellID)
