@@ -64,7 +64,7 @@ const modeBadge = {
       trigger: {
         type: 'custom',
         custom_type: 'status',
-        check: 'update',
+        check: 'event',
         custom: [
           'function()',
           '  if not _G.ArenaCoachTBC then return false end',
@@ -73,7 +73,6 @@ const modeBadge = {
           'end',
         ].join('\n'),
         events: 'PLAYER_REGEN_DISABLED, PLAYER_REGEN_ENABLED, ACC_RECOMMENDATION',
-        check: 'event',
       },
       untrigger: { custom: 'function() return true end' },
     }],
