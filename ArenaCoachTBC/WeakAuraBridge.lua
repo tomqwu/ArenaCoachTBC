@@ -42,6 +42,11 @@ function API.GetEnemyComp()        return WAB._last and WAB._last.comp end
 function API.GetEnemyCompLabel()   return WAB._last and WAB._last.compLabel end
 function API.GetCompConfidence()   return WAB._last and WAB._last.compConfidence or 0.0 end
 function API.GetCompSpecConfirmed() return (WAB._last and WAB._last.compSpecConfirmed) == true end
+function API.GetChain()            return WAB._last and WAB._last.chain end
+function API.GetChainId()          return WAB._last and WAB._last.chain and WAB._last.chain.id end
+function API.GetChainExpectedProb()
+    return (WAB._last and WAB._last.chain and WAB._last.chain.expectedProb) or 0.0
+end
 function API.GetOwnComp()          return WAB._last and WAB._last.ownArchetype end
 function API.GetOwnCompLabel()     return WAB._last and WAB._last.ownArchetypeLabel end
 function API.GetCapabilities()

@@ -570,6 +570,29 @@ function SE:Evaluate(state)
     elseif mode == "RESET" then priority = "LOW"
     else priority = "HIGH" end
 
+    -- M8 #61: chain scoring. Pick the top-scoring chain for this comp
+    -- against the current state. nil if the comp has no chains, no
+    -- chain has at least one castable link, or the top chain's
+    -- expected probability is 0.
+    local pickedChain = nil
+    if comp and comp.chains and Strategies and Strategies.InstantiateChains and ns.Chain then
+        local topG = topTarget and topTarget.guid or nil
+        local secondG = secondTarget and secondTarget.guid or nil
+        local concrete = Strategies:InstantiateChains(comp, topG, secondG, state.enemies)
+        if #concrete > 0 then
+            local cfg = (state.config and state.config.strategy) or {}
+            local topK = cfg.chainK or 3
+            local scored = ns.Chain:ScoreAll(concrete, { topK = topK })
+            if scored[1] and scored[1].prob > 0 then
+                pickedChain = {
+                    id           = scored[1].chain.id,
+                    label        = scored[1].chain.label,
+                    expectedProb = scored[1].prob,
+                }
+            end
+        end
+    end
+
     return {
         mode            = mode,
         primaryTarget   = topTarget and topTarget.guid or nil,
@@ -586,6 +609,7 @@ function SE:Evaluate(state)
         compLabel       = comp and comp.label or nil,
         compConfidence  = compConfidence,
         compSpecConfirmed = (comp ~= nil) and (comp.specs ~= nil) or false,
+        chain           = pickedChain,
         ownArchetype    = ownArchetype and ownArchetype.id or nil,
         ownArchetypeLabel = ownArchetype and ownArchetype.label or nil,
         ownCapabilities = ownCaps,

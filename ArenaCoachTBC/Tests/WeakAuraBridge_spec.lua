@@ -86,6 +86,26 @@ H.it(g, "GetCompConfidence + GetCompSpecConfirmed expose comp match confidence",
     H.assertFalse(API.GetCompSpecConfirmed())
 end)
 
+H.it(g, "GetChain / GetChainId / GetChainExpectedProb expose chain selection", function()
+    local rec = {}
+    for k, v in pairs(sampleRec) do rec[k] = v end
+    rec.chain = { id = "rmp_sap_into_kidney", label = "Sap into Kidney", expectedProb = 0.75 }
+    WAB:Publish(rec, sampleState)
+    H.assertEq(API.GetChainId(), "rmp_sap_into_kidney")
+    H.assertEq(API.GetChainExpectedProb(), 0.75)
+    H.assertNotNil(API.GetChain())
+end)
+
+H.it(g, "GetChain returns nil and ExpectedProb returns 0 when no chain in rec", function()
+    local rec = {}
+    for k, v in pairs(sampleRec) do rec[k] = v end
+    rec.chain = nil
+    WAB:Publish(rec, sampleState)
+    H.assertNil(API.GetChain())
+    H.assertNil(API.GetChainId())
+    H.assertEq(API.GetChainExpectedProb(), 0.0)
+end)
+
 H.it(g, "GetCompSpecConfirmed reflects true when spec-keyed comp matched", function()
     local rec = {}
     for k, v in pairs(sampleRec) do rec[k] = v end
@@ -142,6 +162,8 @@ H.it(g, "no-state safety: getters return empty/nil when nothing published", func
     H.assertNil(API.GetOwnComp())
     H.assertEq(API.GetCompConfidence(), 0.0)
     H.assertFalse(API.GetCompSpecConfirmed())
+    H.assertNil(API.GetChain())
+    H.assertEq(API.GetChainExpectedProb(), 0.0)
     H.assertEq(next(API.GetCapabilities()), nil)
     H.assertEq(next(API.GetEnemies()), nil)
     H.assertEq(next(API.GetFriendlies()), nil)

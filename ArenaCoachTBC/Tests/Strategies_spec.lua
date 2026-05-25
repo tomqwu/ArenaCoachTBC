@@ -176,6 +176,71 @@ H.it(g, "bracket=3 RMP comp matches when ROGUE+MAGE+PRIEST present", function()
 end)
 
 -- =================================================================
+-- InstantiateChains + ScoreAll integration (M8 #61)
+-- =================================================================
+
+H.it(g, "InstantiateChains resolves byClass + targetRole into concrete chains", function()
+    local enemies = {
+        a = { guid = "g-rogue",  class = "ROGUE",  alive = true },
+        b = { guid = "g-mage",   class = "MAGE",   alive = true },
+        c = { guid = "g-priest", class = "PRIEST", alive = true },
+    }
+    -- Pick the RMP comp (first one declared)
+    local rmp
+    for _, comp in ipairs(ST.comps) do if comp.id == "RMP" then rmp = comp; break end end
+    H.assertNotNil(rmp.chains)
+    local out = ST:InstantiateChains(rmp, "g-priest", "g-mage", enemies)
+    H.assertTrue(#out >= 1, "expected at least one instantiated chain")
+    -- First RMP chain (rmp_sap_into_kidney) has SAP / POLY / KIDNEY
+    H.assertEq(out[1].id, "rmp_sap_into_kidney")
+    H.assertEq(out[1].links[1].by, "g-rogue")
+    H.assertEq(out[1].links[1].target, "g-mage")        -- "off-healer" -> secondary
+    H.assertEq(out[1].links[3].target, "g-priest")      -- "primary"
+end)
+
+H.it(g, "InstantiateChains drops links whose byClass has no live enemy", function()
+    -- Build a comp with a chain that mentions a class not present on the field.
+    local fakeComp = {
+        id    = "X",
+        core  = { ROGUE = true, MAGE = true, PRIEST = true },
+        chains = {
+            { id = "x_chain", label = "x", links = {
+                { spellID = 1, category = "STUN", byClass = "ROGUE",  targetRole = "primary" },
+                { spellID = 2, category = "STUN", byClass = "PRIEST", targetRole = "primary" },  -- priest absent
+            } },
+        },
+    }
+    local enemies = {
+        r = { guid = "g-r", class = "ROGUE", alive = true },
+        m = { guid = "g-m", class = "MAGE",  alive = true },
+    }
+    local out = ST:InstantiateChains(fakeComp, "g-m", "g-r", enemies)
+    H.assertEq(#out, 1)
+    H.assertEq(#out[1].links, 1, "priest link should be dropped")
+    H.assertEq(out[1].links[1].by, "g-r")
+end)
+
+H.it(g, "InstantiateChains omits chains that end up with zero links", function()
+    local fakeComp = {
+        id   = "X",
+        core = { MAGE = true },
+        chains = {
+            { id = "all_priest", label = "all priest", links = {
+                { spellID = 1, category = "STUN", byClass = "PRIEST", targetRole = "primary" },
+            } },
+        },
+    }
+    local out = ST:InstantiateChains(fakeComp, "g-m", nil,
+        { m = { guid = "g-m", class = "MAGE", alive = true } })
+    H.assertEq(#out, 0)
+end)
+
+H.it(g, "InstantiateChains returns empty for a comp without chains", function()
+    local fakeComp = { id = "X", core = {} }
+    H.assertEq(#ST:InstantiateChains(fakeComp, nil, nil, {}), 0)
+end)
+
+-- =================================================================
 -- Built-in chains per comp (M8 #60)
 -- =================================================================
 
