@@ -507,6 +507,51 @@ H.it(g, "Evaluate exposes opponentSignature from state", function()
 end)
 
 -- =================================================================
+-- M11 #72: KillProb model
+-- =================================================================
+
+H.it(g, "KillProb returns 0 + empty components for nil target", function()
+    local out = SE:KillProb(nil, {})
+    H.assertEq(out.prob, 0)
+end)
+
+H.it(g, "KillProb shifts monotonically as HP drops", function()
+    local target = { healthPct = 100, hasTrinket = true, importantBuffs = {} }
+    local state  = { enemies = {}, observations = {} }
+    local outHigh = SE:KillProb(target, state)
+    target.healthPct = 50
+    local outMid  = SE:KillProb(target, state)
+    target.healthPct = 10
+    local outLow  = SE:KillProb(target, state)
+    H.assertTrue(outLow.prob > outMid.prob, "lower HP -> higher kill prob")
+    H.assertTrue(outMid.prob > outHigh.prob, "monotonic")
+end)
+
+H.it(g, "KillProb breakdown surfaces each contributing component", function()
+    local target = { healthPct = 50, hasTrinket = false, importantBuffs = {} }
+    local state  = {
+        enemies = { p = { class = "PRIEST", roleGuess = "HEALER", manaPct = 20, alive = true } },
+        observations = { hojReady = true },
+    }
+    local out = SE:KillProb(target, state)
+    H.assertTrue(out.components.hp > 0)
+    H.assertEq(out.components.defensiveDown, 0.10, "trinket-down should contribute")
+    H.assertEq(out.components.healerLowMana, 0.10, "low-mana healer should contribute")
+    H.assertEq(out.components.burstReady, 0.05, "burst ready should contribute")
+end)
+
+H.it(g, "KillProb is clamped to [0..1]", function()
+    -- Pile every bonus on at full HP: still must clamp <= 1.0.
+    local target = { healthPct = 0, hasTrinket = false, importantBuffs = {} }
+    local state  = {
+        enemies = { p = { class = "PRIEST", roleGuess = "HEALER", manaPct = 5, alive = true } },
+        observations = { hojReady = true },
+    }
+    local out = SE:KillProb(target, state)
+    H.assertTrue(out.prob <= 1.0, "must clamp; got " .. out.prob)
+end)
+
+-- =================================================================
 -- M11 #71: rating-aware aggression
 -- =================================================================
 

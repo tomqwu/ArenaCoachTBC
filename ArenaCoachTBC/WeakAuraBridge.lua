@@ -84,6 +84,29 @@ function API.L(key)
     return key
 end
 
+-- ----- Kill probability (M11 #72) -----
+function API.GetKillProb(guid)
+    if not (ns.StrategyEngine and ns.StrategyEngine.KillProb and WAB._state) then return 0 end
+    local target
+    for _, e in pairs(WAB._state.enemies or {}) do
+        if e.guid == guid then target = e; break end
+    end
+    if not target then return 0 end
+    local out = ns.StrategyEngine:KillProb(target, WAB._state)
+    return out and out.prob or 0
+end
+
+function API.GetKillProbBreakdown(guid)
+    if not (ns.StrategyEngine and ns.StrategyEngine.KillProb and WAB._state) then return {} end
+    local target
+    for _, e in pairs(WAB._state.enemies or {}) do
+        if e.guid == guid then target = e; break end
+    end
+    if not target then return {} end
+    local out = ns.StrategyEngine:KillProb(target, WAB._state)
+    return out and out.components or {}
+end
+
 -- ----- Opponent profile (M9 #63) -----
 -- Computes the signature from the current live state and returns the
 -- corresponding profile (creating a fresh one in SavedVariables if this

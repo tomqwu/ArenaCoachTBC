@@ -96,6 +96,26 @@ H.it(g, "GetChain / GetChainId / GetChainExpectedProb expose chain selection", f
     H.assertNotNil(API.GetChain())
 end)
 
+H.it(g, "GetKillProb + GetKillProbBreakdown surface the kill model (M11)", function()
+    H.load("StrategyEngine.lua")
+    WAB:Publish(sampleRec, {
+        enemies = {
+            x = { guid = "guid-priest", class = "PRIEST", roleGuess = "HEALER",
+                  alive = true, healthPct = 30, importantBuffs = {}, hasTrinket = false },
+        },
+        observations = {},
+    })
+    local p = API.GetKillProb("guid-priest")
+    H.assertTrue(p > 0, "kill prob should be > 0 for a low-HP trinket-down healer")
+    local b = API.GetKillProbBreakdown("guid-priest")
+    H.assertNotNil(b.hp)
+end)
+
+H.it(g, "GetKillProb returns 0 for unknown GUID", function()
+    H.load("StrategyEngine.lua")
+    H.assertEq(API.GetKillProb("nonexistent"), 0)
+end)
+
 H.it(g, "GetOpponentProfile + GetOpponentSignature + GetTendencyMean surface the profile (M9)", function()
     H.load("OpponentProfile.lua")
     -- Restore DB and pre-seed with a known profile.
