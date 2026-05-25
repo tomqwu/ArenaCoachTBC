@@ -635,6 +635,7 @@ local function helpText()
     chatPrint(Core.L("HELP_TRACE"))
     chatPrint(Core.L("HELP_RECORD"))
     chatPrint(Core.L("HELP_BUGREPORT"))
+    chatPrint(Core.L("HELP_WHATIF"))
     chatPrint(Core.L("HELP_HELP"))
 end
 
@@ -684,9 +685,147 @@ local function handleSlash(input)
         Core:HandleRecord(rest)
     elseif cmd == "bugreport" then
         Core:RunBugReport()
+    elseif cmd == "whatif" then
+        Core:RunWhatIf(rest)
     else
         chatPrint(Core.L("DEBUG_UNKNOWN_CMD"))
     end
+end
+
+-- M10 #68: replay db.record.events through the engine offline and
+-- return a sequence of (mode, comp, chainId) summaries — one per
+-- evaluated event. `modifier` is an optional function (events,index)
+-- -> events that mutates the event list before replay; absent
+-- means baseline. Pure: builds a synthetic state, doesn't touch
+-- the live one. Headless tests call this directly.
+function Core:ReplayRecord(events, modifier)
+    if type(events) ~= "table" then return {} end
+    local replay = events
+    if type(modifier) == "function" then replay = modifier(events) end
+
+    local SE = ns.StrategyEngine
+    local CT = ns.CooldownTracker
+    local DR = ns.DRTracker
+    local S  = ns.Spells
+    if not (SE and CT and DR) then return {} end
+
+    -- Snapshot live trackers so the replay's cooldown / DR observations
+    -- don't bleed into the in-game state. We restore at the end.
+    local savedCT = CT._cooldowns; CT._cooldowns = {}
+    local savedDR = DR._state;     DR._state     = {}
+
+    local state = {
+        enemies        = {},
+        friendlies     = {},
+        observations   = {},
+        enemyClassList = {},
+        combatPhase    = "ACTIVE",
+        bracket        = 5,
+        config         = { strategy = {} },
+    }
+    local function ensureEnemy(guid)
+        if not guid then return nil end
+        if not state.enemies[guid] then
+            state.enemies[guid] = {
+                unit = guid, guid = guid, class = "WARRIOR",
+                alive = true, healthPct = 100, hasTrinket = true,
+                importantBuffs = {}, importantDebuffs = {}, observedSpells = {},
+            }
+        end
+        return state.enemies[guid]
+    end
+
+    local out = {}
+    for i, ev in ipairs(replay) do
+        if CT.OnCombatLogEvent then CT:OnCombatLogEvent(ev.sub, ev.src, ev.dst, ev.spell) end
+        if S and S.CATEGORIES and S.CATEGORIES[ev.spell] and DR.OnCC then
+            DR:OnCC(ev.sub, ev.dst, ev.spell, S.CATEGORIES[ev.spell], ev.ts)
+        end
+        ensureEnemy(ev.src)
+        local list = {}
+        for _, e in pairs(state.enemies) do table.insert(list, e.class) end
+        state.enemyClassList = list
+        local rec = SE:Evaluate(state)
+        if rec then
+            table.insert(out, {
+                index   = i,
+                ts      = ev.ts,
+                mode    = rec.mode,
+                comp    = rec.comp,
+                chainId = rec.chain and rec.chain.id or nil,
+            })
+        end
+    end
+
+    CT._cooldowns = savedCT
+    DR._state     = savedDR
+    return out
+end
+
+-- Diff two replay sequences. Returns the count of differing rows and
+-- a small array of sample diffs (up to 5).
+function Core:DiffReplays(a, b)
+    local diffs, samples = 0, {}
+    local n = math.max(#a, #b)
+    for i = 1, n do
+        local ra, rb = a[i], b[i]
+        local sameMode  = ra and rb and ra.mode    == rb.mode
+        local sameComp  = ra and rb and ra.comp    == rb.comp
+        local sameChain = ra and rb and ra.chainId == rb.chainId
+        if not (sameMode and sameComp and sameChain) then
+            diffs = diffs + 1
+            if #samples < 5 then
+                table.insert(samples, {
+                    index = i,
+                    base  = ra and string.format("%s/%s/%s",
+                        tostring(ra.mode), tostring(ra.comp), tostring(ra.chainId)) or "<nil>",
+                    cf    = rb and string.format("%s/%s/%s",
+                        tostring(rb.mode), tostring(rb.comp), tostring(rb.chainId)) or "<nil>",
+                })
+            end
+        end
+    end
+    return diffs, samples
+end
+
+function Core:RunWhatIf(rest)
+    local db = _G.ArenaCoachTBCDB
+    if not (db and db.record and db.record.events and #db.record.events > 0) then
+        chatPrint("/acc whatif: no recording loaded. Run /acc record on first.")
+        return
+    end
+    local arg, restArg = (rest or ""):match("^(%S*)%s*(.*)$")
+    arg = (arg or ""):lower()
+    if arg == "" or arg == "help" then
+        chatPrint("/acc whatif help            - show this help")
+        chatPrint("/acc whatif summary         - describe the loaded recording")
+        chatPrint("/acc whatif skip <i>        - replay with event #i skipped, print divergence")
+        return
+    end
+    if arg == "summary" then
+        local n = #db.record.events
+        chatPrint(string.format("/acc whatif: %d events loaded, first ts=%s last ts=%s",
+            n, tostring(db.record.events[1].ts), tostring(db.record.events[n].ts)))
+        return
+    end
+    if arg == "skip" then
+        local idx = tonumber(restArg)
+        if not idx then chatPrint("/acc whatif skip <i>: i must be a number"); return end
+        local baseline = self:ReplayRecord(db.record.events)
+        local cf = self:ReplayRecord(db.record.events, function(ev)
+            local copy = {}
+            for i, e in ipairs(ev) do if i ~= idx then table.insert(copy, e) end end
+            return copy
+        end)
+        local diffs, samples = self:DiffReplays(baseline, cf)
+        chatPrint(string.format("/acc whatif skip %d: %d / %d recs diverged",
+            idx, diffs, math.max(#baseline, #cf)))
+        for _, s in ipairs(samples) do
+            chatPrint(string.format("  [%d] baseline=%s cf=%s", s.index, s.base, s.cf))
+        end
+        return
+    end
+    chatPrint("/acc whatif: unknown subcommand '" .. arg .. "', try /acc whatif help")
 end
 
 function Core:RunBugReport()

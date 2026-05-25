@@ -837,3 +837,89 @@ H.it(g, "/acc record bogus prints usage", function()
     end
     H.assertTrue(found)
 end)
+
+-- =================================================================
+-- M10 #68: /acc whatif counterfactual replay
+-- =================================================================
+
+H.it(g, "ReplayRecord runs events through engine without polluting trackers", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    local events = {
+        { ts = 0,   sub = "SPELL_CAST_SUCCESS", src = "g1", dst = "g2", spell = H.ns.Spells.KIDNEY_SHOT },
+        { ts = 1.5, sub = "SPELL_AURA_APPLIED", src = "g1", dst = "g2", spell = H.ns.Spells.KIDNEY_SHOT },
+    }
+    -- Snapshot live tracker state before / after — must be unchanged.
+    local ctBefore = next(H.ns.CooldownTracker._cooldowns or {})
+    local drBefore = next(H.ns.DRTracker._state or {})
+    local out = Core:ReplayRecord(events)
+    H.assertTrue(#out >= 1, "expected at least one rec snapshot from replay")
+    H.assertEq(next(H.ns.CooldownTracker._cooldowns or {}), ctBefore,
+        "ReplayRecord must not leak into live CooldownTracker")
+    H.assertEq(next(H.ns.DRTracker._state or {}), drBefore,
+        "ReplayRecord must not leak into live DRTracker")
+end)
+
+H.it(g, "DiffReplays returns 0 differences for identical sequences", function()
+    local a = { { mode = "KILL", comp = "RMP", chainId = "x" } }
+    local b = { { mode = "KILL", comp = "RMP", chainId = "x" } }
+    local n, samples = Core:DiffReplays(a, b)
+    H.assertEq(n, 0)
+    H.assertEq(#samples, 0)
+end)
+
+H.it(g, "DiffReplays reports differences with samples", function()
+    local a = { { mode = "KILL", comp = "RMP", chainId = "x" } }
+    local b = { { mode = "SWAP", comp = "RMP", chainId = "x" } }
+    local n, samples = Core:DiffReplays(a, b)
+    H.assertEq(n, 1)
+    H.assertEq(#samples, 1)
+    H.assertTrue(samples[1].base:find("KILL") ~= nil)
+    H.assertTrue(samples[1].cf:find("SWAP") ~= nil)
+end)
+
+H.it(g, "/acc whatif with no record reports 'no recording loaded'", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    startCapture()
+    SlashCmdList["ARENACOACH"]("whatif")
+    stopCapture()
+    local found = false
+    for _, ln in ipairs(captured) do
+        if ln:find("no recording loaded") then found = true end
+    end
+    H.assertTrue(found, "expected 'no recording loaded' message")
+end)
+
+H.it(g, "/acc whatif help prints usage when record is loaded", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    _G.ArenaCoachTBCDB.record.events = {
+        { ts = 0, sub = "SPELL_CAST_SUCCESS", src = "g1", dst = "g2", spell = H.ns.Spells.KIDNEY_SHOT },
+    }
+    startCapture()
+    SlashCmdList["ARENACOACH"]("whatif help")
+    stopCapture()
+    local sawSkip = false
+    for _, ln in ipairs(captured) do
+        if ln:find("whatif skip") then sawSkip = true end
+    end
+    H.assertTrue(sawSkip, "expected /acc whatif skip in help text")
+end)
+
+H.it(g, "/acc whatif skip <i> prints divergence summary", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    _G.ArenaCoachTBCDB.record.events = {
+        { ts = 0, sub = "SPELL_CAST_SUCCESS", src = "g1", dst = "g2", spell = H.ns.Spells.KIDNEY_SHOT },
+        { ts = 2, sub = "SPELL_CAST_SUCCESS", src = "g2", dst = "g1", spell = H.ns.Spells.HAMMER_OF_JUSTICE },
+    }
+    startCapture()
+    SlashCmdList["ARENACOACH"]("whatif skip 1")
+    stopCapture()
+    local found = false
+    for _, ln in ipairs(captured) do
+        if ln:find("recs diverged") then found = true end
+    end
+    H.assertTrue(found, "expected divergence output: " .. table.concat(captured, "|"))
+end)
