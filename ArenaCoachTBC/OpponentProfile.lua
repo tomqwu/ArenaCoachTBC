@@ -147,3 +147,76 @@ function OP:SampleCount(profile, tendency)
     local rec = profile.tendencies[tendency]
     return (rec and rec.observations) or 0
 end
+
+-- ============================================================
+-- M9 #64: Bayesian update variants + Estimate with CI + fallback
+-- ============================================================
+
+-- Threshold below which the profile is considered "not opinionated
+-- enough" — Estimate fallback callers use the comp default until we
+-- see at least this many observations. Roadmap target is ~20 for
+-- "opinionated"; 5 is the gate where we stop emitting "I don't know"
+-- and start trusting the prior with the sample we have.
+OP.MIN_SAMPLES_FOR_OPINION = 5
+
+-- Direct profile-level update. Equivalent to OP:Update with the
+-- signature already resolved, used by code paths that already hold
+-- a profile reference (e.g. inside a tight Evaluate loop where we
+-- don't want to re-hash the signature).
+function OP:UpdateBinary(profile, key, observed)
+    if not profile or not profile.tendencies then return nil end
+    local rec = profile.tendencies[key]
+    if not rec then return nil end
+    if observed == true then
+        rec.alpha = (rec.alpha or 1) + 1
+    elseif observed == false then
+        rec.beta = (rec.beta or 1) + 1
+    else
+        return nil
+    end
+    rec.observations = (rec.observations or 0) + 1
+    return rec
+end
+
+-- Approximate 95% CI on a Beta(α, β) distribution. We use a normal
+-- approximation: mean ± 1.96 * sqrt(variance), clamped to [0, 1].
+-- For α + β small, this is a rough overestimate of the true CI, but
+-- it's deterministic, cheap, and good enough to drive callout
+-- gating. (Anyone consuming the CI should also consult `n` and
+-- treat n < 5 as "no signal yet".)
+local function betaCI(alpha, beta)
+    local n = alpha + beta
+    if n <= 0 then return 0.5, 0.0, 1.0 end
+    local mean = alpha / n
+    -- Beta variance: α*β / ((α+β)^2 * (α+β+1))
+    local variance = (alpha * beta) / (n * n * (n + 1))
+    local sd = math.sqrt(variance)
+    local half = 1.96 * sd
+    local low  = math.max(0.0, mean - half)
+    local high = math.min(1.0, mean + half)
+    return mean, low, high
+end
+
+-- Returns { mean, low, high, n } for a tendency. n is the observation
+-- count, NOT α+β (the prior bias counts separately). When the
+-- tendency has not been observed, mean is 0.5 and CI is [0, 1].
+function OP:Estimate(profile, key)
+    if not profile or not profile.tendencies then
+        return { mean = 0.5, low = 0.0, high = 1.0, n = 0 }
+    end
+    local rec = profile.tendencies[key]
+    if not rec then
+        return { mean = 0.5, low = 0.0, high = 1.0, n = 0 }
+    end
+    local mean, low, high = betaCI(rec.alpha or 1, rec.beta or 1)
+    return { mean = mean, low = low, high = high, n = rec.observations or 0 }
+end
+
+-- Returns the comp default when the sample is too small (n <
+-- MIN_SAMPLES_FOR_OPINION), else the posterior mean. Drives the
+-- "fall back to comp default" gate from #65.
+function OP:EstimateOrDefault(profile, key, compDefault)
+    local est = self:Estimate(profile, key)
+    if est.n < self.MIN_SAMPLES_FOR_OPINION then return compDefault end
+    return est.mean
+end
