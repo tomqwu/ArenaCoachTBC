@@ -995,7 +995,189 @@ local function recToString(rec)
         tostring(rec.reason), rec.confidence or 0, tostring(rec.priority))
 end
 
-function Core:RunTestMode()
+-- M12 (post-release polish): scripted DBM-style UI walk-through.
+-- /acc test (default) walks the live UI through 7 beats over ~14 seconds:
+-- OPEN -> KILL -> burst-ready -> SWAP -> DEFEND -> profile-driven callout
+-- -> RESET. Each beat reuses the real UI:Apply path so the user sees
+-- mode colour flips, chain block changes, BURST_NOW pulse, screen flash
+-- on URGENT, and voice cues fire exactly as they would in a real match.
+-- /acc test print preserves the legacy chat-only summary.
+local DEMO_BEATS = {
+    {
+        delay = 0.0,
+        note  = "Pre-combat. RMP detected. Plan opener.",
+        rec = {
+            mode = "OPEN",
+            primaryTarget = "demo-priest", primaryTargetName = "Holyman", primaryTargetClass = "PRIEST",
+            secondaryTarget = "demo-mage", secondaryTargetName = "Frostbiter", secondaryTargetClass = "MAGE",
+            reason = "PRIEST [role_healer(25)] | RMP_DISC_3V3 spec-confirmed (1.00)",
+            callouts = { "CALL_HOJ_KILL", "CALL_GROUND_POLY", "CALL_TREMOR_FEAR" },
+            priority = "MEDIUM",
+            comp = "RMP_DISC_3V3", compLabel = "RMP (confirmed Disc Priest)",
+            compConfidence = 1.0, compSpecConfirmed = true,
+            burstAllowed = false, burstBlockedBy = "no_ms",
+            chain = {
+                id = "rmp_sap_into_kidney",
+                label = "Sap off-healer, kidney the target",
+                labelKey = "CHAIN_RMP_SAP_INTO_KIDNEY",
+                expectedProb = 0.62, expectedValue = 0.47, steps = 3,
+                links = {
+                    { spellID = 11297, category = "INCAPACITATE" },
+                    { spellID = 28272, category = "INCAPACITATE" },
+                    { spellID = 8643,  category = "STUN" },
+                },
+            },
+        },
+    },
+    {
+        delay = 2.0,
+        note  = "Engaged. Mode flipped to KILL — note the red colour.",
+        rec = {
+            mode = "KILL",
+            primaryTarget = "demo-priest", primaryTargetName = "Holyman", primaryTargetClass = "PRIEST",
+            secondaryTarget = "demo-mage", secondaryTargetName = "Frostbiter", secondaryTargetClass = "MAGE",
+            reason = "PRIEST [health_below_50(30), trinket_down(20), role_healer(25)] | RMP_DISC_3V3 spec-confirmed (1.00)",
+            callouts = { "CALL_HOJ_KILL", "CALL_TREMOR_FEAR", "CALL_GROUND_POLY" },
+            priority = "HIGH",
+            comp = "RMP_DISC_3V3", compLabel = "RMP (confirmed Disc Priest)",
+            compConfidence = 1.0, compSpecConfirmed = true,
+            burstAllowed = false, burstBlockedBy = "no_ms",
+            chain = {
+                id = "rmp_sap_into_kidney",
+                label = "Sap off-healer, kidney the target",
+                labelKey = "CHAIN_RMP_SAP_INTO_KIDNEY",
+                expectedProb = 0.71, expectedValue = 0.55, steps = 3,
+                links = {
+                    { spellID = 11297, category = "INCAPACITATE" },
+                    { spellID = 28272, category = "INCAPACITATE" },
+                    { spellID = 8643,  category = "STUN" },
+                },
+            },
+        },
+    },
+    {
+        delay = 4.0,
+        note  = "Every burst gate passed — BURST_NOW callout fires.",
+        rec = {
+            mode = "KILL",
+            primaryTarget = "demo-priest", primaryTargetName = "Holyman", primaryTargetClass = "PRIEST",
+            reason = "PRIEST [health_below_50(30), trinket_down(20), role_healer(25), ms_active(25)] | RMP_DISC_3V3 spec-confirmed (1.00)",
+            callouts = { "BURST_NOW", "CALL_HOJ_KILL", "CALL_TREMOR_FEAR" },
+            priority = "HIGH",
+            comp = "RMP_DISC_3V3", compLabel = "RMP (confirmed Disc Priest)",
+            compConfidence = 1.0, compSpecConfirmed = true,
+            burstAllowed = true, burstBlockedBy = nil,
+        },
+    },
+    {
+        delay = 6.0,
+        note  = "Priest trinketed + Pain Sup popped. SWAP to mage.",
+        rec = {
+            mode = "SWAP",
+            primaryTarget = "demo-mage", primaryTargetName = "Frostbiter", primaryTargetClass = "MAGE",
+            secondaryTarget = "demo-priest", secondaryTargetName = "Holyman", secondaryTargetClass = "PRIEST",
+            reason = "MAGE [role_cloth_dps(15), trinket_down(20)] | RMP_DISC_3V3 spec-confirmed (0.85)",
+            callouts = { "CALL_GROUND_POLY", "CALL_DISP_FROST", "CALL_PURGE" },
+            priority = "HIGH",
+            comp = "RMP_DISC_3V3", compLabel = "RMP (confirmed Disc Priest)",
+            compConfidence = 1.0, compSpecConfirmed = true,
+            burstAllowed = false, burstBlockedBy = "target_immune",
+        },
+    },
+    {
+        delay = 8.0,
+        note  = "Healer being trained — DEFEND (blue + screen flash if alerts enabled).",
+        rec = {
+            mode = "DEFEND",
+            primaryTarget = nil, primaryTargetName = nil, primaryTargetClass = nil,
+            reason = "defensive: trained | RMP_DISC_3V3 spec-confirmed (1.00)",
+            callouts = { "CALL_PAIN_SUP_READY", "CALL_BOP_READY", "CALL_PEEL_DRUID" },
+            priority = "URGENT",
+            comp = "RMP_DISC_3V3", compLabel = "RMP (confirmed Disc Priest)",
+            compConfidence = 1.0, compSpecConfirmed = true,
+            burstAllowed = false, burstBlockedBy = "incoming_pressure",
+        },
+    },
+    {
+        delay = 10.0,
+        note  = "Profile-driven callout: they trinket Fear, save Tremor for HoJ.",
+        rec = {
+            mode = "KILL",
+            primaryTarget = "demo-priest", primaryTargetName = "Holyman", primaryTargetClass = "PRIEST",
+            reason = "PRIEST [health_below_50(30), role_healer(25)] | RMP_DISC_3V3 spec-confirmed (1.00)",
+            callouts = { "CALL_SAVE_TREMOR_HOJ", "CALL_HOJ_KILL", "CALL_GROUND_POLY" },
+            priority = "HIGH",
+            comp = "RMP_DISC_3V3", compLabel = "RMP (confirmed Disc Priest)",
+            compConfidence = 1.0, compSpecConfirmed = true,
+            profileContrib = "trinketsFear=0.91",
+            opponentSignature = "MAGE_PRIEST_ROGUE#1834729871",
+        },
+    },
+    {
+        delay = 12.0,
+        note  = "Match over. Frame returns to baseline.",
+        rec = {
+            mode = "RESET",
+            reason = "reset / no clear target",
+            callouts = {},
+            priority = "LOW",
+        },
+    },
+}
+
+function Core:RunTestMode(rest)
+    rest = (rest or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
+    if rest == "print" then
+        return Core:_RunTestPrintMode()
+    end
+    Core:_RunTestDemoMode()
+end
+
+-- DBM-style scripted walk-through: force the frame visible, step through
+-- DEMO_BEATS via C_Timer, restore visibility at the end.
+function Core:_RunTestDemoMode()
+    if not ns.UI then chatPrint("UI not loaded"); return end
+    if ns.UI.CreateFrame and not ns.UI.frame then ns.UI:CreateFrame() end
+    if not ns.UI.frame then chatPrint(Core.L("TEST_DEMO_NO_UI") or "demo needs a live UI"); return end
+
+    local wasShown = (ns.UI.frame.IsShown and ns.UI.frame:IsShown()) or false
+    if not wasShown and ns.UI.Show then ns.UI:Show() end
+
+    chatPrint(Core.L("TEST_DEMO_START") or "|cffc8a86b[ACC]|r demo starting — 14s RMP 3v3 walk-through")
+
+    local total = #DEMO_BEATS
+    for i, beat in ipairs(DEMO_BEATS) do
+        local applyBeat = function()
+            if ns.UI and ns.UI.Apply then ns.UI:Apply(beat.rec) end
+            if ns.WeakAuraBridge and ns.WeakAuraBridge.Publish then
+                ns.WeakAuraBridge:Publish(beat.rec, Core.state)
+            end
+            if beat.note then
+                chatPrint(string.format("|cff8b7548[ACC %d/%d]|r %s", i, total, beat.note))
+            end
+        end
+        if type(C_Timer) == "table" and type(C_Timer.After) == "function" and beat.delay > 0 then
+            C_Timer.After(beat.delay, applyBeat)
+        else
+            applyBeat()
+        end
+    end
+
+    -- Restore visibility 2s after the last beat
+    local endDelay = (DEMO_BEATS[total] and DEMO_BEATS[total].delay or 0) + 2
+    local restore = function()
+        if not wasShown and ns.UI.Hide then ns.UI:Hide() end
+        chatPrint(Core.L("TEST_DEMO_END") or "|cffc8a86b[ACC]|r demo complete · /acc test print for the chat-only version")
+    end
+    if type(C_Timer) == "table" and type(C_Timer.After) == "function" then
+        C_Timer.After(endDelay, restore)
+    else
+        restore()
+    end
+end
+
+-- Legacy chat-only behaviour, kept under /acc test print.
+function Core:_RunTestPrintMode()
     local Strategies = ns.Strategies
     local SE = ns.StrategyEngine
     if not Strategies or not SE then return end
