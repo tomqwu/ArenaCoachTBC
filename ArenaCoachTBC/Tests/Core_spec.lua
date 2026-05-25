@@ -1162,3 +1162,47 @@ H.it(g, "UpdateRating early-returns when pvpContext != 'arena'", function()
     Core.state.pvpContext = "arena"
     H.assertEq(Core:UpdateRating(), 2400, "arena context should pass through")
 end)
+
+-- =================================================================
+-- M15 (v2.1): duel detection
+-- =================================================================
+
+H.it(g, "duel start forces pvpContext = 'world' and seeds enemy from target", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    Core.state.enemies = {}
+    Core.state.pvpContext = "none"
+    -- Stub target API to return a hostile player
+    _G.UnitExists  = function(u) return u == "target" end
+    _G.UnitIsPlayer = function(u) return u == "target" end
+    _G.UnitGUID    = function(u) return u == "target" and "g-dueler" or nil end
+    _G.UnitName    = function(u) return u == "target" and "Dueler" or nil end
+    _G.UnitClass   = function(u) return u == "target" and "Rogue", "ROGUE" or nil, nil end
+    _G.UnitHealth  = function() return 10000 end
+    _G.UnitHealthMax = function() return 10000 end
+    _G.UnitPower   = function() return 0 end
+    _G.UnitPowerMax = function() return 0 end
+    _G.UnitIsDeadOrGhost = function() return false end
+    H._gameTime = 1000
+    EB:Dispatch("DUEL_REQUESTED")
+    H.assertEq(Core.state.pvpContext, "world")
+    H.assertNotNil(Core.state.enemies["g-dueler"])
+    H.assertEq(Core.state.enemies["g-dueler"].name, "Dueler")
+end)
+
+H.it(g, "duel end clears recent hostile + re-detects context", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    Core.state.pvpContext = "world"
+    Core._lastWorldHostileTs = 1000
+    H._gameTime = 2000
+    -- Stub APIs so DetectPvPContext returns "none"
+    _G.IsActiveBattlefieldArena = function() return false end
+    _G.GetInstanceInfo          = function() return "Stormwind", "none" end
+    _G.UnitIsPVP                = function() return false end
+    EB:Dispatch("DUEL_FINISHED")
+    H.assertEq(Core._lastWorldHostileTs, 0,
+        "duel end should clear last hostile timestamp")
+    H.assertEq(Core.state.pvpContext, "none",
+        "duel end should re-detect to current context")
+end)

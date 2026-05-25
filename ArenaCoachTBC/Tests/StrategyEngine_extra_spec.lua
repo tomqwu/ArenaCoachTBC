@@ -833,3 +833,69 @@ H.it(g, "Arena mode is unaffected by BG-mode logic (regression)", function()
             "bg_flag_carrier must not contribute in arena context")
     end
 end)
+
+-- =================================================================
+-- M15 (v2.1): World PvP mode
+-- =================================================================
+
+H.it(g, "World mode: PRE phase skips OPEN, goes straight to KILL when target alive", function()
+    local state = SE:BuildTestState({"WARRIOR"})
+    state.combatPhase = "PRE"
+    state.pvpContext  = "world"
+    local rec = SE:Evaluate(state)
+    -- Should be KILL or RESET, never OPEN (no arena planning phase)
+    H.assertTrue(rec.mode ~= "OPEN", "world context must not emit OPEN; got " .. rec.mode)
+end)
+
+H.it(g, "World mode: SWAP suppressed even when score gap is huge", function()
+    local state = SE:BuildTestState({"PRIEST","MAGE"})
+    state.combatPhase = "ACTIVE"
+    state.pvpContext  = "world"
+    local priest, mage
+    for _, e in pairs(state.enemies) do
+        if e.class == "PRIEST" then priest = e
+        elseif e.class == "MAGE"   then mage   = e end
+    end
+    mage.hasTrinket = false
+    mage.healthPct  = 15
+    state.lastPrimaryGUID = priest.guid
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.mode, "KILL",
+        "world mode should not emit SWAP — single-target focus")
+end)
+
+H.it(g, "World mode: comp identification is skipped (no rec.comp)", function()
+    local state = SE:BuildTestState({"ROGUE","MAGE","PRIEST"})
+    state.combatPhase = "ACTIVE"
+    state.pvpContext  = "world"
+    local rec = SE:Evaluate(state)
+    H.assertNil(rec.comp, "world context should not match arena comps")
+end)
+
+H.it(g, "Arena mode: comp identification still works (regression)", function()
+    local state = SE:BuildTestState({"ROGUE","MAGE","PRIEST"})
+    state.combatPhase = "ACTIVE"
+    state.pvpContext  = "arena"
+    state.bracket     = 3
+    local rec = SE:Evaluate(state)
+    H.assertNotNil(rec.comp,
+        "arena context must still produce a comp match (regression check)")
+end)
+
+H.it(g, "World mode: DEFEND fires when player HP <30% via shouldDefend lowestHealer", function()
+    local state = SE:BuildTestState({"WARRIOR"})
+    state.combatPhase = "ACTIVE"
+    state.pvpContext  = "world"
+    -- Knock the only friendly (the "player") to low HP.
+    for _, f in pairs(state.friendlies) do f.healthPct = 22 end
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.mode, "DEFEND", "low player HP should trigger DEFEND in world")
+end)
+
+H.it(g, "BG mode: PRE phase also skips OPEN (same as world)", function()
+    local state = SE:BuildTestState({"WARRIOR"})
+    state.combatPhase = "PRE"
+    state.pvpContext  = "bg"
+    local rec = SE:Evaluate(state)
+    H.assertTrue(rec.mode ~= "OPEN", "bg context must not emit OPEN")
+end)

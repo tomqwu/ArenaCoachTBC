@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — M15 (v2.1 world PvP + duels)
+- **World PvP engine branch.** When `state.pvpContext == "world"`:
+  - `decideMode` skips OPEN (no arena planning phase) and skips SWAP (single-target focus, no team coordination)
+  - `Strategies:Identify` is bypassed (matched comp would be coincidence in a fixed-roster-less context)
+  - `shouldDefend`'s comp-based `triple_dps_pre` check is bypassed for the same reason
+  - DEFEND still fires when the player's HP drops below the aggression-tuned threshold (via existing `lowestHealer` path — in world the "lowest friendly healer" is just the player themselves)
+- **BG mode also skips OPEN** (same reasoning — no pre-combat planning in BG).
+- **Duel detection.** New event handlers in Core:
+  - `DUEL_REQUESTED` → forces `pvpContext = "world"`, stamps `Core._lastWorldHostileTs`, seeds an enemy entry from the current target via `_NonArenaCLEUStub` + `refreshUnit`. Triggers an immediate `Evaluate` so the frame populates as soon as the duel countdown starts.
+  - `DUEL_FINISHED` → clears the recent-hostile timestamp and re-runs `DetectPvPContext` to drop back to whatever context the player is in.
+- 8 new tests (6 in `StrategyEngine_extra_spec`, 2 in `Core_spec`): world PRE → no OPEN, world SWAP suppression, world skips comp ID, arena comp ID regression, world DEFEND on low HP, BG PRE → no OPEN, duel start populates target, duel end clears + re-detects.
+
 ### Added — M14 (v2.1 BG mode)
 - **BG scoring boosts.** Three new `SE.weights` entries active when `state.pvpContext == "bg"`:
   - `bg_flag_carrier = 200` — WSG flag aura (23333 Alliance / 23335 Horde) eclipses every other priority

@@ -479,12 +479,17 @@ local function shouldDefend(state)
     if obs.multipleBurstsDetected then return true, "multi_burst" end
     if obs.healerUnderPressure then return true, "trained" end
 
-    -- enemy comp = triple DPS, no clean opener
-    local Strategies = ns.Strategies
-    local comp = Strategies and (Strategies:Identify(state.enemyClassList or {}, state.enemies, state.bracket))
-    if comp and comp.defaultMode == "DEFEND" then
-        if (state.combatPhase or "PRE") == "PRE" then
-            return true, "triple_dps_pre"
+    -- enemy comp = triple DPS, no clean opener (arena-only —
+    -- M15 v2.1: skip Strategies:Identify for non-arena contexts where
+    -- comp matches would be coincidence, not signal)
+    local ctx = state.pvpContext
+    if ctx == nil or ctx == "arena" then
+        local Strategies = ns.Strategies
+        local comp = Strategies and (Strategies:Identify(state.enemyClassList or {}, state.enemies, state.bracket))
+        if comp and comp.defaultMode == "DEFEND" then
+            if (state.combatPhase or "PRE") == "PRE" then
+                return true, "triple_dps_pre"
+            end
         end
     end
     return false
@@ -660,13 +665,22 @@ local function decideMode(state, topTarget, secondTarget, comp)
     if defend then return "DEFEND" end
 
     local phase = state.combatPhase or "PRE"
-    if phase == "PRE" then
+    local ctx   = state.pvpContext
+    -- M15 (v2.1): world / BG don't have a meaningful "pre-combat
+    -- planning" phase — the engagement IS the start. Skip OPEN and
+    -- go straight to KILL when there's a target.
+    if phase == "PRE" and ctx ~= "world" and ctx ~= "bg" then
         if topTarget then return "OPEN" end
         return "RESET"
     end
 
     -- no living enemies with positive score -> reset
     if not topTarget then return "RESET" end
+
+    -- M15 (v2.1): in world PvP, suppress SWAP entirely — there's no
+    -- coordinated team to "swap target" with; the player just KILLs
+    -- whoever they're focused on. Skip the swap-threshold branch.
+    if ctx == "world" then return "KILL" end
 
     -- last call differs from this one -> swap
     if state.lastPrimaryGUID and topTarget.guid and state.lastPrimaryGUID ~= topTarget.guid then
@@ -726,10 +740,17 @@ function SE:Evaluate(state)
 
     local Strategies = ns.Strategies
     local comp, compConfidence = nil, 0.0
-    if Strategies then
+    -- M15 (v2.1): skip comp identification for non-arena/BG contexts.
+    -- World PvP and duels have no fixed roster — a matched comp would
+    -- be coincidence, not signal. BG keeps comp ID off for the same
+    -- reason (PUG rosters), though comp scoring weights still apply
+    -- when a true comp signature happens to align.
+    local ctx = state.pvpContext
+    local ENABLE_COMP_ID = (ctx == nil) or (ctx == "arena")
+    if Strategies and ENABLE_COMP_ID then
         comp, compConfidence = Strategies:Identify(classes, state.enemies, state.bracket)
     end
-    if Strategies and Strategies.ApplyOwnVariant and ownArchetype then
+    if Strategies and Strategies.ApplyOwnVariant and ownArchetype and comp then
         comp = Strategies:ApplyOwnVariant(comp, ownArchetype.id)
     end
 

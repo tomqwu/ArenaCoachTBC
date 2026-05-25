@@ -1411,6 +1411,41 @@ local function onZoneChange()
     Core:Evaluate()
 end
 
+-- M15 (v2.1): duel detection.
+-- DUEL_REQUESTED fires when someone right-clicks you with the duel UI.
+-- DUEL_INBOUND_CHALLENGE / DUEL_OUTBOUND_CHALLENGE_* and
+-- DUEL_FINISHED are the modern names; in TBC the events are
+-- DUEL_REQUESTED and DUEL_FINISHED. We treat an accepted duel as a
+-- world PvP engagement and force the context to "world" so the engine
+-- runs the world branch (KILL on target, DEFEND on low HP, no SWAP).
+--
+-- When the duel ends the next ZONE_CHANGED_NEW_AREA / PLAYER_REGEN_*
+-- event re-runs DetectPvPContext and the context naturally drops
+-- back to whatever the player is in.
+local function onDuelStart()
+    Core._lastWorldHostileTs = (type(GetTime) == "function") and GetTime() or 0
+    Core.state.pvpContext = "world"
+    if type(UnitExists) == "function" and UnitExists("target")
+       and type(UnitIsPlayer) == "function" and UnitIsPlayer("target") then
+        -- Seed an enemy entry for the target so the engine has data on tick 0.
+        local guid = (type(UnitGUID) == "function") and UnitGUID("target") or nil
+        if guid then
+            Core:_NonArenaCLEUStub(guid, UnitName and UnitName("target") or "Opponent")
+            local model = Core.state.enemies[guid]
+            if model then refreshUnit(model, "target") end
+        end
+    end
+    Core:Evaluate()
+end
+
+local function onDuelEnd()
+    -- DetectPvPContext will re-run via the next event; explicitly
+    -- clear the "recent hostile" so we drop to world_idle / none.
+    Core._lastWorldHostileTs = 0
+    Core:DetectPvPContext()
+    Core:Evaluate()
+end
+
 local function onGroupRosterUpdate()
     Core:RefreshFriendlies()
     Core:Evaluate()
@@ -1456,6 +1491,8 @@ function Core:Boot()
     EB:Subscribe("GROUP_ROSTER_UPDATE",   onGroupRosterUpdate)
     EB:Subscribe("UPDATE_BATTLEFIELD_STATUS", function() Core:UpdateBracket() end)
     EB:Subscribe("ZONE_CHANGED_NEW_AREA", onZoneChange)
+    EB:Subscribe("DUEL_REQUESTED", onDuelStart)
+    EB:Subscribe("DUEL_FINISHED",  onDuelEnd)
     EB:Subscribe("UNIT_AURA",             onUnitAura)
     EB:Subscribe("PLAYER_REGEN_DISABLED", onRegenDisabled)
     EB:Subscribe("PLAYER_REGEN_ENABLED",  onRegenEnabled)
