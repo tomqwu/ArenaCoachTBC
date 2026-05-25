@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-05-25
+
+**Eyes Up.** Two new peripheral-vision layers on top of the v2.1.6 HUD, so the engine's call reaches you even when your eyes are on the action — not on the frame.
+
+### Added
+- **Mode-coloured screen edge glow.** A pulsing band hugs the four screen edges, coloured to match the active recommendation (red KILL, orange SWAP, blue DEFEND, yellow OPEN). Pulse period 1.6s, alpha breathes between 0.18 and 0.42 so it stays visible but never dominates the viewport. RESET intentionally has no colour — between fights the glow goes dark instead of strobing for nothing. New `ArenaCoachTBC/ScreenEdgeGlow.lua` module. Toggle: `/acc glow on|off` (default on). Gated by PvP context — only renders in arena / BG / world PvP, never in idle world.
+- **Nameplate highlight for kill / swap targets.** The engine's primary target gets a red border on its nameplate; the swap candidate (when in SWAP mode) gets an orange border. Adds a child overlay frame to each affected nameplate so we coexist cleanly with Plater / KuiNameplates / TidyPlates (we never modify the native health bar / cast bar / name text). New `ArenaCoachTBC/Nameplate.lua` module. Toggle: `/acc nameplate on|off` (default on). Hook driven by the existing `NAME_PLATE_UNIT_ADDED` / `REMOVED` subscriptions; per-Apply ClearAll + reapply keeps state coherent through plate cycling.
+- **Two new slash commands**: `/acc glow [on|off]` and `/acc nameplate [on|off]`, with bare-toggle behaviour when no argument is passed.
+- **`db.alerts.edgeGlow`** and **`db.alerts.nameplate`** SavedVariable keys, both default `true`. Existing installs auto-merge on next login via the standard `DEFAULTS` merger.
+- **12 new tests** (`ScreenEdgeGlow_spec.lua`: 6 cases for colour table + SetMode/Hide round-trip; `Nameplate_spec.lua`: 6 cases for Apply / Highlight / ClearAll idempotence + overlay lifecycle). Test count 601 → 613.
+
+### Notes
+- Both new visual layers are arena/BG/world-gated — in idle world (no hostile context) the glow + nameplate paint are skipped to avoid being a constant visual distraction.
+- The base frame's `bigText` (v2.1.6) + audio cues (v2.1.6) + edge glow (v2.2.0) + nameplate (v2.2.0) together form the "Eyes Up" feature pack. Each layer is independently toggleable so users can pick the subset that doesn't conflict with their existing UI.
+
 ## [2.1.6] - 2026-05-25
 
 ### Fixed

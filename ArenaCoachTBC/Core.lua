@@ -24,7 +24,10 @@ local DEFAULTS = {
     language = "auto",
     ownComp  = "WAR_ENH_RET_RDUID_DISC",
     frame    = { point = "CENTER", x = 0, y = 120, scale = 1.0, compactMode = false },
-    alerts   = { sound = true, raidWarning = false, partyChat = false, screenFlash = true },
+    alerts   = { sound = true, raidWarning = false, partyChat = false, screenFlash = true,
+                 -- v2.2.0: visual layers on top of the base frame. Both
+                 -- default on; toggle via /acc glow off and /acc nameplate off.
+                 edgeGlow = true, nameplate = true },
     strategy = {
         aggression = "balanced",
         preferHealerOpen = true,
@@ -865,6 +868,24 @@ local function handleSlash(input)
         Core:RunBugReport()
     elseif cmd == "whatif" then
         Core:RunWhatIf(rest)
+    elseif cmd == "glow" then
+        -- v2.2.0: toggle the mode-coloured screen-edge glow.
+        db.alerts = db.alerts or {}
+        local arg = (rest or ""):lower()
+        if arg == "off" then db.alerts.edgeGlow = false
+        elseif arg == "on" then db.alerts.edgeGlow = true
+        else db.alerts.edgeGlow = not db.alerts.edgeGlow end
+        if not db.alerts.edgeGlow and ns.ScreenEdgeGlow then ns.ScreenEdgeGlow:Hide() end
+        chatPrint(string.format("edge glow: %s", db.alerts.edgeGlow and "on" or "off"))
+    elseif cmd == "nameplate" then
+        -- v2.2.0: toggle nameplate highlighting for kill / swap targets.
+        db.alerts = db.alerts or {}
+        local arg = (rest or ""):lower()
+        if arg == "off" then db.alerts.nameplate = false
+        elseif arg == "on" then db.alerts.nameplate = true
+        else db.alerts.nameplate = not db.alerts.nameplate end
+        if not db.alerts.nameplate and ns.Nameplate then ns.Nameplate:ClearAll() end
+        chatPrint(string.format("nameplate highlight: %s", db.alerts.nameplate and "on" or "off"))
     else
         chatPrint(Core.L("DEBUG_UNKNOWN_CMD"))
     end

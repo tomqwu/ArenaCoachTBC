@@ -409,6 +409,30 @@ function UI:Apply(recommendation)
         ns.Sounds:PlayMode(mode)
         self._lastModeForSound = mode
     end
+
+    -- v2.2.0: peripheral-vision visual layers. Both gate on PvP
+    -- context — outside actual combat (idle world) the constant glow /
+    -- nameplate paint would be distracting noise.
+    --
+    -- edgeGlow: pulsing mode-colored band around the screen edges.
+    -- nameplate: paint the kill / swap target's nameplate border so
+    -- the player can identify them in a fight with multiple enemies.
+    local alerts = ArenaCoachTBCDB and ArenaCoachTBCDB.alerts or nil
+    local inPvP  = inArena or (ctx == "bg") or (ctx == "world")
+    if ns.ScreenEdgeGlow then
+        if inPvP and alerts and alerts.edgeGlow then
+            ns.ScreenEdgeGlow:SetMode(mode)
+        else
+            ns.ScreenEdgeGlow:Hide()
+        end
+    end
+    if ns.Nameplate then
+        if inPvP and alerts and alerts.nameplate then
+            ns.Nameplate:Apply(recommendation)
+        else
+            ns.Nameplate:ClearAll()
+        end
+    end
 end
 
 -- Subtle screen-edge flash: an overlay frame that fades out

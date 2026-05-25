@@ -42,6 +42,8 @@ local specs = {
     "Benchmark_spec.lua",
     "Calibration_spec.lua",
     "Sounds_spec.lua",
+    "ScreenEdgeGlow_spec.lua",
+    "Nameplate_spec.lua",
     "WeakAuraBridge_spec.lua",
     "Locales_spec.lua",
     "StrategyEngine_extra_spec.lua",
