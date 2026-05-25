@@ -30,6 +30,7 @@ ns.locales.zhCN = {
     HELP_SIMULATE = "/acc simulate [key|stop] - 回放脚本化场景",
     HELP_TRACE    = "/acc trace [on|off|dump|clear|status] - 决策追踪日志",
     HELP_RECORD   = "/acc record [on|off|dump|clear|status] - 记录战斗日志用于离线回放",
+    HELP_WHATIF    = "/acc whatif <子命令>  - 重放录像并比较结果",
     HELP_BUGREPORT = "/acc bugreport       - 打印脱敏问题报告",
     BUGREPORT_HEADER = "问题报告内容：",
     HELP_HELP     = "/acc help             - 显示帮助",

@@ -31,6 +31,7 @@ ns.locales.enUS = {
     HELP_TRACE    = "/acc trace [on|off|dump|clear|status] - decision-trace log",
     HELP_RECORD   = "/acc record [on|off|dump|clear|status] - record CLEU log for offline replay",
     HELP_BUGREPORT = "/acc bugreport       - print sanitised payload for GitHub issues",
+    HELP_WHATIF   = "/acc whatif <sub>   - counterfactual replay of the current recording",
     BUGREPORT_HEADER = "Bug report payload:",
     HELP_HELP     = "/acc help             - show this help",
 
