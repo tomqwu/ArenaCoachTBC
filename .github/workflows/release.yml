@@ -100,6 +100,16 @@ jobs:
           ls -la .release/
           echo "path=$out" >> "$GITHUB_OUTPUT"
 
+      - name: Expose .git to the addon subdir (packager prereq)
+        if: steps.v.outputs.kind == 'release'
+        run: |
+          # The packager wants the topdir to be a git checkout (it reads
+          # tags + author info via `git`). Our addon files live in
+          # ArenaCoachTBC/ but .git is at the repo root. Symlink it into
+          # the subdir so `-t ArenaCoachTBC` works as a real topdir.
+          ln -s ../.git ArenaCoachTBC/.git
+          ls -la ArenaCoachTBC/.git
+
       - name: Run BigWigs packager (stable tag only - uploads to CurseForge / Wago)
         if: steps.v.outputs.kind == 'release'
         uses: BigWigsMods/packager@v2
