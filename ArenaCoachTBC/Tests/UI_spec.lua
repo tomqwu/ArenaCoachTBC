@@ -135,6 +135,21 @@ H.it(g, "UpdateIcons handles nil maps", function()
     UI:UpdateIcons(nil, nil)
 end)
 
+H.it(g, "v2.0.1: icon buttons carry spellID for locale-correct GameTooltip", function()
+    UI:CreateFrame()
+    local f = UI.frame
+    H.assertNotNil(f.friendlyIconMap)
+    H.assertNotNil(f.enemyIconMap)
+    -- Sample a known key — Mortal Strike's spellID is 30330.
+    local ms = f.friendlyIconMap.MORTAL_STRIKE
+    H.assertNotNil(ms, "MORTAL_STRIKE icon should exist")
+    H.assertEq(ms.spellID, 30330,
+        "icon must carry spellID so GameTooltip:SetSpellByID renders the localized tooltip")
+    local trink = f.enemyIconMap.PVP_TRINKET
+    H.assertNotNil(trink)
+    H.assertEq(trink.spellID, 42292)
+end)
+
 H.it(g, "Show/Hide are no-ops when frame missing", function()
     local saved = UI.frame
     UI.frame = nil
