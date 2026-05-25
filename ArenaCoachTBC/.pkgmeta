@@ -1,0 +1,7 @@
+package-as: ArenaCoachTBC
+
+enable-nolib-creation: no
+
+ignore:
+  - Tests
+  - .luacheckrc

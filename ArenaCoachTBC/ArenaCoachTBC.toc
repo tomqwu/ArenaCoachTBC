@@ -1,10 +1,10 @@
-## Interface: 20504
-## Interface-BCC: 20504
+## Interface: 20505
+## Interface-BCC: 20505
 ## Title: ArenaCoachTBC
-## Notes: Strategy coach for TBC Classic arena - dynamically adapts to your team comp (advice only, no automation)
-## Notes-zhCN: TBC怀旧服竞技场战术教练，自适应队伍阵容（仅提示，不自动施法）
+## Notes: Strategy coach for TBC Anniversary / Classic PvP - arena, BG, world (advice only, no automation)
+## Notes-zhCN: TBC怀旧服周年服PvP战术教练 - 竞技场、战场、野外（仅提示，不自动施法）
 ## Author: ACC Team
-## Version: 2.1.3
+## Version: 2.1.4
 ## SavedVariables: ArenaCoachTBCDB
 ## X-Category: PvP
 ## X-License: MIT

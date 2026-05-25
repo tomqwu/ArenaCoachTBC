@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.4] - 2026-05-25
+
+### Added
+- **TBC Anniversary client support.** `## Interface:` bumped from `20504` (BCC 2.5.4) to `20505` (Anniversary 2.5.5). Same `Interface-BCC` line keeps Burning Crusade Classic clients working — addon now loads cleanly on both the closed BCC era and the live Anniversary realms without an "out of date" warning. Title / Notes updated to advertise "Anniversary / Classic PvP — arena, BG, world" instead of the older "TBC Classic arena" framing.
+
+### Fixed
+- **Release workflow's BigWigs packager step no longer fails with `Could not find an addon TOC file`.** Cause: the addon TOC lives at `ArenaCoachTBC/ArenaCoachTBC.toc` but the packager defaults to looking for the TOC at the repo root. Passing `args: -t ArenaCoachTBC` to the action's `release.sh` sets the project topdir to the addon subdir, so the packager finds the TOC, reads the in-addon `.pkgmeta` (`ArenaCoachTBC/.pkgmeta`, new), and produces a clean zip. This unblocks CurseForge + Wago uploads once project IDs are wired up.
+- New `ArenaCoachTBC/.pkgmeta` declares `package-as: ArenaCoachTBC`, `enable-nolib-creation: no`, and ignores `Tests/` + `.luacheckrc`. The root `.pkgmeta` is now dead code (left in place to avoid breaking external tooling; will be removed in a later cut).
+
+### Notes
+- The CurseForge + Wago API tokens are configured as GitHub secrets (`CF_API_KEY`, `WAGO_API_TOKEN`), but **project IDs are still required** in the TOC (`## X-Curse-Project-ID:` / `## X-Wago-ID:`) before uploads can succeed. Create the CurseForge + Wago projects for ArenaCoachTBC and add the IDs to `ArenaCoachTBC.toc` to complete the publishing chain. Without IDs the packager will skip the upload step (the GitHub Release will still publish).
+
 ## [2.1.3] - 2026-05-25
 
 ### Fixed
