@@ -303,6 +303,16 @@ end
 -- Each component contributes additively in [0..1], summed and clamped.
 -- The breakdown is surfaced so /acc trace + WeakAuras can show the
 -- engine's "why we think we can kill" reasoning to the player.
+-- M12 #76: confidence calibration. Identity for v2.0 — the
+-- calibration audit in Tests/Calibration_spec confirms the engine
+-- tracks a synthetic ground-truth within 20% per bin. Future
+-- versions can replace this with a measured linear / piecewise
+-- correction without touching callers.
+function SE:CalibrateConfidence(rawConf)
+    if rawConf == nil then return nil end
+    return rawConf
+end
+
 SE.KILL_PROB_WEIGHTS = {
     hpDelta            = 1.0,   -- 1 - hp/100, weighted directly
     defensiveDown      = 0.10,  -- target has used trinket

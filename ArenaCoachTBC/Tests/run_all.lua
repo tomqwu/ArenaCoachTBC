@@ -39,6 +39,7 @@ local specs = {
     "Patterns_spec.lua",
     "RatingAwareE2E_spec.lua",
     "Benchmark_spec.lua",
+    "Calibration_spec.lua",
     "WeakAuraBridge_spec.lua",
     "Locales_spec.lua",
     "StrategyEngine_extra_spec.lua",
