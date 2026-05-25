@@ -1485,22 +1485,32 @@ function Core:RunTestMode(rest)
     if rest == "print" then
         return Core:_RunTestPrintMode()
     end
+    -- v2.6.0: slowdown multiplier so the demo is readable. Default
+    -- pacing was 2 s/beat (14 s total) — users reported they couldn't
+    -- finish reading one beat before the next replaced it. New default
+    -- is 1.5x (3 s/beat, 21 s total); `slow` keyword gives 2.5x for
+    -- screen-share / streaming demos.
+    local slowMult = 1.5
+    if rest:find("slow") then slowMult = 2.5; rest = (rest:gsub("slow", "")):gsub("^%s+", "") end
+    rest = rest:gsub("^%s+", ""):gsub("%s+$", "")
+
     if rest == "bg" then
-        return Core:_RunTestDemoMode(BG_DEMO_BEATS, "BG walk-through")
+        return Core:_RunTestDemoMode(BG_DEMO_BEATS, "BG walk-through", slowMult)
     end
     if rest == "world" then
-        return Core:_RunTestDemoMode(WORLD_DEMO_BEATS, "world PvP walk-through")
+        return Core:_RunTestDemoMode(WORLD_DEMO_BEATS, "world PvP walk-through", slowMult)
     end
-    Core:_RunTestDemoMode(DEMO_BEATS, "arena RMP 3v3 walk-through")
+    Core:_RunTestDemoMode(DEMO_BEATS, "arena RMP 3v3 walk-through", slowMult)
 end
 
 -- DBM-style scripted walk-through: force the frame visible, step through
 -- a beat list via C_Timer, restore visibility at the end.
 -- v2.1.1: accepts a beat list + label so we can run multiple scenarios
 -- (arena RMP / BG / world). Defaults preserve the v2.0.1 RMP demo.
-function Core:_RunTestDemoMode(beats, label)
+function Core:_RunTestDemoMode(beats, label, slowMult)
     beats = beats or DEMO_BEATS
     label = label or "RMP 3v3 walk-through"
+    slowMult = slowMult or 1.0   -- 1.0 = original 2 s/beat pacing
     if not ns.UI then chatPrint("UI not loaded"); return end
     if ns.UI.CreateFrame and not ns.UI.frame then ns.UI:CreateFrame() end
     if not ns.UI.frame then chatPrint(Core.L("TEST_DEMO_NO_UI") or "demo needs a live UI"); return end
@@ -1533,15 +1543,19 @@ function Core:_RunTestDemoMode(beats, label)
                 chatPrint(string.format("|cff8b7548[ACC %d/%d]|r %s", i, total, beat.note))
             end
         end
-        if type(C_Timer) == "table" and type(C_Timer.After) == "function" and beat.delay > 0 then
-            C_Timer.After(beat.delay, applyBeat)
+        -- v2.6.0: slowMult stretches the inter-beat spacing so the
+        -- user has time to read each one before the next replaces it.
+        local scaledDelay = beat.delay * slowMult
+        if type(C_Timer) == "table" and type(C_Timer.After) == "function" and scaledDelay > 0 then
+            C_Timer.After(scaledDelay, applyBeat)
         else
             applyBeat()
         end
     end
 
-    -- Restore visibility 2s after the last beat
-    local endDelay = (beats[total] and beats[total].delay or 0) + 2
+    -- Restore visibility a few seconds after the last beat (also scaled
+    -- so the user gets enough time on the final beat before it clears).
+    local endDelay = ((beats[total] and beats[total].delay or 0) * slowMult) + 3
     local restore = function()
         if not wasShown and ns.UI.Hide then ns.UI:Hide() end
         chatPrint(Core.L("TEST_DEMO_END") or "|cffc8a86b[ACC]|r demo complete · /acc test print for the chat-only version")

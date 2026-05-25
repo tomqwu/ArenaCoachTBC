@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.6.0] - 2026-05-25
+
+**True closure of the v1 roadmap, plus user-feedback polish.** Picks up the last 3 deferred-but-doable items (per-callout cooldown already shipped in v2.5.0, public wiki, LuaJIT CI matrix) plus two new user reports from v2.5.0 testing (demo too fast to read, HUD still feels cluttered).
+
+### Added
+- **LuaJIT 2.1 CI matrix** (M6). `.github/workflows/test.yml` gained a parallel `luajit-tests` job that runs the full suite under LuaJIT 2.1. Lua 5.1 stays the contractual primary (TBC client uses 5.1 exclusively). The LuaJIT job is `continue-on-error: true` so it reports without blocking PRs — its purpose is regression-catching, not gating. LuaJIT 2.0 not added; apt-get on Ubuntu LTS only ships 2.1.
+- **Per-comp strategy primer wiki** (M5). New `docs/strategies/` directory with `README.md` (structure + framework) and `rmp.md` (the starter primer — full game plan, kill conditions, per-archetype variations, callout list, common mistakes). Other primers (WMS / TSG / Jungle / RLS / DRAIN / BG cleave) are stubs ready for contributor PRs.
+- **Demo slowdown.** `/acc test` beats now space at 3 s instead of 2 s (1.5x multiplier; total demo 14 s → 21 s) so each beat is readable before the next replaces it. New `/acc test slow` keyword bumps to 2.5x (35 s total) for screen-share / streaming demos. End-of-demo restore delay also scales.
+
+### Changed
+- **HUD visual hierarchy polish.**
+  - `f.statsText` font bumped from `GameFontHighlight` (~12pt) to 18pt OUTLINE — readable at a glance, not just under careful inspection.
+  - Stats segments now colour-coded inline: **HP white** (neutral reference value), **kill prob green / amber / red** (≥60 / 30-59 / <30), **★ BURST READY in gold with a leading sigil** so the burst signal pops as the most attention-grabbing element on the line.
+  - Wider segment separator (`  ·  ` instead of `   `) and a leading sigil so segments breathe.
+  - Vertical spacing between mode label / stats / sub-text widened from -2px / -4px to -8px / -8px so the sections read as distinct rows.
+  - `f.subText:SetSpacing(3)` so multi-line text (verbose mode chain steps) doesn't crowd together.
+
+### Roadmap
+- Marked these items DONE on `ROADMAP.md`:
+  - Per-callout cooldown (was already shipped in v2.5.0, just unchecked)
+  - Public wiki (`docs/strategies/` covers this — README + starter primer; contributors add more)
+  - CI matrix LuaJIT 2.1 (added; 2.0 not available via apt)
+- The remaining unchecked items are the genuinely external-only ones: additional locales (need native speakers), cloud telemetry (principle conflict), dyslexia font (licensing), app icon/screenshots (design assets), web visualiser (separate project). These won't ship without external resources.
+
+### Notes
+- Tests 609 still passing. Locale parity 111/111. Bridge API + engine surface unchanged.
+- The v1 ROADMAP is now genuinely closed. The v2.x line is feature-complete pending external-resource items.
+
 ## [2.5.0] - 2026-05-25
 
 **Polish release — closes out the v2.x line.** Picks up the last three actionable items from the v1 roadmap that hadn't shipped yet: per-callout cooldown (M4), high-contrast accessibility skin (M4), and a tightened performance budget assertion (M6). ROADMAP.md updated to mark the remaining items as either shipped, deferred with explicit reasons (external dependencies — alternate Lua runtimes, native-speaker contributors, design assets, hosting infra), or permanently out of scope (cloud telemetry conflicts with operating principle #5).

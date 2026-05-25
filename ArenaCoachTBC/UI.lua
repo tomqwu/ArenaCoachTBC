@@ -73,18 +73,28 @@ function UI:CreateFrame()
     f.bigText:SetText(L("REASON_DEFAULT"))
 
     -- v2.1.6: target stats row (HP% + kill prob%) under the mode line.
-    -- Renders only when the rec has a primary target with measurable
-    -- health / kill probability; hidden otherwise so it doesn't clutter
-    -- DEFEND / RESET states.
+    -- v2.6.0: bumped from GameFontHighlight (~12pt) to 18pt outlined +
+    -- wider vertical spacing so the stats line is readable at a glance,
+    -- not just under careful inspection. UI:Apply colour-codes the
+    -- segments inline (HP white, kill prob graded, BURST READY gold).
     f.statsText = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    f.statsText:SetPoint("TOP", f.bigText, "BOTTOM", 0, -2)
+    f.statsText:SetPoint("TOP", f.bigText, "BOTTOM", 0, -8)
+    if f.statsText.SetFont then
+        local fontPath = (f.statsText.GetFont and select(1, f.statsText:GetFont()))
+            or "Fonts\\FRIZQT__.TTF"
+        pcall(f.statsText.SetFont, f.statsText, fontPath, 18, "OUTLINE")
+    end
     f.statsText:SetJustifyH("CENTER")
     f.statsText:SetWidth(340)
     f.statsText:SetText("")
 
-    -- Reason / callout text
+    -- Reason / callout text.
+    -- v2.6.0: wider line spacing + a touch larger so the subText doesn't
+    -- crowd the stats line above. SetSpacing adds vertical gap between
+    -- wrapped lines / explicit \n breaks.
     f.subText = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    f.subText:SetPoint("TOP", f.statsText, "BOTTOM", 0, -4)
+    f.subText:SetPoint("TOP", f.statsText, "BOTTOM", 0, -8)
+    if f.subText.SetSpacing then pcall(f.subText.SetSpacing, f.subText, 3) end
     f.subText:SetJustifyH("CENTER")
     f.subText:SetWidth(340)
     f.subText:SetText("")
@@ -196,22 +206,44 @@ function UI:Apply(recommendation)
 
     -- v2.1.6: target stats row. We surface what the engine knows about
     -- the primary kill target so a glance at the HUD tells the player
-    -- "how close is he to dead". Hidden on DEFEND / RESET (no target)
-    -- and when health / kill-prob data are unavailable.
+    -- "how close is he to dead".
+    --
+    -- v2.6.0: each segment is now colour-coded inline via WoW colour
+    -- escapes so the eye picks out the action-relevant value (high HP
+    -- = green/yellow/red kill prob, BURST READY = gold). Pre-v2.6 the
+    -- whole line was one yellow-ish blob that ran together.
     if f.statsText then
         local parts = {}
+        local function tag(hex, body)
+            return string.format("|cff%s%s|r", hex, body)
+        end
         if showTarget and recommendation.primaryTargetHp then
             local hp = math.floor((recommendation.primaryTargetHp * 100) + 0.5)
-            table.insert(parts, string.format("%s %d%%", L("UI_HP_LABEL"), hp))
+            -- HP rendered in pure white — the neutral reference value
+            -- the player calibrates the others against.
+            table.insert(parts, tag("ffffff",
+                string.format("%s %d%%", L("UI_HP_LABEL"), hp)))
         end
         if showTarget and recommendation.killProb then
             local kp = math.floor((recommendation.killProb * 100) + 0.5)
-            table.insert(parts, string.format("%s %d%%", L("UI_KILL_PROB_LABEL"), kp))
+            -- Graded green / yellow / red so kill prob's "is this worth
+            -- committing?" answer is pre-parsed for the eye.
+            local hex
+            if kp >= 60 then hex = "66ff66"       -- bright green
+            elseif kp >= 30 then hex = "ffd166"   -- amber
+            else hex = "ff6464" end                -- red
+            table.insert(parts, tag(hex,
+                string.format("%s %d%%", L("UI_KILL_PROB_LABEL"), kp)))
         end
         if recommendation.burstAllowed and mode == "KILL" then
-            table.insert(parts, L("UI_BURST_READY"))
+            -- Gold + a leading sigil so BURST READY pops as the most
+            -- attention-grabbing element on the line. (Pre-v2.6 it was
+            -- the same color as the surrounding text.)
+            table.insert(parts, tag("ffd24a", "★ " .. L("UI_BURST_READY")))
         end
-        f.statsText:SetText(table.concat(parts, "   "))
+        -- Wider " · " separator + leading/trailing space so segments
+        -- breathe instead of running together.
+        f.statsText:SetText(table.concat(parts, "  ·  "))
     end
 
     local subParts = {}

@@ -90,7 +90,7 @@ Three permanent swim-lanes run through every milestone:
 **Capability**
 - [x] User-configurable callout priorities — via `db.alerts.*` toggles + per-feature slash commands (`/acc glow`, `/acc nameplate`)
 - [x] `/acc off` / `/acc on` master switch (v2.2.5)
-- [ ] Per-callout cooldown — partially via mode-transition gating in `UI:Apply` (one cue per mode flip, not per evaluation)
+- [x] Per-callout cooldown (v2.5.0) — `UI:Apply` tracks last-shown-time per callout key, suppresses same callout for 3 s
 
 **Deferred**
 - Accessibility pass (high-contrast skin, dyslexia-friendly font) — not shipped.
@@ -108,7 +108,7 @@ Three permanent swim-lanes run through every milestone:
 - [x] Locale flow rewrite (`Locales/{enUS,zhCN}.lua`, 110 keys per locale, parity gate in CI)
 - [ ] Additional locales (deDE, frFR, esES, ruRU, koKR, zhTW) — deferred until contributor volunteers
 - [x] Locale CI gate (`tools/check_locales.lua`)
-- [ ] Public wiki — README sections cover the surface; no separate wiki
+- [x] Public wiki (v2.6.0) — `docs/strategies/` hosts per-comp strategy primers; starter RMP primer landed, structure documented so contributors can add more
 
 ---
 
@@ -125,7 +125,7 @@ Performance hardening landed across v2.0-v2.5 in pieces, not as a discrete M6 mi
 
 The items below are deferred not because of priority but because they require resources outside this repo (alternate Lua runtimes, native-speaker contributors, design assets, hosting infra). Re-open when one becomes available.
 
-- [ ] **CI matrix: LuaJIT 2.0 + 2.1**. Tests are written portably and should pass on LuaJIT — but verifying requires installing LuaJIT in the GitHub Actions runner and another `lua` wrapper command. Adds CI runtime; low payoff (TBC client uses Lua 5.1 exclusively).
+- [x] **CI matrix: LuaJIT 2.1** (v2.6.0) — `.github/workflows/test.yml` gained a parallel `luajit-tests` job that runs the full suite under LuaJIT 2.1. Set `continue-on-error: true` so it informs rather than blocks; Lua 5.1 remains the contractual primary (TBC client). LuaJIT 2.0 not added — apt-get only ships one LuaJIT version per Ubuntu LTS, currently 2.1.
 - [ ] **`debugprofilestop()` assertions**. The in-client profiler — only meaningful inside the WoW client, not headless tests. Substituted with `os.clock` in `Performance_spec.lua` (same intent, headless-compatible).
 - [ ] **Headless evaluation server (HTTP shim)** + **embedded-engine companion**. Web visualiser that consumes the pure engine modules outside WoW. Substantial separate project (Express/Fastify + a Lua-WASM build of the engine); never started.
 - [ ] **Interactive replay UI**. `tools/replay.lua` is single-pass and chat-output only; an interactive stepper would need its own front-end.
