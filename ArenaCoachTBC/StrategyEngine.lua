@@ -353,6 +353,71 @@ function SE:KillProb(target, state)
 end
 
 -- ============================================================
+-- M11 #73: Multi-reason burst gate
+-- ============================================================
+-- Each gate is independently auditable: { allowed, value, threshold,
+-- reason }. blockedBy is the first failing gate; allowed is false if
+-- any gate fails. The kill_prob threshold scales with aggression
+-- (rating-derived via M11 #71).
+SE.BURST_KILL_PROB_THRESHOLD = {
+    greedy   = 0.35,
+    balanced = 0.45,
+    safe     = 0.55,
+}
+
+function SE:BurstDecision(state, target, chain)
+    state = state or {}
+    local gates = {}
+    local agg = state.aggression
+        or (state.config and state.config.strategy and state.config.strategy.aggression)
+        or "balanced"
+
+    -- 1. kill_prob gate
+    local killProb = target and self:KillProb(target, state).prob or 0
+    local killThreshold = self.BURST_KILL_PROB_THRESHOLD[agg]
+        or self.BURST_KILL_PROB_THRESHOLD.balanced
+    gates.kill_prob = {
+        allowed   = killProb >= killThreshold,
+        value     = killProb,
+        threshold = killThreshold,
+    }
+
+    -- 2. chain_ready gate
+    local chainEP = chain and (chain.expectedProb or 0) or 0
+    gates.chain_ready = {
+        allowed = chain ~= nil and chainEP > 0,
+        value   = chainEP,
+    }
+
+    -- 3. incoming_pressure gate
+    local obs = state.observations or {}
+    local underPressure = obs.healerUnderPressure or obs.enemyBloodlustActive
+        or obs.multipleBurstsDetected
+    gates.incoming_pressure = {
+        allowed = not underPressure,
+        reason  = underPressure and "healer trained / enemy lust" or nil,
+    }
+
+    -- 4. rating_aware: an audit trail of the aggression label that
+    -- influenced the thresholds above. Always allowed; surfaces context.
+    gates.rating_aware = {
+        allowed    = true,
+        aggression = agg,
+        rating     = state.rating,
+    }
+
+    local order = { "kill_prob", "chain_ready", "incoming_pressure", "rating_aware" }
+    local allowed, blockedBy = true, nil
+    for _, key in ipairs(order) do
+        if gates[key].allowed == false then
+            allowed = false
+            if not blockedBy then blockedBy = key end
+        end
+    end
+    return { allowed = allowed, blockedBy = blockedBy, gates = gates }
+end
+
+-- ============================================================
 -- Defense / phase heuristics
 -- ============================================================
 local function shouldDefend(state)
@@ -747,6 +812,7 @@ function SE:Evaluate(state)
         opponentSignature = state.opponentSignature,
         aggression      = state.aggression,
         rating          = state.rating,
+        burstDecision   = (mode == "KILL") and self:BurstDecision(state, topTarget, pickedChain) or nil,
         ownArchetype    = ownArchetype and ownArchetype.id or nil,
         ownArchetypeLabel = ownArchetype and ownArchetype.label or nil,
         ownCapabilities = ownCaps,

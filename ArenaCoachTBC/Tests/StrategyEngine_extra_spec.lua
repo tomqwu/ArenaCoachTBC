@@ -507,6 +507,81 @@ H.it(g, "Evaluate exposes opponentSignature from state", function()
 end)
 
 -- =================================================================
+-- M11 #73: Multi-reason burst gate
+-- =================================================================
+
+H.it(g, "BurstDecision returns 4 named gates", function()
+    local state = SE:BuildTestState({"PRIEST","MAGE"})
+    state.combatPhase = "ACTIVE"
+    local target = {}
+    for _, e in pairs(state.enemies) do target = e; break end
+    local out = SE:BurstDecision(state, target, nil)
+    H.assertNotNil(out.gates.kill_prob)
+    H.assertNotNil(out.gates.chain_ready)
+    H.assertNotNil(out.gates.incoming_pressure)
+    H.assertNotNil(out.gates.rating_aware)
+end)
+
+H.it(g, "BurstDecision blocks on kill_prob when target is high HP", function()
+    local state = SE:BuildTestState({"PRIEST","MAGE"})
+    state.combatPhase = "ACTIVE"
+    state.aggression  = "balanced"
+    local target
+    for _, e in pairs(state.enemies) do
+        e.healthPct = 100; e.hasTrinket = true; target = e
+    end
+    local out = SE:BurstDecision(state, target, nil)
+    H.assertFalse(out.gates.kill_prob.allowed)
+    H.assertEq(out.blockedBy, "kill_prob")
+end)
+
+H.it(g, "BurstDecision kill_prob threshold scales with aggression", function()
+    local state = SE:BuildTestState({"PRIEST","MAGE"})
+    state.combatPhase = "ACTIVE"
+    local target = { healthPct = 50, hasTrinket = true, importantBuffs = {} }
+    state.aggression = "greedy"
+    H.assertTrue(SE:BurstDecision(state, target, nil).gates.kill_prob.threshold < 0.5)
+    state.aggression = "safe"
+    H.assertTrue(SE:BurstDecision(state, target, nil).gates.kill_prob.threshold > 0.5)
+end)
+
+H.it(g, "BurstDecision blocks on incoming_pressure when healer is under pressure", function()
+    local state = SE:BuildTestState({"PRIEST","MAGE"})
+    state.combatPhase = "ACTIVE"
+    state.aggression  = "balanced"
+    state.observations = { healerUnderPressure = true }
+    -- Even with a perfect target, the gate fires.
+    local target = { healthPct = 0, hasTrinket = false, importantBuffs = {} }
+    local out = SE:BurstDecision(state, target, { expectedProb = 0.9 })
+    H.assertFalse(out.gates.incoming_pressure.allowed)
+end)
+
+H.it(g, "BurstDecision allows when all gates pass", function()
+    local state = SE:BuildTestState({"PRIEST","MAGE"})
+    state.combatPhase = "ACTIVE"
+    state.aggression  = "greedy"
+    state.observations = {}
+    local target = { healthPct = 20, hasTrinket = false, importantBuffs = {}, guid = "g1" }
+    local out = SE:BurstDecision(state, target, { expectedProb = 0.8 })
+    H.assertTrue(out.gates.kill_prob.allowed)
+    H.assertTrue(out.gates.chain_ready.allowed)
+    H.assertTrue(out.gates.incoming_pressure.allowed)
+    H.assertTrue(out.allowed, "all gates passed; burst should be allowed")
+end)
+
+H.it(g, "Evaluate populates rec.burstDecision when mode is KILL", function()
+    local state = SE:BuildTestState({"WARLOCK","DRUID","WARRIOR"})
+    state.combatPhase = "ACTIVE"
+    state.config.strategy.callBurstOnlyWhenMSActive = false
+    state.config.strategy.requireWindfuryNearby     = false
+    local rec = SE:Evaluate(state)
+    if rec.mode == "KILL" then
+        H.assertNotNil(rec.burstDecision)
+        H.assertNotNil(rec.burstDecision.gates.kill_prob)
+    end
+end)
+
+-- =================================================================
 -- M11 #72: KillProb model
 -- =================================================================
 
