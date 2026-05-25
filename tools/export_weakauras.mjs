@@ -36,8 +36,15 @@ const FORMAT_VERSION = 2;
 const COMMON = {
   authorOptions: [],
   conditions: [],
-  config: {},
-  information: {},
+  // v2.2.4: `config` and `information` MUST be empty arrays (`[]`),
+  // not empty objects (`{}`). The parser encodes the two shapes
+  // differently — `{}` becomes a Lua hashmap, `[]` a Lua sequence —
+  // and modern WA's import validator rejects the hashmap shape so
+  // hard that the import preview dialog never even shows up.
+  // Confirmed by deep-diffing against a known-working Wago WA that
+  // had both fields as `[]`.
+  config: [],
+  information: [],
   load: {
     use_class: false,
     size: { multi: { arena: true } },
@@ -67,7 +74,7 @@ const COMMON = {
   // `semver` accompanies version=3 imports as a user-visible release
   // tag on the aura. Wago auto-sets this when publishing; we set it to
   // match the addon's release for traceability.
-  semver: '2.2.3',
+  semver: '2.2.4',
   wagoID: '',
   xOffset: 0,
   yOffset: 0,

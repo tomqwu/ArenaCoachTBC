@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.4] - 2026-05-25
+
+### Fixed
+- **WeakAura imports still failed in v2.2.3 — the real root cause.** Field-by-field deep-diff against a known-working Wago WA revealed that `d.config` and `d.information` were declared as empty objects (`{}`) in the exporter but the working Wago WA had them as empty arrays (`[]`). The parser encodes the two shapes differently — `{}` becomes a Lua hashmap, `[]` becomes a Lua sequence — and modern WA's import validator rejects the hashmap shape so hard that the import preview dialog never even surfaces (user report: "no Import button appears after pasting"). Changed both to `[]` in `tools/export_weakauras.mjs`. Verified post-regeneration: the only remaining schema differences against the Wago reference are field ordering (which doesn't matter for Lua tables) plus the expected per-aura fields (`uid`, `url`, `semver`, `wagoID`).
+
 ## [2.2.3] - 2026-05-25
 
 ### Fixed
