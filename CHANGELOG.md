@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-05-25
+
+Documentation + UX polish on top of v2.0. No engine changes — 536 tests, 99%+ coverage, 81% benchmark baseline.
+
+### Fixed
+- **Mouse-over tooltips on icon-row buttons now follow the WoW client locale** instead of showing hardcoded English. `makeIcon`'s `OnEnter` calls `GameTooltip:SetSpellByID(spellID)` (canonical localized tooltip with icon + name + flavor text) when available, with `GetSpellInfo(spellID)` as a localized fallback. The English string label is kept only as the last resort when both WoW APIs are absent (headless tests). Icon buttons now carry `spellID` directly for this path.
+
+### Changed
+- **`/acc test` is now a DBM-style scripted UI walk-through** instead of a tight chat-only loop. Force-shows the frame, then steps through 7 beats over ~14 seconds via `C_Timer.After`: `OPEN` → `KILL` → `BURST_NOW` pulse → `SWAP` → `DEFEND` (with screen flash if `db.alerts.screenFlash` is on) → profile-driven callout (`CALL_SAVE_TREMOR_HOJ`) → `RESET`. Each beat re-uses the real `UI:Apply` + `WeakAuraBridge:Publish` path so voice cues, chain block, comp badge, and burst pulse fire exactly as they would in a real arena. Frame visibility is saved + restored. Legacy chat-only summary kept under `/acc test print` (still walks `Strategies.testComps`).
+
+### Added
+- **Programmatic WeakAura import strings.** `tools/export_weakauras.mjs` (node-weakauras-parser) generates 5 paste-ready `!WA:2!...` strings to `docs/weakaura-imports.md`. Round-trip validated — each string decodes back to a valid WA config table. Templates: Mode badge, Burst gate, Defensive alert, Callout stream, Comp readout. Re-runnable: `cd tools && npm install && node export_weakauras.mjs`.
+- **`docs/weakaura-imports.md`** — the generated paste-ready strings, ready for `/wa` → Import.
+- **`_design/ArenaCoachTBC Design Showcase.html`** — 9-scene scrollable HTML mood board documenting the v2.0 user experience: hero, anatomy of the frame, in-arena KILL / DEFEND scenes, chain anatomy close-up, opponent profile in action, settings panel, WeakAura bridge integration, compact vs full mode comparison. Dark tactical-HUD aesthetic; mode colours pulled verbatim from `UI.lua > modeColors`; no Blizzard IP.
+
+### Docs
+- **README rewrite** — full step-by-step installation (per-OS paths), first-run checklist, daily-usage walkthrough during arena, complete slash-command reference table, configuration knob reference, localisation note clarifying that spell IDs are universal and names come from `GetSpellInfo(spellID)` in the WoW client's locale.
+- Removed the stale "tuned for 5v5 melee cleave" framing. v2 adapts to any composition — `OwnComps:Infer` + 5 archetypes (`MELEE_CLEAVE`, `CASTER_CLEAVE`, `DRAIN`, `JUNGLE`, `DOUBLE_HEALER`), explained inline.
+- `docs/weakaura-pack.md` restructured around two paths: paste-ready import strings (Path 1, recommended) vs hand-built trigger code (Path 2, DIY).
+- `ArenaCoachTBC/README.md` slash-command table updated to reflect new `/acc test` behaviour.
+
+### Locale
+- `TEST_DEMO_START`, `TEST_DEMO_END`, `TEST_DEMO_NO_UI` added to `enUS` + `zhCN` (98 keys per locale, parity gate green).
+
+### Tests
+- Three new tests in `Core_spec.lua`: `RunTestMode` (default) emits start + per-beat + end lines (≥8); `RunTestMode "print"` triggers the legacy summary; demo restores hidden frame state when it started hidden. 533 → 535 total.
+
 ## [2.0.0] - 2026-05-25
 
 v2.0 ships the **engine-depth** roadmap: spec-aware comp matching, multi-link CC chain planning, per-opponent Bayesian profiles, multi-step lookahead with bounded branching, pattern recognition for recurring kill setups, rating-aware risk gating, and a calibrated kill-probability model. 195 new tests (350 → 545), 89 → 95 locale keys per locale, 5 new pure modules (Chain, OpponentProfile, Lookahead, Patterns, Sounds), and a benchmark suite reporting 81% baseline agreement against hand-labelled scenarios.

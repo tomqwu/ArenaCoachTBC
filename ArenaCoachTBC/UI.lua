@@ -33,9 +33,24 @@ local function makeIcon(parent, size)
     b.text = b:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     b.text:SetPoint("BOTTOM", b, "BOTTOM", 0, -10)
     b:SetScript("OnEnter", function(self)
-        if self.tooltip and GameTooltip then
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:SetText(self.tooltip)
+        if not GameTooltip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        -- v2.0.1: prefer the localized spell tooltip from the WoW client
+        -- so mouse-over follows GetLocale() instead of our hardcoded
+        -- English fallback labels. SetSpellByID renders the canonical
+        -- icon + localized name + flavor text just like the spellbook.
+        if self.spellID and type(GameTooltip.SetSpellByID) == "function" then
+            local ok = pcall(GameTooltip.SetSpellByID, GameTooltip, self.spellID)
+            if ok then GameTooltip:Show(); return end
+        end
+        -- Fallback: localized name via GetSpellInfo, then our context label.
+        local fallback = self.tooltip
+        if self.spellID and type(GetSpellInfo) == "function" then
+            local name = GetSpellInfo(self.spellID)
+            if name and name ~= "" then fallback = name end
+        end
+        if fallback then
+            GameTooltip:SetText(fallback)
             GameTooltip:Show()
         end
     end)
@@ -174,7 +189,8 @@ function UI:_PopulateIconRows()
                 btn:SetPoint("LEFT", parent, "LEFT", x, 0)
                 local tex = spellIcon(d.id)
                 if tex then btn.tex:SetTexture(tex) end
-                btn.tooltip = d.tip
+                btn.spellID = d.id   -- v2.0.1: feeds GameTooltip:SetSpellByID for locale-correct tooltip
+                btn.tooltip = d.tip  -- english fallback when no WoW API
                 btn:SetAlpha(0.4)   -- start dim
                 icons[d.key] = btn
                 x = x + ICON_SIZE + SPACING

@@ -179,7 +179,7 @@ the global `_G.ArenaCoachTBC`. **The complete API:**
 | `GetFriendlies()`                 | full friendlies map                     |
 | `GetEnemyByGUID(guid)`            | one enemy                               |
 | `GetCombatPhase()`                | "PRE" / "ACTIVE" / "POST"               |
-| `GetVersion()`                    | "2.0.0"                                 |
+| `GetVersion()`                    | "2.0.1"                                 |
 
 ### Sample custom trigger
 
