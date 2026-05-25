@@ -14,6 +14,19 @@ A real-time arena strategy coach for **World of Warcraft TBC Classic / TBC Anniv
 
 ---
 
+## Works in every PvP context / 适用于所有 PvP 场景
+
+| Context / 场景 | Behaviour / 行为 |
+|---|---|
+| **Arena 2v2 / 3v3 / 5v5** | Full engine: comp ID, spec inference, chain planning, opponent profiles, lookahead, burst gating, all visual + audio alerts. |
+| **Battlegrounds** (WSG/AB/AV/EotS) | Engine adapts: nameplate-based enemy discovery, flag-carrier priority (+200), low-HP straggler boost, BG-specific callouts (`CALL_FLAG_CARRIER_LOW`, `CALL_BG_DEFEND`). Class-prior tier kicks in when the team-signature profile lacks samples (PUG'd rosters). |
+| **World PvP / duels** | Engine simplifies: single-target focus, no SWAP thrash, no comp matching. DUEL_REQUESTED auto-engages. |
+| **Arena-only alerts** stay gated to arena | Screen flash + voice cues only fire when `IsActiveBattlefieldArena()` is true. No spurious red flash in WSG. |
+
+竞技场内运行完整引擎（阵容识别、天赋推断、连锁规划、对手档案、lookahead、爆发判断）；战场内引擎自适应（铭牌探测敌人、夺旗者优先级、战场提示、职业级先验）；户外 PvP / 决斗自动简化为单目标聚焦。爆发警报和语音提示仅在竞技场内触发——战场不会有错误闪屏。
+
+---
+
 ## Works with any team composition / 适用于任何队伍组合
 
 Earlier versions documented a specific comp (WAR/ENH/RET/RDRU/DISC melee cleave) as the "tuned-for" team. **v2 doesn't have a tuned-for comp.** `OwnComps:Infer` walks your party and returns a capability table — `hasMortalStrike`, `hasBloodlust`, `hasFreedom`, `hasMassDispel`, `hasMainHealer`, etc. — then `OwnComps:Identify` picks an archetype:
@@ -94,6 +107,8 @@ You don't run anything during a match. The addon auto-engages on `PLAYER_ENTERIN
 | `/acc toggle` | Show / hide the recommendation frame | 显示 / 隐藏提示框 |
 | `/acc lock` / `/acc unlock` | Freeze / release the frame for dragging | 锁定 / 解锁框体拖动 |
 | `/acc test` | **14s DBM-style UI demo** (mode flips, BURST_NOW, DEFEND flash) | **14 秒 DBM 风格 UI 演示**（模式切换、爆发、防御警报） |
+| `/acc test bg` | BG-mode walk-through (flag carrier + low-HP straggler + CALL_BG_DEFEND) | 战场模式演示（夺旗者 + 低血单位 + 战场防御提示） |
+| `/acc test world` | World PvP walk-through (single-target focus) | 户外 PvP 演示（单目标聚焦） |
 | `/acc test print` | Legacy chat-only summary | 仅文字版本（旧行为） |
 | `/acc enemy <c1> <c2> ...` | Simulate a custom enemy comp | 模拟自定义敌方阵容 |
 | `/acc reset` | Wipe SavedVariables + `/reload` | 清空存档并 `/reload` |

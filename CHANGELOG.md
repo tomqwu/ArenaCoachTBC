@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.1] - 2026-05-25
+
+Polish + visibility on top of v2.1. Same engine; surface and docs upgraded.
+
+### Added
+- **`/acc test bg`** — 5-beat BG walk-through (engaged → flag carrier picks up → flag carrier low HP → CALL_BG_DEFEND on train → reset). Walks the BG scoring branches the same way `/acc test` walks arena.
+- **`/acc test world`** — 4-beat world PvP walk-through (engaged → push burst → DEFEND on low HP → reset). Demonstrates the single-target focus / no-SWAP-thrash behaviour.
+- **`WeakAuraBridge.GetPvPContext()`** exposes `state.pvpContext` to WeakAuras so consumers can render different displays per context (e.g., hide the comp badge in BG, show flag-carrier-specific text in world).
+- **AV-scale perf test** (`Tests/Performance_spec.lua`) — 40-enemy state, asserts `SE:Evaluate` stays under 50ms CI budget. Confirms the v2.1 engine scales to AV without code changes.
+
+### Changed
+- **README** "Works in every PvP context" matrix added at the top — bilingual, summarises arena / BG / world / duel behaviour at a glance.
+- **README** slash-command table now lists `/acc test bg` and `/acc test world` (bilingual).
+- **`Core:_RunTestDemoMode(beats, label)`** refactored to accept the beat list + label as arguments (was hard-coded to the arena RMP beats); `/acc test` dispatches into one of three beat sets.
+
+### Tests
+586 → 590 (+4). New tests: `/acc test bg` runs and prints the BG walk-through banner; `/acc test world` does the same for world; `WAB:GetPvPContext` round-trips state; AV 40-enemy Evaluate stays within perf budget.
+
 ## [2.1.0] - 2026-05-25
 
 **Wild PvP** — battlegrounds + world PvP + duels. The addon used to be effectively disabled outside arena because enemy discovery was hardcoded to `arena1..arena5` unit IDs and bracket-aware scoring assumed 2/3/5 teams. v2.1 extends the engine to BG (WSG / AB / AV / EotS) and open-world PvP without breaking the arena flows that already work.

@@ -1206,3 +1206,37 @@ H.it(g, "duel end clears recent hostile + re-detects context", function()
     H.assertEq(Core.state.pvpContext, "none",
         "duel end should re-detect to current context")
 end)
+
+-- =================================================================
+-- v2.1.1: /acc test bg and /acc test world subcommands
+-- =================================================================
+
+H.it(g, "/acc test bg runs the BG walk-through demo", function()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    _G.C_Timer = nil
+    if not H.ns.UI.frame then H.ns.UI:CreateFrame() end
+    startCapture()
+    Core:RunTestMode("bg")
+    stopCapture()
+    local sawStart, sawFlagBeat = false, false
+    for _, ln in ipairs(captured) do
+        if ln:find("BG walk-through", 1, true) then sawStart = true end
+        if ln:find("flag", 1, true) then sawFlagBeat = true end
+    end
+    H.assertTrue(sawStart, "expected BG-mode demo start banner")
+    H.assertTrue(sawFlagBeat, "expected at least one beat mentioning the flag carrier")
+end)
+
+H.it(g, "/acc test world runs the world PvP walk-through demo", function()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    _G.C_Timer = nil
+    if not H.ns.UI.frame then H.ns.UI:CreateFrame() end
+    startCapture()
+    Core:RunTestMode("world")
+    stopCapture()
+    local sawStart = false
+    for _, ln in ipairs(captured) do
+        if ln:find("world PvP walk-through", 1, true) then sawStart = true end
+    end
+    H.assertTrue(sawStart, "expected world-mode demo start banner")
+end)

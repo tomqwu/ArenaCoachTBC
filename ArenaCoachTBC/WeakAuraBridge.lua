@@ -78,6 +78,14 @@ function API.GetBracket()
     return WAB._state and WAB._state.bracket
 end
 
+-- v2.1.1: expose the PvP context ("arena" / "bg" / "world" / "world_idle"
+-- / "none") so WeakAuras can render different displays per context
+-- (e.g., hide the comp badge in BG, show flag-carrier-specific text in
+-- world PvP).
+function API.GetPvPContext()
+    return WAB._state and WAB._state.pvpContext
+end
+
 -- Locale helper for WeakAura templates that want to render callouts in
 -- the active language without re-implementing the locale fallback.
 function API.L(key)
@@ -138,11 +146,11 @@ function API.GetDebugState()
     return {
         last       = WAB._last,
         state      = WAB._state,
-        version    = "2.1.0",
+        version    = "2.1.1",
         addon      = ADDON_NAME,
     }
 end
-function API.GetVersion() return "2.1.0" end
+function API.GetVersion() return "2.1.1" end
 
 function WAB:Publish(recommendation, state)
     self._last  = recommendation

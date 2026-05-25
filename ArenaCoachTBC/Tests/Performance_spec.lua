@@ -78,6 +78,58 @@ H.it(g, "Evaluate with lookahead+patterns stays within budget (mean<3ms, 99p<10m
     H.assertTrue(stats.total > 0, "expected at least one cache lookup")
 end)
 
+-- =================================================================
+-- v2.1.1: AV-scale 40-enemy perf — same engine, much bigger team
+-- =================================================================
+H.it(g, "AV-scale Evaluate completes within budget on 40 enemies", function()
+    -- Build a 40-enemy BG state. Mix of classes so scoring exercises
+    -- every code path (healers, casters, melee, low-HP stragglers).
+    local classes = {
+        "WARRIOR","MAGE","PRIEST","DRUID","PALADIN",
+        "ROGUE","HUNTER","SHAMAN","WARLOCK","PRIEST",
+        "WARRIOR","MAGE","DRUID","PALADIN","ROGUE",
+        "HUNTER","SHAMAN","WARLOCK","WARRIOR","MAGE",
+        "PRIEST","DRUID","PALADIN","ROGUE","HUNTER",
+        "SHAMAN","WARLOCK","WARRIOR","MAGE","PRIEST",
+        "DRUID","PALADIN","ROGUE","HUNTER","SHAMAN",
+        "WARLOCK","WARRIOR","MAGE","PRIEST","DRUID",
+    }
+    local state = SE:BuildTestState({"WARRIOR","MAGE","PRIEST"})
+    state.combatPhase = "ACTIVE"
+    state.pvpContext  = "bg"
+    state.bracket     = 40
+    state.enemies = {}
+    for i, cls in ipairs(classes) do
+        state.enemies["av-" .. i] = {
+            unit       = "av" .. i,
+            guid       = "av-" .. i,
+            name       = "Hostile" .. i,
+            class      = cls,
+            alive      = true,
+            healthPct  = 100 - (i % 10) * 10,  -- some low-HP stragglers
+            manaPct    = 100,
+            hasTrinket = true,
+            importantBuffs   = {},
+            importantDebuffs = {},
+            observedSpells   = {},
+        }
+    end
+    local list = {}
+    for _, e in pairs(state.enemies) do table.insert(list, e.class) end
+    state.enemyClassList = list
+
+    -- Warm + measure
+    for _ = 1, 5 do SE:Evaluate(state) end
+    local iters = 100
+    local start = os.clock()
+    for _ = 1, iters do SE:Evaluate(state) end
+    local avgMs = ((os.clock() - start) / iters) * 1000
+    -- AV-scale budget: 50ms p99 CI (the 4x-of-10v10 scaling factor).
+    -- Locally aiming <10ms; allow 5x for noisy GH runners.
+    H.assertTrue(avgMs < 50,
+        string.format("AV 40-enemy Evaluate avg %.2fms exceeds 50ms CI budget", avgMs))
+end)
+
 H.it(g, "100 simulated arenas back-to-back stay within 200kb memory delta", function()
     -- Force collection so the baseline is realistic.
     collectgarbage("collect")
