@@ -28,6 +28,7 @@ local specs = {
     "Strategies_spec.lua",
     "OwnComps_spec.lua",
     "SpellSpecHints_spec.lua",
+    "SpecMatchE2E_spec.lua",
     "EventBus_spec.lua",
     "CooldownTracker_spec.lua",
     "DRTracker_spec.lua",
