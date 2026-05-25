@@ -242,6 +242,40 @@ function UI:Apply(recommendation)
         local label = recommendation.compLabel or recommendation.comp
         table.insert(subParts, string.format("%s (%s)", label, L(badgeKey)))
     end
+    -- M8 #62: render the picked chain as a localized title + numbered
+    -- per-link summary, and narrate to chat once when the picked chain
+    -- id changes (placeholder until M4 voice ships). Step text uses
+    -- byClass + category tokens directly (spell-name localization
+    -- comes from GetSpellInfo in-client; headless testing falls back
+    -- to the token).
+    if recommendation.chain and recommendation.chain.id ~= self._lastChainId then
+        self._lastChainId = recommendation.chain.id
+        local ch = recommendation.chain
+        local title = (ch.labelKey and L(ch.labelKey)) or ch.label or ch.id or ""
+        print(string.format("[ACC] %s: %s (%d%%)",
+            L("CHAIN_PICKED_PREFIX"), title,
+            math.floor(((ch.expectedProb or 0) * 100) + 0.5)))
+    end
+    if recommendation.chain then
+        local ch = recommendation.chain
+        local title = (ch.labelKey and L(ch.labelKey)) or ch.label or ch.id or ""
+        local pct = math.floor(((ch.expectedProb or 0) * 100) + 0.5)
+        table.insert(subParts,
+            string.format("%s: %s (%d%%)", L("CHAIN_PICKED_PREFIX"), title, pct))
+        if ch.links then
+            for i, link in ipairs(ch.links) do
+                local spellName
+                if type(GetSpellInfo) == "function" then
+                    spellName = GetSpellInfo(link.spellID)
+                end
+                local stepText = string.format("  %s %d. %s (%s)",
+                    L("CHAIN_STEP_PREFIX"), i,
+                    spellName or tostring(link.category or "?"),
+                    tostring(link.category or "?"))
+                table.insert(subParts, stepText)
+            end
+        end
+    end
     f.subText:SetText(table.concat(subParts, "\n"))
 
     -- Screen flash for URGENT (defensive)

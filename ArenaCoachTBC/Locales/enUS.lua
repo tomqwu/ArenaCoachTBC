@@ -86,6 +86,22 @@ ns.locales.enUS = {
     COMP_BADGE_SPEC_CONFIRMED = "spec-confirmed",
     COMP_BADGE_CLASS_GUESSED  = "class-guessed",
 
+    -- Chain callouts (M8 #62) — one localized label per built-in chain
+    CHAIN_RMP_SAP_INTO_KIDNEY     = "Sap off-healer, kidney the target",
+    CHAIN_RMP_FEAR_INTO_BURST     = "Scream lockdown into mage burst",
+    CHAIN_WMS_SHEEP_INTO_TRAIN    = "Sheep healer, MS train kill target",
+    CHAIN_WLD_FEAR_INTO_CYCLONE   = "Fear chain into druid cyclone peel",
+    CHAIN_WLP_FEAR_INTO_HOJ       = "Fear into HoJ on the paladin",
+    CHAIN_JUNGLE_TRAP_INTO_CYCLONE = "Trap healer, cyclone off-target",
+    CHAIN_BEAST_TRAP_INTO_INTERCEPT = "Trap + scatter into warrior intercept",
+    CHAIN_TSG_HOJ_INTO_INTERCEPT  = "HoJ into intercept on the priority",
+    CHAIN_TRIPLE_CASTER_OVERLAP   = "Stacked fear + sheep on kill target",
+    CHAIN_RP_KIDNEY_INTO_BLIND    = "Kidney burst into blind reset",
+    CHAIN_RD_KIDNEY_INTO_CYCLONE  = "Rogue stun + druid cyclone lockdown",
+    CHAIN_SHATTER_NOVA_INTO_SHEEP = "Nova root into sheep on off-target",
+    CHAIN_STEP_PREFIX             = "Step",
+    CHAIN_PICKED_PREFIX           = "Chain",
+
     -- Debug
     DEBUG_PREFIX         = "[ACC]",
     DEBUG_ENABLED        = "debug enabled",

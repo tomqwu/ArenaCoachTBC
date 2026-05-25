@@ -311,6 +311,22 @@ H.it(g, "every built-in chain validates against a fresh Chain state", function()
     end
 end)
 
+H.it(g, "every chain has a labelKey that resolves in the enUS locale", function()
+    H.load("Locales/enUS.lua")
+    local L = H.ns.locales and H.ns.locales.enUS
+    H.assertNotNil(L)
+    for _, comp in ipairs(ST.comps) do
+        if comp.chains then
+            for _, c in ipairs(comp.chains) do
+                H.assertNotNil(c.labelKey, comp.id .. "/" .. c.id .. " missing labelKey")
+                H.assertNotNil(L[c.labelKey],
+                    comp.id .. "/" .. c.id .. " labelKey " .. c.labelKey
+                    .. " not found in enUS locale")
+            end
+        end
+    end
+end)
+
 H.it(g, "every chain has an id and a non-empty links list", function()
     for _, comp in ipairs(ST.comps) do
         if comp.chains then

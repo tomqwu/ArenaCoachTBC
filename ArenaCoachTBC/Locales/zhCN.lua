@@ -86,6 +86,22 @@ ns.locales.zhCN = {
     COMP_BADGE_SPEC_CONFIRMED = "天赋已确认",
     COMP_BADGE_CLASS_GUESSED  = "仅按职业推测",
 
+    -- Chain callouts (M8 #62)
+    CHAIN_RMP_SAP_INTO_KIDNEY     = "闷棍治疗，肾击目标",
+    CHAIN_RMP_FEAR_INTO_BURST     = "尖叫锁场配合法师爆发",
+    CHAIN_WMS_SHEEP_INTO_TRAIN    = "羊治疗，战士MS连击",
+    CHAIN_WLD_FEAR_INTO_CYCLONE   = "恐惧链接龙卷剥离",
+    CHAIN_WLP_FEAR_INTO_HOJ       = "恐惧接审判惩戒",
+    CHAIN_JUNGLE_TRAP_INTO_CYCLONE = "陷阱治疗，龙卷副目标",
+    CHAIN_BEAST_TRAP_INTO_INTERCEPT = "陷阱与驱散后战士截击",
+    CHAIN_TSG_HOJ_INTO_INTERCEPT  = "审判后战士截击",
+    CHAIN_TRIPLE_CASTER_OVERLAP   = "恐惧+羊群叠加锁场",
+    CHAIN_RP_KIDNEY_INTO_BLIND    = "肾击爆发后致盲重置",
+    CHAIN_RD_KIDNEY_INTO_CYCLONE  = "盗贼肾击+德鲁伊龙卷锁场",
+    CHAIN_SHATTER_NOVA_INTO_SHEEP = "冰环定身后羊副目标",
+    CHAIN_STEP_PREFIX             = "步骤",
+    CHAIN_PICKED_PREFIX           = "连锁",
+
     -- Debug
     DEBUG_PREFIX         = "[ACC]",
     DEBUG_ENABLED        = "调试开启",

@@ -72,14 +72,14 @@ ST.comps = {
             JUNGLE       = { openTarget = "MAGE",  swapTarget = "PRIEST", note = "scatter+fear chain on mage" },
         },
         chains = {
-            { id = "rmp_sap_into_kidney",
+            { id = "rmp_sap_into_kidney", labelKey = "CHAIN_RMP_SAP_INTO_KIDNEY",
               label = "Sap off-healer, kidney the kill target",
               links = {
                   { spellID = S.SAP,          category = "INCAPACITATE", byClass = "ROGUE", targetRole = "off-healer" },
                   { spellID = S.POLYMORPH,    category = "INCAPACITATE", byClass = "MAGE",  targetRole = "off-healer-2" },
                   { spellID = S.KIDNEY_SHOT,  category = "STUN",         byClass = "ROGUE", targetRole = "primary" },
               } },
-            { id = "rmp_fear_into_burst",
+            { id = "rmp_fear_into_burst", labelKey = "CHAIN_RMP_FEAR_INTO_BURST",
               label = "Psychic scream lockdown into mage burst",
               links = {
                   { spellID = S.PSYCHIC_SCREAM, category = "FEAR",         byClass = "PRIEST", targetRole = "any" },
@@ -96,7 +96,7 @@ ST.comps = {
         swapTarget = "SHAMAN",
         callouts = { "CALL_PURGE", "CALL_TREMOR_FEAR", "CALL_FREEDOM_WAR" },
         chains = {
-            { id = "wms_sheep_into_train",
+            { id = "wms_sheep_into_train", labelKey = "CHAIN_WMS_SHEEP_INTO_TRAIN",
               label = "Sheep healer, MS train the kill target",
               links = {
                   { spellID = S.POLYMORPH,        category = "INCAPACITATE", byClass = "MAGE",    targetRole = "off-healer" },
@@ -126,7 +126,7 @@ ST.comps = {
             DRAIN        = { openTarget = nil, note = "outlast, mana burn druid" },
         },
         chains = {
-            { id = "wld_fear_into_cyclone",
+            { id = "wld_fear_into_cyclone", labelKey = "CHAIN_WLD_FEAR_INTO_CYCLONE",
               label = "Lock fear chain into druid cyclone peel",
               links = {
                   { spellID = S.HOWL_OF_TERROR, category = "FEAR",    byClass = "WARLOCK", targetRole = "any" },
@@ -152,7 +152,7 @@ ST.comps = {
         swapTarget = "WARLOCK",
         callouts = { "CALL_PURGE", "CALL_MANA_BURN_PLAN" },
         chains = {
-            { id = "wlp_fear_into_hoj",
+            { id = "wlp_fear_into_hoj", labelKey = "CHAIN_WLP_FEAR_INTO_HOJ",
               label = "Fear chain into Hammer of Justice on the paladin",
               links = {
                   { spellID = S.FEAR_LOCK,         category = "FEAR", byClass = "WARLOCK", targetRole = "any" },
@@ -179,7 +179,7 @@ ST.comps = {
             "CALL_AVOID_OVERCHASE",
         },
         chains = {
-            { id = "jungle_trap_into_cyclone",
+            { id = "jungle_trap_into_cyclone", labelKey = "CHAIN_JUNGLE_TRAP_INTO_CYCLONE",
               label = "Trap healer, cyclone off-target",
               links = {
                   { spellID = S.FREEZING_TRAP, category = "INCAPACITATE", byClass = "HUNTER", targetRole = "off-healer" },
@@ -195,7 +195,7 @@ ST.comps = {
         swapTarget = "WARRIOR",
         callouts = { "CALL_FREEDOM_WAR", "CALL_AVOID_OVERCHASE" },
         chains = {
-            { id = "beast_trap_into_intercept",
+            { id = "beast_trap_into_intercept", labelKey = "CHAIN_BEAST_TRAP_INTO_INTERCEPT",
               label = "Trap kill target, warrior intercepts on land",
               links = {
                   { spellID = S.FREEZING_TRAP, category = "INCAPACITATE", byClass = "HUNTER",  targetRole = "primary" },
@@ -215,7 +215,7 @@ ST.comps = {
         swapTarget = "WARRIOR",
         callouts = { "CALL_PURGE", "CALL_HOJ_KILL" },
         chains = {
-            { id = "tsg_hoj_into_intercept",
+            { id = "tsg_hoj_into_intercept", labelKey = "CHAIN_TSG_HOJ_INTO_INTERCEPT",
               label = "HoJ on the priority target, intercept follow-up",
               links = {
                   { spellID = S.HAMMER_OF_JUSTICE, category = "STUN", byClass = "PALADIN", targetRole = "primary" },
@@ -264,7 +264,7 @@ ST.comps = {
         swapTarget = "MAGE",
         callouts = { "CALL_GROUND_POLY", "CALL_PURGE", "CALL_TREMOR_FEAR" },
         chains = {
-            { id = "triple_caster_overlap",
+            { id = "triple_caster_overlap", labelKey = "CHAIN_TRIPLE_CASTER_OVERLAP",
               label = "Stacked fear+sheep CC chain on the kill target",
               links = {
                   { spellID = S.FEAR_LOCK,       category = "FEAR",         byClass = "WARLOCK", targetRole = "primary" },
@@ -315,7 +315,7 @@ ST.comps = {
         threats = { ROGUE = "Cheap > Kidney burst window" },
         callouts = { "CALL_TREMOR_FEAR", "CALL_MANA_BURN_PLAN" },
         chains = {
-            { id = "rp_kidney_into_blind",
+            { id = "rp_kidney_into_blind", labelKey = "CHAIN_RP_KIDNEY_INTO_BLIND",
               label = "Kidney burst into blind reset",
               links = {
                   { spellID = S.KIDNEY_SHOT,    category = "STUN",      byClass = "ROGUE",  targetRole = "primary" },
@@ -332,7 +332,7 @@ ST.comps = {
         threats = { DRUID = "HoTs + cyclone" },
         callouts = { "CALL_CYCLONE_OFF", "CALL_PURGE" },
         chains = {
-            { id = "rd_kidney_into_cyclone",
+            { id = "rd_kidney_into_cyclone", labelKey = "CHAIN_RD_KIDNEY_INTO_CYCLONE",
               label = "Rogue stun + druid cyclone lockdown",
               links = {
                   { spellID = S.KIDNEY_SHOT, category = "STUN",    byClass = "ROGUE", targetRole = "primary" },
@@ -365,7 +365,7 @@ ST.comps = {
         threats = { MAGE = "Nova > Sheep > Frostbolt shatter" },
         callouts = { "CALL_DISP_FROST", "CALL_GROUND_POLY", "CALL_TREMOR_FEAR" },
         chains = {
-            { id = "shatter_nova_into_sheep",
+            { id = "shatter_nova_into_sheep", labelKey = "CHAIN_SHATTER_NOVA_INTO_SHEEP",
               label = "Frost nova root into sheep on off-target",
               links = {
                   { spellID = S.FROST_NOVA,     category = "ROOT",         byClass = "MAGE",   targetRole = "primary" },
@@ -637,7 +637,12 @@ function ST:InstantiateChains(comp, primaryGUID, secondaryGUID, enemies)
             end
         end
         if #links > 0 then
-            table.insert(out, { id = template.id, label = template.label, links = links })
+            table.insert(out, {
+                id       = template.id,
+                label    = template.label,
+                labelKey = template.labelKey,
+                links    = links,
+            })
         end
     end
 

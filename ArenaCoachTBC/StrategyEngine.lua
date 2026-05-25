@@ -584,9 +584,13 @@ function SE:Evaluate(state)
             local topK = cfg.chainK or 3
             local scored = ns.Chain:ScoreAll(concrete, { topK = topK })
             if scored[1] and scored[1].prob > 0 then
+                local picked = scored[1].chain
                 pickedChain = {
-                    id           = scored[1].chain.id,
-                    label        = scored[1].chain.label,
+                    id           = picked.id,
+                    label        = picked.label,
+                    labelKey     = picked.labelKey,
+                    steps        = #picked.links,
+                    links        = picked.links,  -- exposed for UI step rendering
                     expectedProb = scored[1].prob,
                 }
             end

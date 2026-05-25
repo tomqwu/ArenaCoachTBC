@@ -74,6 +74,35 @@ H.it(g, "Apply with URGENT triggers screen flash", function()
     H.assertNotNil(UI._flash)
 end)
 
+H.it(g, "Apply with chain narrates to chat once per chain id change", function()
+    UI:CreateFrame()
+    UI._lastChainId = nil
+    local lines = {}
+    local origPrint = _G.print
+    _G.print = function(s) table.insert(lines, tostring(s)) end
+    UI:Apply({
+        mode = "KILL", reason = "r", callouts = {}, priority = "HIGH",
+        chain = { id = "rmp_sap_into_kidney", labelKey = "CHAIN_RMP_SAP_INTO_KIDNEY",
+                  label = "Sap into Kidney", expectedProb = 0.75, steps = 3, links = {} },
+    })
+    -- Same chain id again: no extra narration
+    local countAfter1 = #lines
+    UI:Apply({
+        mode = "KILL", reason = "r", callouts = {}, priority = "HIGH",
+        chain = { id = "rmp_sap_into_kidney", labelKey = "CHAIN_RMP_SAP_INTO_KIDNEY",
+                  label = "Sap into Kidney", expectedProb = 0.75, steps = 3, links = {} },
+    })
+    H.assertEq(#lines, countAfter1, "same chain id should not re-narrate")
+    -- Different chain id: narrates again
+    UI:Apply({
+        mode = "KILL", reason = "r", callouts = {}, priority = "HIGH",
+        chain = { id = "wld_fear_into_cyclone", labelKey = "CHAIN_WLD_FEAR_INTO_CYCLONE",
+                  label = "Fear into Cyclone", expectedProb = 0.5, steps = 2, links = {} },
+    })
+    H.assertTrue(#lines > countAfter1, "different chain id should narrate again")
+    _G.print = origPrint
+end)
+
 H.it(g, "Apply ignores nil recommendation", function()
     UI:CreateFrame()
     UI:Apply(nil)
