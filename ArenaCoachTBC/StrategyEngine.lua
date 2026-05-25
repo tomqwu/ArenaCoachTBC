@@ -53,6 +53,10 @@ SE.weights = {
     off_healer_cc        =  15,
     comp_open_target     =  20,
     comp_swap_target     =  10,
+    -- M14 (v2.1) — BG mode boosts
+    bg_flag_carrier      = 200,  -- enemy carrying the WSG flag dominates kill priority
+    bg_low_hp_straggler  =  30,  -- additional boost for <30% HP targets in BG (low-HP swap practice)
+    bg_healer_boost      =  10,  -- adds on top of role_healer for BG context
     -- penalties
     target_immune        = -100,
     target_unreachable   =  -30,
@@ -61,6 +65,13 @@ SE.weights = {
     our_healer_cc        =  -25,
     our_team_low_hp      =  -30,
 }
+
+-- M14 (v2.1): aura IDs that indicate the enemy is carrying a BG flag.
+-- Used by scoreEnemy when state.pvpContext == "bg" to push the carrier
+-- to top kill priority.
+--   23333 — Warsong Flag    (Horde sees Alliance carrier)
+--   23335 — Silverwing Flag (Alliance sees Horde carrier)
+SE.BG_FLAG_AURAS = { [23333] = true, [23335] = true }
 
 -- Per-bracket weight overrides. Only list keys that DIFFER from default.
 -- 2v2: healer kill is the entire game plan -> overweight role_healer.
@@ -255,6 +266,28 @@ local function scoreEnemy(enemy, state, comp)
     if comp and comp.swapTarget and phase ~= "PRE" and cfg.allowDpsSwap ~= false
        and enemy.class == comp.swapTarget then
         add(w.comp_swap_target, "comp_swap_target")
+    end
+
+    -- M14 (v2.1): BG-specific scoring boosts. Active only when the
+    -- live context is "bg". In WSG, the flag carrier eclipses every
+    -- other consideration (+200). Otherwise: low-HP straggler boost
+    -- (BG fights produce more 30%-HP swap opportunities than arena),
+    -- and a small healer bump (healer death in BG resolves the fight).
+    if state.pvpContext == "bg" then
+        if enemy.importantBuffs then
+            for buffId, _ in pairs(enemy.importantBuffs) do
+                if SE.BG_FLAG_AURAS[buffId] then
+                    add(w.bg_flag_carrier, "bg_flag_carrier")
+                    break
+                end
+            end
+        end
+        if (enemy.healthPct or 100) < 30 then
+            add(w.bg_low_hp_straggler, "bg_low_hp_straggler")
+        end
+        if isHealer(enemy) then
+            add(w.bg_healer_boost, "bg_healer_boost")
+        end
     end
 
     -- ----- team synergy
@@ -567,6 +600,21 @@ local function buildCallouts(state, comp, primaryTarget, mode)
         push("CALL_TREMOR_FEAR")
     end
 
+    -- M14 (v2.1): BG-specific callouts. Fire on top of mode-driven
+    -- callouts when the pvp context is "bg". Flag carrier under 50% HP
+    -- (active aura 23333 or 23335) gets a dedicated "push" cue.
+    if state.pvpContext == "bg" then
+        local flagAtRisk = false
+        if primaryTarget and primaryTarget.importantBuffs
+           and (primaryTarget.healthPct or 100) < 50 then
+            for buffId, _ in pairs(primaryTarget.importantBuffs) do
+                if SE.BG_FLAG_AURAS[buffId] then flagAtRisk = true; break end
+            end
+        end
+        if flagAtRisk then push("CALL_FLAG_CARRIER_LOW") end
+        if mode == "DEFEND" then push("CALL_BG_DEFEND") end
+    end
+
     -- M9 #65: profile-driven callouts. When state.opponentProfile is
     -- present and a tendency's posterior mean is high enough (with
     -- enough samples — EstimateOrDefault handles the threshold), emit
@@ -632,6 +680,10 @@ local function decideMode(state, topTarget, secondTarget, comp)
         local agg = state.aggression or cfg.aggression
         if agg == "safe" then threshold = 20
         elseif agg == "greedy" then threshold = 0 end
+        -- M14 (v2.1): BG fights are messier — targets fade in/out of
+        -- LOS, healers cycle through multiple casters, score noise is
+        -- higher. Tighten the SWAP threshold to prevent thrash.
+        if state.pvpContext == "bg" then threshold = 30 end
         -- only call SWAP if the swap target is significantly more attractive
         if not secondTarget or (topTarget._score - secondTarget._score) > threshold then
             return "SWAP"

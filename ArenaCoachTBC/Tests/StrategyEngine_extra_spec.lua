@@ -705,3 +705,131 @@ H.it(g, "Evaluate's reason text includes the comp tag and confidence", function(
     H.assertTrue(rec.reason:find("WLD") ~= nil, "reason should mention comp ID")
     H.assertTrue(rec.reason:find("class%-guessed") ~= nil, "reason should mention class-guessed badge")
 end)
+
+-- =================================================================
+-- M14 (v2.1): BG mode scoring + callouts
+-- =================================================================
+
+H.it(g, "BG mode: flag-carrier aura gives a massive (+200) priority boost", function()
+    local state = SE:BuildTestState({"WARRIOR","ROGUE","PRIEST"})
+    state.combatPhase = "ACTIVE"
+    state.pvpContext  = "bg"
+    -- Pick a non-priest enemy and attach the WSG carrier aura (23333).
+    local target
+    for _, e in pairs(state.enemies) do
+        if e.class == "WARRIOR" then
+            e.importantBuffs[23333] = true
+            target = e
+        end
+    end
+    H.assertNotNil(target)
+    local rec = SE:Evaluate(state)
+    -- Flag carrier should win kill priority even against a healer.
+    H.assertEq(rec.primaryTargetClass, "WARRIOR",
+        "flag carrier must outrank natural healer priority")
+    local sawFlagBoost = false
+    for _, c in ipairs(target._contrib or {}) do
+        if c.key == "bg_flag_carrier" and c.pts == 200 then sawFlagBoost = true end
+    end
+    H.assertTrue(sawFlagBoost, "bg_flag_carrier contribution expected")
+end)
+
+H.it(g, "BG mode: <30% HP straggler gets the bg_low_hp_straggler boost", function()
+    local state = SE:BuildTestState({"WARRIOR","ROGUE","PRIEST"})
+    state.combatPhase = "ACTIVE"
+    state.pvpContext  = "bg"
+    -- Drop a melee to 20% HP; should pick up the BG boost.
+    local target
+    for _, e in pairs(state.enemies) do
+        if e.class == "ROGUE" then e.healthPct = 20; target = e end
+    end
+    SE:Evaluate(state)
+    local saw = false
+    for _, c in ipairs(target._contrib or {}) do
+        if c.key == "bg_low_hp_straggler" and c.pts == 30 then saw = true end
+    end
+    H.assertTrue(saw, "bg_low_hp_straggler contribution expected")
+end)
+
+H.it(g, "BG mode: SWAP threshold tightens to 30 (vs default 10)", function()
+    local function build(score)
+        local state = SE:BuildTestState({"PRIEST","MAGE"})
+        state.combatPhase = "ACTIVE"
+        state.pvpContext  = "bg"
+        local priest, mage
+        for _, e in pairs(state.enemies) do
+            if e.class == "PRIEST" then priest = e
+            elseif e.class == "MAGE"   then mage   = e end
+        end
+        -- Force a known score gap by manipulating mage attributes.
+        if score == "small" then
+            mage.hasTrinket = false  -- gives ~20pt boost
+        elseif score == "huge" then
+            mage.hasTrinket = false
+            mage.healthPct = 20      -- gives bg_low_hp_straggler (+30) + health_below_50 (+30)
+        end
+        state.lastPrimaryGUID = priest.guid
+        return state
+    end
+    -- Small gap: should NOT swap (arena would; BG threshold=30 holds)
+    local recSmall = SE:Evaluate(build("small"))
+    H.assertEq(recSmall.mode, "KILL",
+        "BG should not swap on a small score gap (arena would)")
+    -- Huge gap: should swap
+    local recHuge = SE:Evaluate(build("huge"))
+    H.assertEq(recHuge.mode, "SWAP",
+        "BG should still swap when gap is decisively large")
+end)
+
+H.it(g, "BG mode: CALL_FLAG_CARRIER_LOW fires when carrier is <50% HP", function()
+    local state = SE:BuildTestState({"WARRIOR","ROGUE","PRIEST"})
+    state.combatPhase = "ACTIVE"
+    state.pvpContext  = "bg"
+    for _, e in pairs(state.enemies) do
+        if e.class == "WARRIOR" then
+            e.importantBuffs[23333] = true
+            e.healthPct = 35
+        end
+    end
+    local rec = SE:Evaluate(state)
+    local saw = false
+    for _, c in ipairs(rec.callouts or {}) do
+        if c == "CALL_FLAG_CARRIER_LOW" then saw = true end
+    end
+    H.assertTrue(saw, "expected CALL_FLAG_CARRIER_LOW for low-HP flag carrier")
+end)
+
+H.it(g, "BG mode: CALL_BG_DEFEND fires when mode is DEFEND in BG", function()
+    local state = SE:BuildTestState({"WARRIOR","ROGUE","PRIEST"})
+    state.combatPhase = "ACTIVE"
+    state.pvpContext  = "bg"
+    state.observations = { healerUnderPressure = true }  -- force DEFEND
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.mode, "DEFEND")
+    local saw = false
+    for _, c in ipairs(rec.callouts or {}) do
+        if c == "CALL_BG_DEFEND" then saw = true end
+    end
+    H.assertTrue(saw, "expected CALL_BG_DEFEND on DEFEND in BG")
+end)
+
+H.it(g, "Arena mode is unaffected by BG-mode logic (regression)", function()
+    local state = SE:BuildTestState({"WARRIOR","MAGE","PRIEST"})
+    state.combatPhase = "ACTIVE"
+    state.pvpContext  = "arena"
+    state.bracket     = 3
+    -- Even with the flag aura attached, arena should NOT add +200.
+    for _, e in pairs(state.enemies) do
+        if e.class == "WARRIOR" then e.importantBuffs[23333] = true end
+    end
+    SE:Evaluate(state)
+    -- Inspect the warrior's contributions — bg_flag_carrier must be absent.
+    local warrior
+    for _, e in pairs(state.enemies) do
+        if e.class == "WARRIOR" then warrior = e end
+    end
+    for _, c in ipairs(warrior._contrib or {}) do
+        H.assertTrue(c.key ~= "bg_flag_carrier",
+            "bg_flag_carrier must not contribute in arena context")
+    end
+end)

@@ -35,6 +35,13 @@ ns.locales.enUS = {
     TEST_DEMO_START = "|cffc8a86b[ACC]|r demo starting - 14s RMP 3v3 walk-through (mode flips, BURST_NOW pulse, DEFEND flash, profile callout).",
     TEST_DEMO_END   = "|cffc8a86b[ACC]|r demo complete. /acc test print for the chat-only smoke version.",
     TEST_DEMO_NO_UI = "|cffc8a86b[ACC]|r demo needs a live UI (in-game only).",
+
+    -- M14 (v2.1): BG-mode callouts
+    CALL_FLAG_CARRIER_LOW    = "Flag carrier low HP - push",
+    CALL_INCOMING_PLAYERS    = "Incoming enemy players",
+    CALL_BASE_UNDER_ATTACK   = "Base under attack - rotate",
+    CALL_BG_DEFEND           = "Heal up - train detected",
+    CALL_BG_RES_TIMER        = "Rez timer running",
     BUGREPORT_HEADER = "Bug report payload:",
     HELP_HELP     = "/acc help             - show this help",
 
