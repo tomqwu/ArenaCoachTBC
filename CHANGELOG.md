@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-05-25
+
+v2.0 ships the **engine-depth** roadmap: spec-aware comp matching, multi-link CC chain planning, per-opponent Bayesian profiles, multi-step lookahead with bounded branching, pattern recognition for recurring kill setups, rating-aware risk gating, and a calibrated kill-probability model. 195 new tests (350 → 545), 89 → 95 locale keys per locale, 5 new pure modules (Chain, OpponentProfile, Lookahead, Patterns, Sounds), and a benchmark suite reporting 81% baseline agreement against hand-labelled scenarios.
+
+The user-visible pitch: **your coach now learns your opponents**. A team that always trinkets Fear stops getting the "tremor for fear" callout — Tremor gets saved for HoJ instead. A mage that consistently Ice Blocks at 30% HP causes burst to be held. None of this is hardcoded — it learns from `/acc record` logs, per-team, no names persisted.
+
 ### Fixed
 - Live arena observations now scan unit auras for Mortal Strike, Windfury, Bloodlust/Heroism, and enemy burst buffs before each evaluation, so burst gating is driven by observed state instead of permanently missing `msActiveOn` / `windfuryActive` flags.
 - Train detection now counts damage events only when they land on friendly healers, preventing ordinary melee damage on DPS teammates from forcing DEFEND mode.
