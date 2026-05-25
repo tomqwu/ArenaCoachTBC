@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.2] - 2026-05-25
+
+Bilingual docs + WSG/BG flash gate.
+
+### Fixed
+- **Screen flash + voice cues no longer fire outside arena.** Reported: "it kept blinking redness when I am doing WSG". The URGENT-mode screen flash + voice callout dispatch were unconditional once `db.alerts.screenFlash` / `db.alerts.sound` were on. In BG (and world PvP / outside-PvP) the engine's DEFEND-trigger heuristics fire spuriously and pulsed red flash every few seconds. `UI:Apply` now gates both the screen flash and the voice cue on `IsActiveBattlefieldArena()` — the recommendation frame itself stays available (so you can read the data in BG), but the intrusive alerts only fire in actual arena instances. Headless tests pass the gate via the missing-API permissive branch. +2 new tests in `UI_spec`.
+- **Tooltip locale carry-over fix from v2.0.1** continues to work (`SetSpellByID` + `GetSpellInfo` fallback chain).
+
+### Changed
+- **All user-facing docs are now bilingual (English + 中文) inline.** No separate language files. The root `README.md`, `ArenaCoachTBC/README.md`, `docs/architecture.md`, `docs/weakaura-pack.md`, and `docs/weakaura-imports.md` now interleave English and Chinese content at the section level. Section headings carry both languages (`Installation / 安装`); prose paragraphs appear in both languages back-to-back. Code blocks, slash commands, API names, and config keys are kept English (those are universal artifacts). `tools/export_weakauras.mjs` updated to emit bilingual headers + descriptions, so future regenerations keep both languages.
+
+### Documented
+- **BG support is partial in v2.0.2.** The recommendation frame can be shown in BG via `/acc toggle`, and the engine continues to evaluate (so WeakAuras and the trace log still receive data), but the per-comp catalog and chain definitions are tuned for arena 2v2/3v3/5v5. Proper BG support (large-team mode, BG-specific kill priority, BG-specific chains) is a v2.1 roadmap item.
+
 ## [2.0.1] - 2026-05-25
 
 Documentation + UX polish on top of v2.0. No engine changes — 536 tests, 99%+ coverage, 81% benchmark baseline.

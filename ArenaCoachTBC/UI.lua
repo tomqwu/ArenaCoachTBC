@@ -307,15 +307,26 @@ function UI:Apply(recommendation)
     end
     f.subText:SetText(table.concat(subParts, "\n"))
 
-    -- Screen flash for URGENT (defensive)
-    if recommendation.priority == "URGENT" and ArenaCoachTBCDB
+    -- v2.0.2: PvP-context gate. The aggressive alerts (screen flash,
+    -- voice cue) should only fire in actual arena. In battlegrounds,
+    -- world PvP, duels, and outside-PvP the engine still evaluates
+    -- (and the frame can still show recommendations if the user opted
+    -- in via /acc toggle), but the intrusive feedback is suppressed.
+    -- IsActiveBattlefieldArena returns true iff inside a rated/skirmish
+    -- arena instance. Missing API → headless test → permissive.
+    local inArena = (type(IsActiveBattlefieldArena) ~= "function")
+                    or IsActiveBattlefieldArena()
+
+    -- Screen flash for URGENT (defensive) — arena only
+    if inArena and recommendation.priority == "URGENT" and ArenaCoachTBCDB
        and ArenaCoachTBCDB.alerts and ArenaCoachTBCDB.alerts.screenFlash then
         self:_Flash()
     end
 
     -- M12 #77: voice callouts. Fire one sound per *new* top callout.
-    -- Suppress repeats by tracking the last-played key on the UI object.
-    if ns.Sounds and recommendation.callouts and #recommendation.callouts > 0
+    -- Arena-gated for the same reason — BG combat noise produces
+    -- repeated cues that aren't actionable.
+    if inArena and ns.Sounds and recommendation.callouts and #recommendation.callouts > 0
        and ArenaCoachTBCDB and ArenaCoachTBCDB.alerts
        and ArenaCoachTBCDB.alerts.sound then
         local top = recommendation.callouts[1]

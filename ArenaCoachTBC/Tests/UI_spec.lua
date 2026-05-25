@@ -60,6 +60,44 @@ H.it(g, "Apply with each mode does not error", function()
     end
 end)
 
+H.it(g, "v2.0.2: Apply does NOT screen-flash outside arena (BG/world)", function()
+    -- Stub IsActiveBattlefieldArena to return false (simulating WSG / world).
+    _G.ArenaCoachTBCDB = {
+        enabled = true, locked = false, language = "auto",
+        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0 },
+        alerts = { sound = true, screenFlash = true },
+        strategy = {}, debug = false,
+    }
+    local saved = _G.IsActiveBattlefieldArena
+    _G.IsActiveBattlefieldArena = function() return false end
+    UI:CreateFrame()
+    UI._flash = nil
+    UI:Apply({ mode = "DEFEND", reason = "trained", callouts = {}, priority = "URGENT" })
+    H.assertNil(UI._flash, "screen flash must not fire outside arena (BG bug fix)")
+    _G.IsActiveBattlefieldArena = saved
+end)
+
+H.it(g, "v2.0.2: Apply does NOT play voice cue outside arena", function()
+    _G.ArenaCoachTBCDB = {
+        enabled = true, locked = false, language = "auto",
+        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0 },
+        alerts = { sound = true, screenFlash = false },
+        strategy = {}, debug = false,
+    }
+    local saved = _G.IsActiveBattlefieldArena
+    _G.IsActiveBattlefieldArena = function() return false end
+    H.load("Sounds.lua")
+    UI:CreateFrame()
+    UI._lastVoiceCallout = nil
+    local savedPlay = _G.PlaySoundFile
+    local played = false
+    _G.PlaySoundFile = function() played = true; return true end
+    UI:Apply({ mode = "KILL", reason = "r", callouts = { "CALL_HOJ_KILL" }, priority = "HIGH" })
+    H.assertFalse(played, "voice cue must not play outside arena")
+    _G.PlaySoundFile = savedPlay
+    _G.IsActiveBattlefieldArena = saved
+end)
+
 H.it(g, "Apply with URGENT triggers screen flash", function()
     -- Re-establish the DB in case another spec replaced it during dofile.
     _G.ArenaCoachTBCDB = {
