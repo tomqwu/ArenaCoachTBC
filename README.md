@@ -132,45 +132,11 @@ User-facing **callout strings** (e.g. "Tremor for fear", "Burst the priest") are
 
 ## Customising the display with WeakAuras
 
-The addon publishes its full recommendation through `_G.ArenaCoachTBC`. Build your own HUD by consuming the getters.
+The built-in HUD (mode label, target stats, edge glow, nameplate highlight, audio) covers what most users want — no WeakAura needed. If you want to drive your own custom HUD on top, the addon exposes its full live state through `_G.ArenaCoachTBC`.
 
-### Paste-ready import strings
+> **About paste-ready import strings**: v2.0–v2.2.5 tried to ship pre-built WA import strings in this README. The `node-weakauras-parser` library we used to generate them produces strings that decode correctly but fail WA's import-validator byte check (the import dialog never shows the Import button). After 6 patches chasing it we concluded the parser is the wrong tool. If you want to use the templates, the source for each (mode badge, burst gate, defensive alert, callout stream, comp readout) is in `docs/weakaura-pack.md` — paste the trigger Lua into a Custom-trigger WeakAura you build in-game, no import-string round-trip needed.
 
-5 ready-made templates. In WoW: `/wa` → **Import** (upper-left) → paste a string → **Import** in the preview dialog. Each is independent — grab any subset.
-
-**1. Mode badge** — big colour-coded mode + target line. Hides outside arena.
-
-```
-!WA:2!fsvZUnnqqy1csGcsvacfjkhyLLaksOK2qvLALQq5h3QaPjbh3I4uyT9A7LAVR7(tBtvfh6jUsFeYJqKqCNNGkEe4rGNag)dn0FeS(Wo7mZ34zMVz3zkFFVp)4FG1QqUOxIIYzYsJD5mpAUSdi7tdknHY85IyCQ2snI4yVnovljdDJWszydj9iszRyDKIw2clim8hgNzMh7GvHzUYi7teH)mrq8jcB(2jEyfj8ujjYVpNYuonn7ABA5i5AHlXHgNWfQXsTJfjipVuCxies4WT7)WtucAqaCC(Nkke3PHAucXXvlv84j5BdZujvyLwA5gsC31cYdM6SYjFXxZCtlOfEEjeI6JyCfA4MvQNM)n5y3q7gnrQqcdjikTGH8XrscIW8a)J4U4ium3JGw)kOQSjrTfyklYfGZC9tRJy0ieM5D(zdlZbM2gLGW6KLAYKx1Vt93BAn0YCtZUdB1Eq9gDmB9c0fuB2TqB9Mnbvn7T1wMDBv3UDVUNQzfTKYqDo)068p5IsOZQJAAQ3Ka8(69wAr5OJ2TMweL8SqLkrUw1QbuvO2PcqIvHo5EhOREHI8xaPremC0o5KYxffSZTCKKyq2QwLAvw25aCaVDRzfh2Z3xsuZigLl06oguVK7bPp67FdL2UqoyVaYyrgHBdexdf5q1epQmjcpYgKnEYsJZj20tho7JUahMZj4e61qjtP4u7)nRAyCvkfbra8BkpI4cWXZDsHfbe1uN6lOXyXi7m1DXXfiUoRntVYCLa6YJG5EiGlKpsbZfVPDNogqMKoSyCSRpSw2BzpJuOaUlTMIBW7Q3)s4wD1fx8)IRL5gWaKXuCRSItnF))lUE9n7EP)xkwJ8smvHZlt)mYPGIwx6KVrgpKf7cUOOnuPsona7ghlwdzKkLde8oNT(xiYUnzLAs86BaRg(CMk5UBiOhHERg7jWkmY2(Ku1dG3UAl4AveLre922Ut7UMIpcdzu)rNnN1bupv4nFGtiHgeQWtWmx4XYSNSoBUFd
-```
-
-**2. Burst gate** — pulsing icon when `IsBurstAllowed()` is true on KILL mode.
-
-```
-!WA:2!LjvtVnnqqu12dGIqibhIGEaTQhGwjuIukhQqQQk2XTnq(sMqL4u6URh7DbNDD3pijCR9eNZfUNFcrcXD(fuv(hax4k8lG12bqfMd2V55rJN38M1QE3O3)GRWwdtQ6Nz4sHUYcQueXlXehoMNuzjxelvJX5Sv8sL4OdNB1WiAkwRzEA(7GQHJTPgE1qSce4txu8z5yc2WkkvaVfuSVMPGyqnu(YSiSbyZ1qA8ajxyi(b9gges0sRIce(4mPYSqBjHqs5CzKuxl0UKBo4(xyu8Kex6MpuTcEINzwgqOwTroEz5RrfuAd2y1HugqFdXw8NVSA2hITcAUI2ENkiepgjKg0OJQ1mxa(smLn0ZhzyGaPaJvjqX4unGarKR(vu)B91AR9SkTPzAQCcev0AxGfr)FPhbMUYiy7Dq7VpARN3UtNTQ4AoXTPegD2bd608vbHJcdokO3OwTFrtVobTEm6A0b9wX2033r53VB3GETAoSD)EZTIvBMQo1U5Fv7VNDJYwOMgwE0YxtGP7TBJzuYEnSQ0ShXmMm9tRxpHBywsnNxw3TqpBIT(1uXpDEhOe40tk9MpQwzs3GOHXoCyJAnQ9eYeCISDR1vt7hhRbZAQzLGFSfpk7oUPh95pHkwDOeN)Sqvy7dD2Nh3DfUmIRZsXZA7W3B9B99qQmvQE2gUiCcpYWoNWaEcZC(sSG6oNloQU82EjoF40lYFM3RWb8Pq6v5PhQGZSGGo74d(2UfX8CA)Y(E8bFPK8pGn(f
-```
-
-**3. Defensive alert** — top-centred DEFEND callout with the reason.
-
-```
-!WA:2!LnvtRnrqyyQ9GsqeXdbSxCyHQTGSbdA9diuYhBBJ0MKUDBbpfND3zYo6MzgN5DAsk9Gu8GG3kErpMFcbeV7VGI38Ap4pa)f4S7MsP05Y(mpV7(oVppp7Sq57f)5h8BSbseQUsGj46stJe8ywbo0IPSbLMX4uHAioJTuJuboEJtnAs)OuSwN0qZoIu2FOjfyL9Xkch)2P5LfddXqs(RYjhsujNlvekrfi2xgJbsYPAskTNGXHWMEDc88d1cJkIeYgkfkyQ2e6tgumxGiY2cTDZT6D)tafBWa72LEOAo8GgWejjmYObXWzfp6NtPbmy0(rjKO3hAYp5Zkl3JA4rzkALvlHqkcyuCu)nDRNjGMcCusqJMimp(AKUBsGDeXKvwfvRgYPL3gEDA5uIWJdTQKdA5692U(B88777TPxN(TAVx9gB716XORq71zoB9MnTun7UZo2(upOD3oNA4Zvvz7KU0Lt6fZjOmeK9aRAyXZEH55JXptAoC04QgvQ8rjai1VQsLbmiXe6AZHkwZ4dJmvUIo(N13jkoo9GcF9hQ5g8nd1KHwSFv3QUpnCeEGODRBOg3Ls1eyb1KcWTl5WILLTJp6x)e1YMSCn7qccNsSzNkp4cSbqdGmgMfZ0Yu8Kal2z5NmTiGY2j)YvsIureofHLmuTR582YmkIlG86qcHFHH44KzhxgKohhrPRTwyvkTiFowHo)JFf5GCDrRy)6Sq0NG15UQqzBWQzjOFKivOE9wR)NVLT((wR)xA(AXfBqfCqE3nuSJq7AWXkmGrbbNKrVN9kWlvcdKY4ev39d2UDhp17SAKrNC2D8hXIHKpTCycHnib2DgMhzVZL)NF1GU9(p
-```
-
-**4. Callout stream** — bottom-left stream of the top 3 callouts.
-
-```
-!WA:2!9rvtVnnqquvajqrCQcIe9cBdcirQYPnT9csrvXPPFGstQmU9cGcRTxBVu7DD3D2MMIGdvCGZ9a3j8pisi4C)fG4c37veCGFbS2oPvfKyV43o7mVzM3oRNQ40EV7UFdRGqUOBcq5mzHHUCMhnh7OX(0GcJOmFUigNATGzeh7T2jkjPNBewkdnL0JifTIvraTOfwqy4xmm7yESdgcZCLroGicplrq8jcB(ojEyGeEIKe5VnNYaNMT6y3YYrYvcxIdnoHlGHsLJfjiVUaURMcPEZn2(ohdcAqGE7mpqmgURjmiH44QKapEu(NEzMKagusl3qI7EoQSm)1Ijv9vm30oQCLciKGakbd1BDJgPnqto2n02Sj6n1rmAubcZZr3bmqMmDJMn7z1Qz3T2QvNvByVz3oNOyJlIIAIN5cINqliueKMJAkQ3OL40bbS5p4OLJRPerjpmeGe5JQwnGcHkhdTSvvx773xv9s1YV1YerWWr7MldFsmwpUUJKeRXw1mQzSKtFCaFZvVI4WU((scmRyqo4T3Se1l526YhD6NrnXrrCfGKGGGJhkYKzBTCzcKdHrEuzseEGTgx6(lmmxot3D4uKljCrCxCecNqr1)h1tFm1hX4q25CXeOX6eyC(LiiKWMOtLkLQsNZAA9v)VdqRQAME1RZj)Ez(uhn))JNikJi1mLfuUP2JjUDkzN3q7D(n2EJjqp3JsBTfMdPN)dnIPSYloxwARG84Apqia7ermOmjraLZY1COsN9(VGkHmmqTlR99P0NxjvTYjDYurwC63yU4lI7zSsvsh3SC5rCXJ3yLF5NT2yLFM8XVxO((BSYpwmBDvtFodoTHGQ7NoyHG3)4ulpr)CCwHoPPuk6UJD7n70s8s9ni1FGz7wRzB1N6bHx7woHeAqi8HryMR(xazpehA212U7wPU9ha
-```
-
-**5. Comp readout** — compact comp label + spec-confirmed / class-guessed badge.
-
-```
-!WA:2!LnvqRnrquyIkOeepuHavqCzbRTh6gAulwHsizBSTsBsz72Eno7SZU7y3DMTVzgtsP4HEYZ9MEm)eciEV)ck(tWdcI38xGZSBI1sFWY8M37BFZ377ntLAZf(PN8DKsMWHE5skNjQogZzH0s)aTFenU6eklIdzit0QTt5OW3CUsq6JtrcrsBb9esnVmvQKwZdbeg6DJlsZZcqYKcOmYhiqYpYbseb85hKhIKKKZfK0O94uMmWTtx)oEbcUcWKaAwohKJfQapsCjVKCSUec9M7T38NjbACSE7JwaM6EyB5OCsawjK8SjLl9lcjKiPs4Hti4JcufN8L1Y3psXWMoAXLQAzbePcyw930PLPbC5iCIFBxlel8gbD2Ki7WizJC5z5lUK1hx3IrtRsyHb6UKjf5Z1Y1TVxh3E7UBNUB0YF7EDpxXMs0A6d)rxD4ZoAjOiw6A0qrdN8YvIpAWQdp64tEvdfKM)SePmx8661JPYevGJwARR7VJhOQFnQ9hTusagk9WsP6RWun7UbcsM23RHtdNxemafZ3EJBbd7ffjiYkWOsN7xXMgM)qn9TU4BwM(ttpuixjhdfdcFTG2wsgkNesf5POr(AF7NUY4sb3SByLfUM0MYXOuluo1A9BiL600ilgxwKxMqyZKdBBJy8VFhBOY6guxt93bfqs1AihUrQYO2nT)VAWIUQggm7NtWUM74qgjSGSgZmZTpfhfT6QMpHg0Y4zOofSNctx9syyTT2AfpgwowreIzOM2kfC3XXYwJ3SAQL52IhMNYH3UvZF)8cBRM)6Zg7lB18Nrf2TBhXzYlAbun97IaGp4mtK91V4EmONkPugb6DG)oB3Td8E9iGgn6Yh4nGgktUZ8bjeACICLjigw)eV4Hwd)E79x
-```
-
-For the trigger code behind each template (if you want to roll your own variant), see `docs/weakaura-pack.md`.
-
-**Highlights of the bridge API:**
+**Bridge API highlights:**
 
 ```lua
 _G.ArenaCoachTBC.GetMode()             -- "KILL" / "SWAP" / "DEFEND" / "OPEN" / "RESET"
@@ -373,19 +339,9 @@ MIT.
 
 ## 用 WeakAuras 自定义显示
 
-插件通过 `_G.ArenaCoachTBC` 全局发布完整的推荐数据。你可以基于这些 getter 构建自己的 HUD。
+内建 HUD（模式标签、目标信息行、屏幕边缘光晕、铭牌高亮、音效）已经涵盖绝大多数场景——不需要额外配置 WeakAura。如果你想在此之上自定义 HUD，插件通过 `_G.ArenaCoachTBC` 全局发布完整的实时状态。
 
-### 直接导入字符串
-
-5 个现成模板。游戏内：`/wa` → 点击左上角 **Import** → 粘贴字符串 → 在预览弹窗里再点 **Import**。每个模板互相独立，按需导入。
-
-**1. 模式徽章** — 大字号、按模式着色的目标信息行。竞技场外自动隐藏。
-**2. 爆发开关** — 当 KILL 模式下 `IsBurstAllowed()` 为真时显示脉动图标。
-**3. 防御警报** — 屏幕顶部居中的 DEFEND 提示，带触发原因。
-**4. 提示流** — 左下角显示前 3 个提示。
-**5. 阵容信息** — 紧凑的阵容标签 + 天赋已确认 / 仅按职业推测徽章。
-
-5 个 `!`-前缀的导入字符串与上方英文部分相同（请使用上面的代码块直接复制）。模板背后的触发器代码（如需自行变体）参见 `docs/weakaura-pack.md`。
+> **关于"可粘贴导入字符串"**：v2.0–v2.2.5 曾尝试在 README 中直接附带 WA 导入字符串。我们使用的 `node-weakauras-parser` 库生成的字符串可以正常解码，但通过不了 WA 导入校验的字节比对——粘贴后不会弹出 Import 按钮。连续 6 次补丁追查后确认该库不适用。如需使用这些模板，请在 `docs/weakaura-pack.md` 中查看每个（模式徽章、爆发开关、防御警报、提示流、阵容信息）的触发器源码——把 Lua 代码粘到你在游戏内自建的 Custom 触发器里即可，无需经过导入字符串环节。
 
 **主要 API：**
 
