@@ -35,6 +35,15 @@ ns.locales.zhCN = {
     TEST_DEMO_END   = "|cffc8a86b[ACC]|r 演示结束。/acc test print 可查看仅文字版本。",
     TEST_DEMO_NO_UI = "|cffc8a86b[ACC]|r 演示需要游戏内 UI（仅在客户端中可用）。",
 
+    -- v2.1.3: 防御 / 重置模式的本地化原因
+    REASON_DEFEND_TRAINED      = "防御 - 治疗被集火",
+    REASON_DEFEND_LOW_HEALER   = "防御 - 治疗血量低",
+    REASON_DEFEND_ENEMY_LUST   = "防御 - 敌方嗜血",
+    REASON_DEFEND_MULTI_BURST  = "防御 - 多人爆发",
+    REASON_DEFEND_HEALER_CC    = "防御 - 我方治疗被控",
+    REASON_DEFEND_TRIPLE_DPS   = "防御 - 三 DPS 阵容（无起手）",
+    REASON_RESET               = "重置 - 无明确目标",
+
     -- M14 (v2.1): 战场模式提示
     CALL_FLAG_CARRIER_LOW    = "夺旗者血量低 - 压上",
     CALL_INCOMING_PLAYERS    = "敌方来袭",

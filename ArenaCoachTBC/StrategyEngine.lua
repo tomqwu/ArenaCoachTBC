@@ -787,10 +787,27 @@ function SE:Evaluate(state)
         end
     end
     local reason
+    local reasonKey  -- v2.1.3: localizable key for stable reasons (DEFEND / RESET)
     if mode == "DEFEND" then
-        reason = "defensive: " .. (select(2, shouldDefend(state)) or "unknown")
+        local why = select(2, shouldDefend(state)) or "unknown"
+        reason = "defensive: " .. why
+        -- Map known defensive reason codes to locale keys so the
+        -- UI can render the subtext in the user's language (BG
+        -- users see the Chinese callout list + the Chinese reason,
+        -- not the mixed English / Chinese line from v2.1.2 and
+        -- earlier).
+        local map = {
+            trained         = "REASON_DEFEND_TRAINED",
+            low_healer      = "REASON_DEFEND_LOW_HEALER",
+            enemy_lust      = "REASON_DEFEND_ENEMY_LUST",
+            multi_burst     = "REASON_DEFEND_MULTI_BURST",
+            healer_cc       = "REASON_DEFEND_HEALER_CC",
+            triple_dps_pre  = "REASON_DEFEND_TRIPLE_DPS",
+        }
+        reasonKey = map[why]
     elseif mode == "RESET" then
         reason = "reset / no clear target"
+        reasonKey = "REASON_RESET"
     else
         -- KILL / SWAP / OPEN always have a topTarget (decideMode invariant)
         reason = string.format("%s [%s]", topTarget.class or "?", table.concat(reasonParts, ", "))
@@ -884,6 +901,7 @@ function SE:Evaluate(state)
         secondaryTargetClass = secondTarget and secondTarget.class or nil,
         confidence      = confidence,
         reason          = reason,
+        reasonKey       = reasonKey,  -- v2.1.3: locale key, when applicable
         callouts        = callouts,
         priority        = priority,
         comp            = comp and comp.id or nil,

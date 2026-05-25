@@ -899,3 +899,41 @@ H.it(g, "BG mode: PRE phase also skips OPEN (same as world)", function()
     local rec = SE:Evaluate(state)
     H.assertTrue(rec.mode ~= "OPEN", "bg context must not emit OPEN")
 end)
+
+-- =================================================================
+-- v2.1.3: rec.reasonKey on DEFEND / RESET modes
+-- =================================================================
+
+H.it(g, "v2.1.3: DEFEND with trained reason sets reasonKey=REASON_DEFEND_TRAINED", function()
+    local state = SE:BuildTestState({"WARRIOR","MAGE","PRIEST"})
+    state.combatPhase = "ACTIVE"
+    state.observations = { healerUnderPressure = true }
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.mode, "DEFEND")
+    H.assertEq(rec.reasonKey, "REASON_DEFEND_TRAINED")
+end)
+
+H.it(g, "v2.1.3: DEFEND with enemy_lust reason sets reasonKey=REASON_DEFEND_ENEMY_LUST", function()
+    local state = SE:BuildTestState({"WARRIOR","MAGE","PRIEST"})
+    state.combatPhase = "ACTIVE"
+    state.observations = { enemyBloodlustActive = true }
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.mode, "DEFEND")
+    H.assertEq(rec.reasonKey, "REASON_DEFEND_ENEMY_LUST")
+end)
+
+H.it(g, "v2.1.3: RESET mode sets reasonKey=REASON_RESET", function()
+    local state = SE:BuildTestState({})
+    state.combatPhase = "ACTIVE"; state.enemies = {}; state.enemyClassList = nil
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.mode, "RESET")
+    H.assertEq(rec.reasonKey, "REASON_RESET")
+end)
+
+H.it(g, "v2.1.3: KILL mode does NOT set reasonKey (variable contributor text)", function()
+    local state = SE:BuildTestState({"WARLOCK","DRUID","WARRIOR"})
+    state.combatPhase = "ACTIVE"; state.bracket = 5
+    local rec = SE:Evaluate(state)
+    H.assertNil(rec.reasonKey,
+        "KILL has variable contributor data; reasonKey stays nil so UI uses the rec.reason text")
+end)

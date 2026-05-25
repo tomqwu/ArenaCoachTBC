@@ -206,3 +206,63 @@ H.it(g, "Apply with primaryTargetClass fallback", function()
     UI:CreateFrame()
     UI:Apply({ mode = "KILL", primaryTargetClass = "MAGE", priority = "HIGH" })
 end)
+
+-- =================================================================
+-- v2.1.3: DEFEND / RESET don't show a target in bigText
+-- =================================================================
+
+H.it(g, "v2.1.3: DEFEND mode suppresses '<mode>: <name>' target form", function()
+    UI:CreateFrame()
+    UI:Apply({
+        mode = "DEFEND",
+        primaryTargetName = "ShouldNotShow",
+        primaryTargetClass = "PRIEST",
+        reason = "defensive: trained",
+        callouts = {},
+        priority = "URGENT",
+    })
+    local txt = UI.frame.bigText._text
+    H.assertTrue(txt and not txt:find("ShouldNotShow", 1, true),
+        "DEFEND must not include target name; got: " .. tostring(txt))
+end)
+
+H.it(g, "v2.1.3: KILL / SWAP / OPEN still show the target", function()
+    UI:CreateFrame()
+    UI:Apply({
+        mode = "KILL",
+        primaryTargetName = "TargetA",
+        callouts = {}, priority = "HIGH",
+    })
+    H.assertTrue(UI.frame.bigText._text:find("TargetA", 1, true) ~= nil,
+        "KILL must show target name")
+end)
+
+H.it(g, "v2.1.3: RESET mode also suppresses target", function()
+    UI:CreateFrame()
+    UI:Apply({
+        mode = "RESET",
+        primaryTargetName = "Stale",
+        callouts = {}, priority = "LOW",
+    })
+    H.assertTrue(UI.frame.bigText._text and not UI.frame.bigText._text:find("Stale", 1, true),
+        "RESET must not include target name; got: " .. tostring(UI.frame.bigText._text))
+end)
+
+H.it(g, "v2.1.3: UI prefers rec.reasonKey via L() over raw rec.reason", function()
+    UI:CreateFrame()
+    UI:Apply({
+        mode = "DEFEND",
+        reason = "defensive: trained",
+        reasonKey = "REASON_DEFEND_TRAINED",
+        callouts = {},
+        priority = "URGENT",
+    })
+    local sub = UI.frame.subText._text or ""
+    -- en locale renders REASON_DEFEND_TRAINED as "defensive - healer trained"
+    H.assertTrue(sub:find("healer trained", 1, true) ~= nil
+        or sub:find("治疗被集火", 1, true) ~= nil,
+        "expected localised reason text, got: " .. sub)
+    -- Raw 'defensive: trained' must NOT appear (means we used reasonKey)
+    H.assertTrue(not sub:find("defensive: trained", 1, true),
+        "raw reason string should not leak when reasonKey is set")
+end)
