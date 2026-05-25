@@ -1,5 +1,6 @@
 -- Tests/Strategies_spec.lua
 local H = _G.__ACC_TEST_HELPERS
+H.load("Data/Spells.lua")
 H.load("Data/Classes.lua")
 H.load("Data/Strategies.lua")
 local ST = H.ns.Strategies
@@ -172,6 +173,90 @@ H.it(g, "bracket=3 RMP comp matches when ROGUE+MAGE+PRIEST present", function()
     local m = ST:Identify({"ROGUE","MAGE","PRIEST"}, nil, 3)
     H.assertNotNil(m)
     H.assertEq(m.id, "RMP_3V3")
+end)
+
+-- =================================================================
+-- Built-in chains per comp (M8 #60)
+-- =================================================================
+
+H.it(g, "catalog contains at least 10 chain entries across all comps", function()
+    local count = 0
+    for _, comp in ipairs(ST.comps) do
+        if comp.chains then count = count + #comp.chains end
+    end
+    H.assertTrue(count >= 10, "expected >=10 chain entries, got " .. count)
+end)
+
+H.it(g, "every chain link references a non-nil spell ID", function()
+    for _, comp in ipairs(ST.comps) do
+        if comp.chains then
+            for _, c in ipairs(comp.chains) do
+                for i, link in ipairs(c.links or {}) do
+                    H.assertNotNil(link.spellID,
+                        comp.id .. "/" .. c.id .. "/link[" .. i .. "] missing spellID")
+                end
+            end
+        end
+    end
+end)
+
+H.it(g, "every chain link's byClass is in the comp's core (or comp is dynamic)", function()
+    for _, comp in ipairs(ST.comps) do
+        if comp.chains and not comp.dynamic then
+            for _, c in ipairs(comp.chains) do
+                for i, link in ipairs(c.links or {}) do
+                    H.assertTrue(comp.core[link.byClass] == true,
+                        comp.id .. "/" .. c.id .. "/link[" .. i .. "] byClass="
+                            .. tostring(link.byClass) .. " is not in core")
+                end
+            end
+        end
+    end
+end)
+
+H.it(g, "every built-in chain validates against a fresh Chain state", function()
+    H.load("DRTracker.lua")
+    H.load("CooldownTracker.lua")
+    H.load("Chain.lua")
+    local Chain = H.ns.Chain
+    H.ns.DRTracker:Clear()
+    H.ns.CooldownTracker:Clear()
+    for _, comp in ipairs(ST.comps) do
+        if comp.chains then
+            for _, c in ipairs(comp.chains) do
+                -- Instantiate the chain by mapping byClass/targetRole to
+                -- placeholder GUIDs. Each role gets a distinct GUID so the
+                -- chain primitive's per-target within-chain DR accumulation
+                -- behaves as the catalog author intended.
+                local concrete = { links = {} }
+                for _, link in ipairs(c.links) do
+                    table.insert(concrete.links, {
+                        spellID    = link.spellID,
+                        category   = link.category,
+                        target     = "tgt-" .. tostring(link.targetRole),
+                        by         = "by-" .. tostring(link.byClass),
+                        castTimeS  = link.castTimeS,
+                    })
+                end
+                local ok, reason = Chain:Validate(concrete)
+                H.assertTrue(ok, comp.id .. "/" .. c.id
+                    .. " did not validate: " .. tostring(reason))
+            end
+        end
+    end
+end)
+
+H.it(g, "every chain has an id and a non-empty links list", function()
+    for _, comp in ipairs(ST.comps) do
+        if comp.chains then
+            for i, c in ipairs(comp.chains) do
+                H.assertNotNil(c.id,    comp.id .. " chain[" .. i .. "] missing id")
+                H.assertNotNil(c.label, comp.id .. " chain[" .. i .. "] missing label")
+                H.assertTrue(c.links and #c.links > 0,
+                    comp.id .. " chain[" .. i .. "] has empty links")
+            end
+        end
+    end
 end)
 
 -- =================================================================
