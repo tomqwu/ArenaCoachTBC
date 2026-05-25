@@ -212,6 +212,19 @@ end
 function UI:Apply(recommendation)
     local f = self.frame; if not f or not recommendation then return end
 
+    -- M12 #77: compact mode. When toggled in SavedVariables, the frame
+    -- hides the friendly + enemy icon rows so the recommendation block
+    -- alone occupies the smallest possible footprint. Toggles update
+    -- on next Apply so the user just sees the change after re-evaluation.
+    local compact = (ArenaCoachTBCDB and ArenaCoachTBCDB.frame
+        and ArenaCoachTBCDB.frame.compactMode) or false
+    if f.friendlyRow then
+        if compact then f.friendlyRow:Hide() else f.friendlyRow:Show() end
+    end
+    if f.enemyRow then
+        if compact then f.enemyRow:Hide() else f.enemyRow:Show() end
+    end
+
     local mode = recommendation.mode or "RESET"
     local color = modeColors[mode] or {1, 1, 1}
     local label = L(mode)
@@ -282,6 +295,18 @@ function UI:Apply(recommendation)
     if recommendation.priority == "URGENT" and ArenaCoachTBCDB
        and ArenaCoachTBCDB.alerts and ArenaCoachTBCDB.alerts.screenFlash then
         self:_Flash()
+    end
+
+    -- M12 #77: voice callouts. Fire one sound per *new* top callout.
+    -- Suppress repeats by tracking the last-played key on the UI object.
+    if ns.Sounds and recommendation.callouts and #recommendation.callouts > 0
+       and ArenaCoachTBCDB and ArenaCoachTBCDB.alerts
+       and ArenaCoachTBCDB.alerts.sound then
+        local top = recommendation.callouts[1]
+        if top ~= self._lastVoiceCallout then
+            ns.Sounds:Play(top)
+            self._lastVoiceCallout = top
+        end
     end
 end
 
