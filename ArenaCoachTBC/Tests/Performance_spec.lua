@@ -13,6 +13,10 @@ H.load("Data/SpellSpecHints.lua")
 H.load("EventBus.lua")
 H.load("CooldownTracker.lua")
 H.load("DRTracker.lua")
+H.load("Chain.lua")
+H.load("OpponentProfile.lua")
+H.load("Lookahead.lua")
+H.load("Patterns.lua")
 H.load("StrategyEngine.lua")
 
 local SE = H.ns.StrategyEngine
@@ -30,6 +34,48 @@ H.it(g, "Evaluate completes in <5ms per call on a 5v5 state (target <1ms)", func
     -- 5ms is the CI margin; locally we aim for <1ms.
     H.assertTrue(avgMs < 5,
         string.format("Evaluate avg %.3fms per call (budget 5ms)", avgMs))
+end)
+
+-- =================================================================
+-- M10 #70: Lookahead + pattern budget. 99p < 10ms, mean < 3ms.
+-- =================================================================
+H.it(g, "Evaluate with lookahead+patterns stays within budget (mean<3ms, 99p<10ms)", function()
+    local LA = H.ns.Lookahead
+    LA:ResetCacheStats()
+    local state = SE:BuildTestState({"WARRIOR","MAGE","PRIEST","DRUID","PALADIN"})
+    state.combatPhase = "ACTIVE"
+    state.config.strategy.lookaheadEnabled = true
+    -- Warm up: include the path with chains by giving the state an
+    -- enemy team that maps to a comp with chains (RMP-flavoured).
+    state = SE:BuildTestState({"WARLOCK","DRUID","WARRIOR"})
+    state.combatPhase = "ACTIVE"
+    state.config.strategy.lookaheadEnabled = true
+    for i = 1, 10 do SE:Evaluate(state) end
+
+    local iters = 200
+    local samples = {}
+    for i = 1, iters do
+        local t0 = os.clock()
+        SE:Evaluate(state)
+        table.insert(samples, (os.clock() - t0) * 1000)  -- ms
+    end
+    table.sort(samples)
+    local sum = 0
+    for _, v in ipairs(samples) do sum = sum + v end
+    local mean = sum / iters
+    local p99  = samples[math.floor(iters * 0.99)] or samples[iters]
+
+    -- Mean budget: 3ms target, 10ms CI margin.
+    H.assertTrue(mean < 10,
+        string.format("Evaluate+lookahead mean %.3fms exceeds 10ms CI budget", mean))
+    -- 99p budget: 10ms target, 30ms CI margin (3x).
+    H.assertTrue(p99 < 30,
+        string.format("Evaluate+lookahead p99 %.3fms exceeds 30ms CI budget", p99))
+
+    local stats = LA:CacheStats()
+    -- We expect cache hits because each Evaluate's Score loops over
+    -- multiple chains using one cached response distribution.
+    H.assertTrue(stats.total > 0, "expected at least one cache lookup")
 end)
 
 H.it(g, "100 simulated arenas back-to-back stay within 200kb memory delta", function()

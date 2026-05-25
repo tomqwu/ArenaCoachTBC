@@ -25,6 +25,23 @@ Lookahead.DEFAULT_TOP_ACTIONS   = 3
 Lookahead.DEFAULT_TOP_RESPONSES = 3
 Lookahead.DEFAULT_PLIES         = 3
 
+-- Per-process cache hit / miss counters for the response distribution.
+-- EnumerateResponses is a hot inner call; memoising it across the chains
+-- list keeps Score's hot loop allocation-free for the second link onward.
+Lookahead._cacheHits   = 0
+Lookahead._cacheMisses = 0
+
+function Lookahead:CacheStats()
+    local hits, misses = self._cacheHits, self._cacheMisses
+    local total = hits + misses
+    return { hits = hits, misses = misses, total = total,
+             rate = total > 0 and (hits / total) or 0.0 }
+end
+
+function Lookahead:ResetCacheStats()
+    self._cacheHits, self._cacheMisses = 0, 0
+end
+
 -- Enumerate the opponent's likely responses to a candidate chain. Each
 -- response is { kind, prob, factor } where factor in [0..1] scales the
 -- chain's raw ExpectedProb at the leaf. Probabilities sum to 1.
@@ -58,14 +75,26 @@ function Lookahead:Score(chains, opts)
     local kResp = opts.topResponses or self.DEFAULT_TOP_RESPONSES
     local profile = opts.profile
 
+    -- Cache the response distribution for this call: it only depends on
+    -- the profile, not on each chain, so a single call to
+    -- EnumerateResponses is enough for the inner loop.
+    local cachedResponses = nil
     local results = {}
     for i = 1, math.min(kAct, #chains) do
         local c = chains[i]
-        local responses = self:EnumerateResponses(c, profile)
-        -- Clip responses to top-K by probability descending.
-        table.sort(responses, function(a, b) return (a.prob or 0) > (b.prob or 0) end)
-        if kResp < #responses then
-            for j = #responses, kResp + 1, -1 do responses[j] = nil end
+        local responses
+        if cachedResponses then
+            responses = cachedResponses
+            self._cacheHits = (self._cacheHits or 0) + 1
+        else
+            responses = self:EnumerateResponses(c, profile)
+            -- Clip responses to top-K by probability descending.
+            table.sort(responses, function(a, b) return (a.prob or 0) > (b.prob or 0) end)
+            if kResp < #responses then
+                for j = #responses, kResp + 1, -1 do responses[j] = nil end
+            end
+            cachedResponses = responses
+            self._cacheMisses = (self._cacheMisses or 0) + 1
         end
         local ev = 0.0
         local pSum = 0.0
