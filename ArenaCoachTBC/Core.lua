@@ -23,7 +23,7 @@ local DEFAULTS = {
     locked   = false,
     language = "auto",
     ownComp  = "WAR_ENH_RET_RDUID_DISC",
-    frame    = { point = "CENTER", x = 0, y = 120, scale = 1.0 },
+    frame    = { point = "CENTER", x = 0, y = 120, scale = 1.0, compactMode = false },
     alerts   = { sound = true, raidWarning = false, partyChat = false, screenFlash = true },
     strategy = {
         aggression = "balanced",

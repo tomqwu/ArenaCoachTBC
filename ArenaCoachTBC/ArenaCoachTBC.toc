@@ -19,6 +19,7 @@ Data\Strategies.lua
 Data\SpellSpecHints.lua
 
 EventBus.lua
+Sounds.lua
 CooldownTracker.lua
 DRTracker.lua
 Chain.lua

@@ -103,6 +103,23 @@ H.it(g, "Apply with chain narrates to chat once per chain id change", function()
     _G.print = origPrint
 end)
 
+H.it(g, "Apply respects compactMode by hiding icon rows", function()
+    UI:CreateFrame()
+    _G.ArenaCoachTBCDB = _G.ArenaCoachTBCDB or {
+        enabled = true, locked = false, language = "auto",
+        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0, compactMode = true },
+        alerts = { sound = true, screenFlash = false },
+        strategy = {}, debug = false,
+    }
+    _G.ArenaCoachTBCDB.frame.compactMode = true
+    UI:Apply({ mode = "KILL", reason = "x", callouts = {}, priority = "HIGH" })
+    -- Mock frame's SetShown stores the value somewhere accessible — we
+    -- assert the call happened by inspecting _shown.
+    local f = UI.frame
+    H.assertEq(f.friendlyRow._shown, false, "compactMode should hide friendlyRow")
+    H.assertEq(f.enemyRow._shown,    false, "compactMode should hide enemyRow")
+end)
+
 H.it(g, "Apply ignores nil recommendation", function()
     UI:CreateFrame()
     UI:Apply(nil)
