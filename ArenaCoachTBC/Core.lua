@@ -1295,17 +1295,146 @@ local DEMO_BEATS = {
     },
 }
 
+-- v2.1.1: BG-mode demo. 5 beats walking through a WSG scenario:
+-- 1. PRE: nameplate scan picks up enemies (KILL is the natural mode in BG)
+-- 2. KILL: BG healer-priority engaged
+-- 3. SWAP: enemy warrior picks up flag, dominates kill priority
+-- 4. KILL: flag carrier at low HP fires CALL_FLAG_CARRIER_LOW
+-- 5. RESET: flag captured / round ends
+local BG_DEMO_BEATS = {
+    {
+        delay = 0.0,
+        note  = "BG context. Engaged 10-player WSG match.",
+        rec = {
+            mode = "KILL",
+            primaryTarget = "bg-priest", primaryTargetName = "Holyshield", primaryTargetClass = "PRIEST",
+            secondaryTarget = "bg-warrior", secondaryTargetName = "Cleavebeard", secondaryTargetClass = "WARRIOR",
+            reason = "PRIEST [role_healer(25), bg_healer_boost(10)] | BG (no comp)",
+            callouts = { "CALL_HOJ_KILL", "CALL_PURGE" },
+            priority = "HIGH",
+            compConfidence = 0, compSpecConfirmed = false,
+            burstAllowed = false, burstBlockedBy = "no_ms",
+        },
+    },
+    {
+        delay = 2.5,
+        note  = "Enemy warrior picks up the WSG flag — kill priority pivots.",
+        rec = {
+            mode = "SWAP",
+            primaryTarget = "bg-warrior", primaryTargetName = "Cleavebeard", primaryTargetClass = "WARRIOR",
+            secondaryTarget = "bg-priest", secondaryTargetName = "Holyshield", secondaryTargetClass = "PRIEST",
+            reason = "WARRIOR [bg_flag_carrier(200), health_below_50(30)] | BG (no comp)",
+            callouts = { "CALL_FREEDOM_WAR", "CALL_HOJ_KILL" },
+            priority = "HIGH",
+            compConfidence = 0, compSpecConfirmed = false,
+            burstAllowed = false,
+        },
+    },
+    {
+        delay = 5.0,
+        note  = "Flag carrier at 35% HP — CALL_FLAG_CARRIER_LOW pushes the kill.",
+        rec = {
+            mode = "KILL",
+            primaryTarget = "bg-warrior", primaryTargetName = "Cleavebeard", primaryTargetClass = "WARRIOR",
+            reason = "WARRIOR [bg_flag_carrier(200), bg_low_hp_straggler(30), health_below_50(30)] | BG",
+            callouts = { "CALL_FLAG_CARRIER_LOW", "BURST_NOW", "CALL_HOJ_KILL" },
+            priority = "URGENT",
+            burstAllowed = true,
+        },
+    },
+    {
+        delay = 7.5,
+        note  = "Our healer being trained — DEFEND + CALL_BG_DEFEND (no flash outside arena).",
+        rec = {
+            mode = "DEFEND",
+            reason = "defensive: trained | BG",
+            callouts = { "CALL_BG_DEFEND", "CALL_PAIN_SUP_READY" },
+            priority = "URGENT",
+            burstAllowed = false, burstBlockedBy = "incoming_pressure",
+        },
+    },
+    {
+        delay = 10.0,
+        note  = "BG demo complete.",
+        rec = {
+            mode = "RESET",
+            reason = "reset / round ended",
+            callouts = {},
+            priority = "LOW",
+        },
+    },
+}
+
+-- v2.1.1: world PvP demo. 4 beats: engaged → low player HP DEFEND → reset.
+local WORLD_DEMO_BEATS = {
+    {
+        delay = 0.0,
+        note  = "World context. Engaged a hostile player in the open world.",
+        rec = {
+            mode = "KILL",
+            primaryTarget = "wpvp-rogue", primaryTargetName = "Backalleyba", primaryTargetClass = "ROGUE",
+            reason = "ROGUE [role_cloth_dps(15), health_below_50(30)] | world",
+            callouts = { "CALL_HOJ_KILL" },
+            priority = "HIGH",
+            burstAllowed = false, burstBlockedBy = "no_ms",
+        },
+    },
+    {
+        delay = 2.5,
+        note  = "Rogue at 18% HP — push.",
+        rec = {
+            mode = "KILL",
+            primaryTarget = "wpvp-rogue", primaryTargetName = "Backalleyba", primaryTargetClass = "ROGUE",
+            reason = "ROGUE [role_cloth_dps(15), health_below_50(30), trinket_down(20)] | world",
+            callouts = { "BURST_NOW", "CALL_HOJ_KILL" },
+            priority = "HIGH",
+            burstAllowed = true,
+        },
+    },
+    {
+        delay = 5.0,
+        note  = "Your HP at 22% — DEFEND. No SWAP in world (single-target focus).",
+        rec = {
+            mode = "DEFEND",
+            reason = "defensive: low_healer | world",
+            callouts = { "CALL_PAIN_SUP_READY", "CALL_BOP_READY" },
+            priority = "URGENT",
+            burstAllowed = false, burstBlockedBy = "incoming_pressure",
+        },
+    },
+    {
+        delay = 8.0,
+        note  = "World demo complete.",
+        rec = {
+            mode = "RESET",
+            reason = "reset / engagement ended",
+            callouts = {},
+            priority = "LOW",
+        },
+    },
+}
+
 function Core:RunTestMode(rest)
     rest = (rest or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
     if rest == "print" then
         return Core:_RunTestPrintMode()
     end
-    Core:_RunTestDemoMode()
+    if rest == "bg" then
+        return Core:_RunTestDemoMode(BG_DEMO_BEATS, "BG walk-through")
+    end
+    if rest == "world" then
+        return Core:_RunTestDemoMode(WORLD_DEMO_BEATS, "world PvP walk-through")
+    end
+    Core:_RunTestDemoMode(DEMO_BEATS, "arena RMP 3v3 walk-through")
 end
 
 -- DBM-style scripted walk-through: force the frame visible, step through
--- DEMO_BEATS via C_Timer, restore visibility at the end.
-function Core:_RunTestDemoMode()
+-- a beat list via C_Timer, restore visibility at the end.
+-- v2.1.1: accepts a beat list + label so we can run multiple scenarios
+-- (arena RMP / BG / world). Defaults preserve the v2.0.1 RMP demo.
+function Core:_RunTestDemoMode(beats, label)
+    beats = beats or DEMO_BEATS
+    label = label or "RMP 3v3 walk-through"
     if not ns.UI then chatPrint("UI not loaded"); return end
     if ns.UI.CreateFrame and not ns.UI.frame then ns.UI:CreateFrame() end
     if not ns.UI.frame then chatPrint(Core.L("TEST_DEMO_NO_UI") or "demo needs a live UI"); return end
@@ -1313,10 +1442,10 @@ function Core:_RunTestDemoMode()
     local wasShown = (ns.UI.frame.IsShown and ns.UI.frame:IsShown()) or false
     if not wasShown and ns.UI.Show then ns.UI:Show() end
 
-    chatPrint(Core.L("TEST_DEMO_START") or "|cffc8a86b[ACC]|r demo starting — 14s RMP 3v3 walk-through")
+    chatPrint(string.format("|cffc8a86b[ACC]|r demo starting — %s", label))
 
-    local total = #DEMO_BEATS
-    for i, beat in ipairs(DEMO_BEATS) do
+    local total = #beats
+    for i, beat in ipairs(beats) do
         local applyBeat = function()
             if ns.UI and ns.UI.Apply then ns.UI:Apply(beat.rec) end
             if ns.WeakAuraBridge and ns.WeakAuraBridge.Publish then
@@ -1334,7 +1463,7 @@ function Core:_RunTestDemoMode()
     end
 
     -- Restore visibility 2s after the last beat
-    local endDelay = (DEMO_BEATS[total] and DEMO_BEATS[total].delay or 0) + 2
+    local endDelay = (beats[total] and beats[total].delay or 0) + 2
     local restore = function()
         if not wasShown and ns.UI.Hide then ns.UI:Hide() end
         chatPrint(Core.L("TEST_DEMO_END") or "|cffc8a86b[ACC]|r demo complete · /acc test print for the chat-only version")
