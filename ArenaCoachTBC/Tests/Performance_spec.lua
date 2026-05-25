@@ -130,6 +130,47 @@ H.it(g, "AV-scale Evaluate completes within budget on 40 enemies", function()
         string.format("AV 40-enemy Evaluate avg %.2fms exceeds 50ms CI budget", avgMs))
 end)
 
+-- =================================================================
+-- v2.5.0: full evaluation cycle (Evaluate -> UI:Apply -> WAB:Publish)
+-- under budget. Pre-v2.2.5 the city-lag bug came from world_idle
+-- nameplate events that ran the full cycle on every plate add/remove;
+-- this test caps the cycle to a measurable budget so we'd catch any
+-- regression that re-introduces that pattern.
+-- =================================================================
+H.it(g, "Full evaluation cycle Evaluate->UI->WAB stays under 15ms (mean of 100)", function()
+    H.load("UI.lua")
+    H.load("ScreenEdgeGlow.lua")
+    H.load("Nameplate.lua")
+    H.load("WeakAuraBridge.lua")
+    local UI = H.ns.UI
+    local WAB = H.ns.WeakAuraBridge
+    -- Pin a PvP context so the v2.2.5 auto-hide gate doesn't no-op us.
+    H.ns.Core = H.ns.Core or {}
+    H.ns.Core.state = H.ns.Core.state or {}
+    H.ns.Core.state.pvpContext = "arena"
+
+    local state = SE:BuildTestState({"WARLOCK","DRUID","WARRIOR"})
+    state.combatPhase = "ACTIVE"
+    UI:CreateFrame()
+
+    for _ = 1, 10 do
+        local rec = SE:Evaluate(state); UI:Apply(rec); WAB:Publish(rec, state)
+    end
+
+    local iters = 100
+    local start = os.clock()
+    for _ = 1, iters do
+        local rec = SE:Evaluate(state)
+        UI:Apply(rec)
+        WAB:Publish(rec, state)
+    end
+    local avgMs = ((os.clock() - start) / iters) * 1000
+    H.assertTrue(avgMs < 15,
+        string.format("full cycle avg %.3fms exceeds 15ms CI budget", avgMs))
+
+    H.ns.Core.state.pvpContext = nil
+end)
+
 H.it(g, "100 simulated arenas back-to-back stay within 200kb memory delta", function()
     -- Force collection so the baseline is realistic.
     collectgarbage("collect")

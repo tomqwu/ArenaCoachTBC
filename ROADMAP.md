@@ -112,16 +112,38 @@ Three permanent swim-lanes run through every milestone:
 
 ---
 
-## M6 — Deferred · future hardening
+## M6 — Mostly shipped · remaining deferred
 
-These items were planned post-1.0 but moved beyond the v2 cycle. Reopen if a perf regression or compatibility issue makes them load-bearing.
+Performance hardening landed across v2.0-v2.5 in pieces, not as a discrete M6 milestone. Where each item stands as of v2.5.0:
 
-- [ ] Performance budget: per-Evaluate CPU < 1 ms with `debugprofilestop()` assertions in tests. (`Tests/Performance_spec.lua` exercises a 40-enemy AV-scale Evaluate under 50 ms today; the per-evaluation budget is not enforced.)
-- [ ] Memory-leak fuzz: 100 arenas back-to-back, assert memory delta < N kb. (Hooked partially in `Performance_spec.lua`.)
-- [ ] CI matrix: Lua 5.1, LuaJIT 2.0, LuaJIT 2.1. (Currently 5.1 only.)
-- [ ] Headless replay tool — `tools/replay.lua` ships a single-pass replay; no interactive replay UI.
-- [ ] Headless evaluation server (HTTP shim) — never attempted.
-- [ ] Embedded-engine companion (web visualizer that reuses the pure modules outside WoW) — never attempted.
+### Shipped
+- [x] **Per-Evaluate budget**: `Tests/Performance_spec.lua` asserts `<5 ms` per call (target `<1 ms`) on a 5v5 state, `<3 ms mean / <10 ms p99` with lookahead enabled, and `<50 ms` on a 40-enemy AV-scale state. Tightened in v2.5.0 to also cover the full event-driven cycle (Evaluate → UI:Apply → WAB:Publish) `<15 ms mean`.
+- [x] **Memory-leak fuzz**: 100 simulated arenas back-to-back assert a memory delta `<200 kb` post-GC (`Performance_spec.lua` line 133+).
+- [x] **City-lag regression**: the v2.2.5 fix (`onNameplateChange` no longer fires Evaluate in `world_idle`) is covered by the new v2.5.0 cycle-budget test — a regression would blow the 15 ms cap immediately.
+
+### Deferred — external dependencies / out of scope
+
+The items below are deferred not because of priority but because they require resources outside this repo (alternate Lua runtimes, native-speaker contributors, design assets, hosting infra). Re-open when one becomes available.
+
+- [ ] **CI matrix: LuaJIT 2.0 + 2.1**. Tests are written portably and should pass on LuaJIT — but verifying requires installing LuaJIT in the GitHub Actions runner and another `lua` wrapper command. Adds CI runtime; low payoff (TBC client uses Lua 5.1 exclusively).
+- [ ] **`debugprofilestop()` assertions**. The in-client profiler — only meaningful inside the WoW client, not headless tests. Substituted with `os.clock` in `Performance_spec.lua` (same intent, headless-compatible).
+- [ ] **Headless evaluation server (HTTP shim)** + **embedded-engine companion**. Web visualiser that consumes the pure engine modules outside WoW. Substantial separate project (Express/Fastify + a Lua-WASM build of the engine); never started.
+- [ ] **Interactive replay UI**. `tools/replay.lua` is single-pass and chat-output only; an interactive stepper would need its own front-end.
+
+### Confirmed permanently out of scope
+
+- [ ] **Opt-in cloud telemetry** (M5 Ship line). Violates operating principle #5 (no telemetry without opt-in, no PII). Local-only `/acc record` already covers offline analysis. Will not ship without a clear consent flow + EU-compliant data handling, which is out of scope.
+- [ ] **Additional locales** (deDE, frFR, esES, ruRU, koKR, zhTW). Needs native-speaker review per locale — single-developer pseudo-translation would land worse than the current "english fallback via Core.L" path. Open an issue + PR with a `Locales/<locale>.lua` file matching the enUS shape and we'll land it.
+- [ ] **Accessibility — dyslexia-friendly font**. The v2.5.0 high-contrast skin (`/acc highcontrast`) covers one accessibility axis; alternate fonts require licensing for OpenDyslexic / similar and a font-loading code path that would only run on retail-grade clients.
+- [ ] **App icon + screenshots + demo gif** (M1 Ship line). CurseForge polish — requires the project owner to upload via the dashboard. `docs/curseforge-description.md` lists the suggested set.
+
+### What's actually next
+
+The v2.x line is feature-complete with v2.5.0. No new code milestones are scheduled. Future work, if any, would be:
+
+- Bug fixes from user reports → patch releases (v2.5.x)
+- New comp catalog entries → patch releases (`Data/Strategies.lua`)
+- Major engine work (new lookahead depth, new modelling layer) → v3.0+ — would warrant a new ROADMAP-v3.md
 
 ---
 

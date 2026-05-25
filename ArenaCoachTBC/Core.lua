@@ -28,7 +28,10 @@ local DEFAULTS = {
     -- default = the "Quiet HUD" (mode label + target stats + top
     -- callout only). On = full v2.3.1 detail (all callouts, comp
     -- badge, chain title + steps). Toggle via /acc verbose on|off.
-    frame    = { point = "CENTER", x = 0, y = 120, scale = 1.0, verbose = false },
+    -- v2.5.0: `highContrast` swaps the mode colour palette to fully
+    -- saturated primaries. Toggle via /acc highcontrast on|off.
+    frame    = { point = "CENTER", x = 0, y = 120, scale = 1.0,
+                 verbose = false, highContrast = false },
     alerts   = { sound = true, raidWarning = false, partyChat = false, screenFlash = true,
                  -- v2.2.0: visual layers on top of the base frame. Both
                  -- default on; toggle via /acc glow off and /acc nameplate off.
@@ -873,6 +876,19 @@ local function handleSlash(input)
         Core:RunBugReport()
     elseif cmd == "whatif" then
         Core:RunWhatIf(rest)
+    elseif cmd == "highcontrast" or cmd == "hc" then
+        -- v2.5.0: high-contrast accessibility skin toggle.
+        db.frame = db.frame or {}
+        local arg = (rest or ""):lower()
+        if arg == "off" then db.frame.highContrast = false
+        elseif arg == "on" then db.frame.highContrast = true
+        else db.frame.highContrast = not db.frame.highContrast end
+        chatPrint(string.format("HUD high-contrast: %s",
+            db.frame.highContrast and "on (pure primary colors)"
+                                  or "off (default palette)"))
+        -- Force a repaint so the colour swap is immediately visible
+        -- even before the next engine evaluation.
+        if ns.Core and ns.Core.Evaluate then ns.Core:Evaluate() end
     elseif cmd == "verbose" then
         -- v2.4.0: toggle the HUD's verbose (full detail) mode.
         db.frame = db.frame or {}

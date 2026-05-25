@@ -120,6 +120,20 @@ local modeColors = {
     RESET  = {0.7, 0.7, 0.7},
 }
 
+-- v2.5.0: high-contrast palette for the accessibility skin. Pure
+-- primary channels at maximum saturation so the label punches through
+-- visual noise on small screens / under glare / for users with reduced
+-- colour sensitivity. The default palette above is tuned for visual
+-- coherence; this one trades coherence for legibility. Opt-in via
+-- /acc highcontrast on.
+local modeColorsHighContrast = {
+    OPEN   = {1.0, 1.0, 0.0},   -- pure yellow
+    KILL   = {1.0, 0.0, 0.0},   -- pure red
+    SWAP   = {1.0, 0.5, 0.0},   -- pure orange
+    DEFEND = {0.0, 0.7, 1.0},   -- saturated cyan-blue
+    RESET  = {1.0, 1.0, 1.0},   -- white instead of grey
+}
+
 function UI:Show()
     if self.frame then self.frame:Show() end
 end
@@ -153,7 +167,16 @@ function UI:Apply(recommendation)
     if not f:IsShown() then f:Show() end
 
     local mode = recommendation.mode or "RESET"
-    local color = modeColors[mode] or {1, 1, 1}
+    -- v2.5.0: high-contrast skin. The default modeColors palette is
+    -- tuned for visual coherence (slightly desaturated, easy on the
+    -- eyes); the high-contrast palette pushes every channel to the
+    -- extreme so the label is readable through screen flashes, glare,
+    -- and small-screen / poor-eyesight setups. Toggle via
+    -- `/acc highcontrast on|off` (db.frame.highContrast).
+    local highContrast = (ArenaCoachTBCDB and ArenaCoachTBCDB.frame
+                          and ArenaCoachTBCDB.frame.highContrast) or false
+    local palette = highContrast and modeColorsHighContrast or modeColors
+    local color = palette[mode] or {1, 1, 1}
     local label = L(mode)
     local target = recommendation.primaryTargetName
                 or recommendation.primaryTargetClass
@@ -209,16 +232,38 @@ function UI:Apply(recommendation)
     -- WeakAura bridge. Verbose mode (set via `/acc verbose on`) keeps
     -- the full list for diagnostic reviews.
     if recommendation.callouts and #recommendation.callouts > 0 then
+        -- v2.5.0: per-callout cooldown. If the same callout key was shown
+        -- inside the last 3 s, suppress it. Stops the "same text every
+        -- 0.5 s" pattern when engine state oscillates around a threshold
+        -- (e.g. enemy HP bouncing across the 50% line). Sound cues are
+        -- already mode-gated; this gate applies to the on-screen text.
+        local nowTs = (type(GetTime) == "function") and GetTime() or 0
+        self._calloutLastShown = self._calloutLastShown or {}
+        local function recentlyShown(key)
+            local t = self._calloutLastShown[key]
+            return t and (nowTs - t) < 3
+        end
+
         if verbose then
             local labels = {}
             for _, key in ipairs(recommendation.callouts) do
-                table.insert(labels, L(key))
+                if not recentlyShown(key) then
+                    table.insert(labels, L(key))
+                    self._calloutLastShown[key] = nowTs
+                end
             end
-            table.insert(subParts, table.concat(labels, " | "))
+            if #labels > 0 then
+                table.insert(subParts, table.concat(labels, " | "))
+            end
         else
-            -- Just the top one. BURST_NOW (v2.4.0 locale fix) is now
-            -- properly translated.
-            table.insert(subParts, "▸ " .. L(recommendation.callouts[1]))
+            -- Default: just the top one. BURST_NOW (v2.4.0 locale fix)
+            -- is now properly translated. If the top callout was just
+            -- shown, skip the line entirely rather than repeat it.
+            local top = recommendation.callouts[1]
+            if not recentlyShown(top) then
+                table.insert(subParts, "▸ " .. L(top))
+                self._calloutLastShown[top] = nowTs
+            end
         end
     end
 

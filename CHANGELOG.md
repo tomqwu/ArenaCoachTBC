@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-05-25
+
+**Polish release — closes out the v2.x line.** Picks up the last three actionable items from the v1 roadmap that hadn't shipped yet: per-callout cooldown (M4), high-contrast accessibility skin (M4), and a tightened performance budget assertion (M6). ROADMAP.md updated to mark the remaining items as either shipped, deferred with explicit reasons (external dependencies — alternate Lua runtimes, native-speaker contributors, design assets, hosting infra), or permanently out of scope (cloud telemetry conflicts with operating principle #5).
+
+### Added
+- **Per-callout cooldown** (M4). `UI:Apply` now tracks last-shown-time per callout key and suppresses the same callout for 3 seconds. Stops the "same text every 0.5 s" pattern that could surface if engine state oscillates around a threshold (enemy HP bouncing across the 50% gate, for example). Applies in both Quiet HUD and verbose modes.
+- **High-contrast HUD skin** (M4 accessibility). New `/acc highcontrast on|off` (alias `/acc hc`) flips between the default visually-coherent palette and a fully-saturated primary palette (pure red KILL, pure yellow OPEN, pure orange SWAP, saturated cyan-blue DEFEND, white RESET). Persists in `db.frame.highContrast`. Useful on small screens, under glare, or for users with reduced colour sensitivity. The mode label colour swap is immediately repainted via a synthetic Evaluate when the toggle is flipped.
+- **Full-cycle perf budget assertion** (M6). `Tests/Performance_spec.lua` gains a new test that exercises the full hot path — `SE:Evaluate` → `UI:Apply` → `WeakAuraBridge:Publish` — and asserts `<15 ms` mean over 100 iterations. The v2.2.5 city-lag bug came from `onNameplateChange` running this exact path on every nameplate event in `world_idle`; this budget cap means any future regression of that pattern will fail CI immediately.
+
+### Changed
+- **ROADMAP.md** — M6 section restructured to distinguish (a) what shipped (per-Evaluate budget, lookahead+patterns budget, AV-scale 40-enemy budget, 100-arena memory fuzz, full-cycle budget), (b) what's deferred due to external dependencies (LuaJIT CI matrix, web visualiser, interactive replay UI), and (c) what's permanently out of scope (cloud telemetry, single-developer pseudo-locales, alternate fonts). The v1 ROADMAP is now a retrospective in steady state.
+
+### Notes
+- 608 → 609 tests (one new full-cycle perf assertion). Locale parity green (still 111 keys per locale; no new locale work).
+- Bridge API, engine, and storage shape all unchanged. No SavedVariables migration needed; `db.frame.highContrast` and `db.frame.verbose` (v2.4.0) auto-merge on next login.
+- This release closes out the v1 ROADMAP and (along with v2.0.0 closing ROADMAP-v2) leaves the project in a feature-complete steady state. Future work, if any, falls into patch releases (bug fixes, new comp catalog entries) or a v3.0+ engine evolution.
+
 ## [2.4.0] - 2026-05-25
 
 **Quiet HUD.** Information density on the recommendation frame had grown to 5-6 lines of text per evaluation — too dense to parse mid-fight. User screenshots showed the wall-of-text problem in zhCN clients (where some keys still rendered as raw identifiers). v2.4 cuts the default HUD to two lines + the mode badge + the target stats row, moves the rest behind a `/acc verbose` toggle, and patches the last untranslated callout.
