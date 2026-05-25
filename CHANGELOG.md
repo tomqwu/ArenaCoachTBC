@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — M13 (v2.1 foundation)
+- **PvP context detection.** New `Core:DetectPvPContext()` returns one of `"arena" / "bg" / "world" / "world_idle" / "none"`. Reads `IsActiveBattlefieldArena()`, `GetInstanceInfo()`, `UnitIsPVP("player")`. Cached on `state.pvpContext`. Refreshed by `PLAYER_ENTERING_WORLD`, `ARENA_OPPONENT_UPDATE`, and the new `ZONE_CHANGED_NEW_AREA` subscription. Headless-permissive — when WoW APIs are absent, the cached fixture value survives.
+- **Non-arena enemy discovery.** New `Core:RefreshEnemiesNonArena()` walks `nameplate1..nameplate40`, keeps hostile players, keys by GUID (not unit ID, since nameplate units reshuffle on LOS). `Core:_NonArenaCLEUStub(guid, name)` creates a stub entry from CLEU events when the nameplate isn't visible yet. 30-second TTL prunes entries we haven't re-observed. Arena entries (keyed by `arenaN`) are left alone — `RefreshArenaEnemies` retains ownership.
+- **`Core:Evaluate` routes** between `RefreshArenaEnemies` (arena context) and `RefreshEnemiesNonArena` (bg/world). No-op outside PvP.
+- **`UI:Apply` gate updated** — prefers `state.pvpContext == "arena"` over the v2.0.2 `IsActiveBattlefieldArena()` direct call; falls back to the API if Core hasn't populated state yet (early-load).
+- **`Core:UpdateRating` early-returns** when `pvpContext ≠ "arena"`. Avoids the WoW API roundtrip in BG/world and prevents `bracket=10` (WSG team size) from accidentally indexing into the rated-info table.
+
+15 new tests in `Core_spec` covering each context, nameplate discovery, CLEU stub creation, stub non-overwrite, TTL prune, arena-key preservation, rating-API gate. 553/553 green.
+
 ## [2.0.2] - 2026-05-25
 
 Bilingual docs + WSG/BG flash gate.

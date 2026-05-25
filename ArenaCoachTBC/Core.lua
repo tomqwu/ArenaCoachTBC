@@ -199,6 +199,65 @@ function Core:UpdateBracket()
     return prev
 end
 
+-- M13 #v2.1: detect the current PvP context. Returns one of:
+--   "arena"  - inside a rated or skirmish arena instance
+--   "bg"     - inside a battleground (WSG / AB / AV / EotS / ...)
+--   "world"  - outside instances, PvP-flagged, recent hostile contact
+--   "none"   - everywhere else (cities, dungeons, raids, idle)
+--
+-- The value is cached on state.pvpContext. Downstream gates (alerts,
+-- enemy refresh, comp identification) consult this single source of
+-- truth instead of doing their own ad-hoc detection.
+--
+-- Headless tests can set Core.state.pvpContext directly; without WoW
+-- APIs DetectPvPContext returns "none" and leaves any pre-set value
+-- alone (so test fixtures aren't trampled).
+function Core:DetectPvPContext()
+    -- Headless: no APIs available, don't override a fixture value.
+    local haveBattlefield = type(IsActiveBattlefieldArena) == "function"
+    local haveInstance    = type(GetInstanceInfo) == "function"
+    local haveIsPvP       = type(UnitIsPVP) == "function"
+    if not (haveBattlefield or haveInstance or haveIsPvP) then
+        return self.state.pvpContext or "none"
+    end
+
+    if haveBattlefield and IsActiveBattlefieldArena() then
+        self.state.pvpContext = "arena"
+        return "arena"
+    end
+
+    if haveInstance then
+        local _name, instanceType = GetInstanceInfo()
+        -- arena instance type is "arena"; battlegrounds are "pvp"
+        if instanceType == "arena" then
+            self.state.pvpContext = "arena"
+            return "arena"
+        elseif instanceType == "pvp" then
+            self.state.pvpContext = "bg"
+            return "bg"
+        end
+    end
+
+    -- Outside instances. World PvP if flagged + recent enemy contact.
+    if haveIsPvP and UnitIsPVP("player") then
+        local recent = self._lastWorldHostileTs or 0
+        local now = (type(GetTime) == "function") and GetTime() or 0
+        -- 30s window: if we observed a hostile player attack us recently,
+        -- consider ourselves "engaged" — keeps the frame alive between
+        -- enemy attacks even with patchy LOS.
+        if (now - recent) < 30 then
+            self.state.pvpContext = "world"
+            return "world"
+        end
+        -- Flagged but no recent hostile interaction — idle world PvP.
+        self.state.pvpContext = "world_idle"
+        return "world_idle"
+    end
+
+    self.state.pvpContext = "none"
+    return "none"
+end
+
 -- ============================================================
 -- Build / update enemy & friendly tables from arena units
 -- ============================================================
@@ -335,6 +394,81 @@ function Core:RefreshArenaEnemies()
         end
         ns.ErrorReporter:SetKnownNames(names)
     end
+end
+
+-- M13 #v2.1: enemy discovery for BG / world PvP.
+--
+-- Arena uses arena1..arena5 unit IDs; outside arena those don't exist,
+-- so we walk nameplates (nameplate1..nameplate40, TBC max) and keep
+-- hostile players. The resulting enemy table is keyed by GUID rather
+-- than unit (unit IDs reshuffle as the player's nameplate set changes
+-- with line-of-sight, so keying by unit produces ghost entries).
+--
+-- TTL: an entry that hasn't been re-observed within
+-- Core.NON_ARENA_ENEMY_TTL seconds is pruned. This handles BG players
+-- going out of LOS or leaving range, where the nameplate disappears
+-- but we still have the CLEU history.
+--
+-- Stubs from CLEU: onCLEU may create a partial entry if we observe a
+-- hostile spellcast before the nameplate becomes visible. The stub
+-- carries guid + name + class (if UnitClass can resolve), and gets
+-- upgraded to a full refresh when the nameplate catches up.
+Core.NON_ARENA_ENEMY_TTL = 30  -- seconds
+
+function Core:RefreshEnemiesNonArena()
+    if type(UnitExists) ~= "function" then return end
+    self.state.enemies = self.state.enemies or {}
+    local now = (type(GetTime) == "function") and GetTime() or 0
+    local seen = {}
+
+    -- Walk nameplates. TBC supports up to 40; iterate defensively.
+    for i = 1, 40 do
+        local unit = "nameplate" .. i
+        if not UnitExists(unit) then break end
+        local isHostile = (type(UnitIsEnemy) == "function") and UnitIsEnemy("player", unit)
+        local isPlayer  = (type(UnitIsPlayer) == "function") and UnitIsPlayer(unit)
+        if isHostile and isPlayer then
+            local guid = (type(UnitGUID) == "function") and UnitGUID(unit) or nil
+            if guid then
+                local model = self.state.enemies[guid] or newEnemy(unit)
+                model.unit = unit
+                refreshUnit(model, unit)
+                model._lastSeen = now
+                self.state.enemies[guid] = model
+                seen[guid] = true
+            end
+        end
+    end
+
+    -- TTL prune: drop entries we haven't re-observed within the window.
+    -- Skip GUIDs that look like arena units ("arena1" etc.) — those are
+    -- handled by RefreshArenaEnemies' own lifecycle.
+    for key, e in pairs(self.state.enemies) do
+        if type(key) == "string" and not key:find("^arena") then
+            local age = now - (e._lastSeen or 0)
+            if not seen[key] and age > self.NON_ARENA_ENEMY_TTL then
+                self.state.enemies[key] = nil
+            end
+        end
+    end
+
+    -- Rebuild class list.
+    local list = {}
+    for _, e in pairs(self.state.enemies) do
+        if e.alive ~= false and e.class then table.insert(list, e.class) end
+    end
+    self.state.enemyClassList = list
+end
+
+-- M13 #v2.1: stub-create an enemy entry from a CLEU event when the
+-- nameplate isn't visible yet. Called from onCLEU on hostile spells.
+function Core:_NonArenaCLEUStub(sourceGUID, sourceName)
+    if not sourceGUID or self.state.enemies[sourceGUID] then return end
+    local stub = newEnemy("cleu:" .. sourceGUID)
+    stub.guid  = sourceGUID
+    stub.name  = sourceName
+    stub._lastSeen = (type(GetTime) == "function") and GetTime() or 0
+    self.state.enemies[sourceGUID] = stub
 end
 
 function Core:RefreshFriendlies()
@@ -523,6 +657,16 @@ function Core:Evaluate()
     pruneFriendlyDamage(now, window)
     self.state.observations = self.state.observations or {}
     self.state.observations.healerUnderPressure = (#Core._friendlyDamageTs >= threshold)
+
+    -- M13 #v2.1: route enemy discovery based on PvP context.
+    -- DetectPvPContext caches result on state.pvpContext. Refresh
+    -- happens automatically — UpdateBracket / arena events already
+    -- call it, plus the ZONE_CHANGED_NEW_AREA subscription.
+    self:DetectPvPContext()
+    if self.state.pvpContext == "bg" or self.state.pvpContext == "world" then
+        self:RefreshEnemiesNonArena()
+    end
+
     self:RefreshAuraObservations()
 
     -- M9 #65: resolve opponent profile from signature, attach to state
@@ -582,6 +726,23 @@ local function onCLEU()
     if subEvent and damagedFriendly and friendlyIsHealer(damagedFriendly)
        and (subEvent:find("_DAMAGE$") or subEvent == "SWING_DAMAGE") then
         table.insert(Core._friendlyDamageTs, ts or 0)
+    end
+
+    -- M13 #v2.1: BG / world PvP context — when a hostile player hits
+    -- us we update "last hostile contact" so DetectPvPContext can
+    -- decide we're "engaged" (vs "world_idle"). Also create a stub
+    -- enemy entry if the nameplate isn't visible yet.
+    local ctx = Core.state and Core.state.pvpContext
+    if ctx == "bg" or ctx == "world" or ctx == "world_idle" then
+        local playerHit = Core._friendlyGUIDs[destGUID]
+            or (type(UnitGUID) == "function" and destGUID == UnitGUID("player"))
+        if playerHit and subEvent and (subEvent:find("_DAMAGE$") or subEvent == "SWING_DAMAGE") then
+            Core._lastWorldHostileTs = ts or 0
+        end
+        -- Stub-create an enemy from CLEU if we haven't seen them via nameplate yet.
+        if sourceGUID and Core._NonArenaCLEUStub then
+            Core:_NonArenaCLEUStub(sourceGUID, sourceName)
+        end
     end
 
     -- Trinket tracking
@@ -847,8 +1008,16 @@ end
 -- M11 #71: query the WoW rating API for the current bracket. Returns
 -- nil when not in a rated bracket or when the API isn't available
 -- (headless tests). Stores the result on Core.state.rating.
+--
+-- M13 #v2.1: early-return when PvP context isn't arena. Avoids the
+-- WoW API roundtrip in BG / world / idle, and prevents `bracket=10`
+-- (WSG team size) from accidentally indexing into the rated-info
+-- table.
 function Core:UpdateRating()
     if type(GetPersonalRatedInfo) ~= "function" then return nil end
+    if self.state and self.state.pvpContext and self.state.pvpContext ~= "arena" then
+        return nil
+    end
     local bracket = self.state and self.state.bracket
     local idx
     if bracket == 2 then idx = 1
@@ -1219,6 +1388,7 @@ local function onPlayerEnteringWorld()
     Core:InitDB()
     Core:RefreshFriendlies()
     Core:UpdateBracket()
+    Core:DetectPvPContext()  -- v2.1: refresh ctx on zone entry
     if ns.UI and not ns.UI.frame then ns.UI:CreateFrame() end
     if ns.Spells and ns.Spells.RefreshNames then ns.Spells:RefreshNames() end
     Core:Evaluate()
@@ -1227,8 +1397,17 @@ end
 local function onArenaOpponentUpdate()
     Core:RefreshArenaEnemies()
     Core:UpdateBracket()
+    Core:DetectPvPContext()
     -- Phase transitions: we go PRE -> ACTIVE on first enemy seen
     Core.state.combatPhase = "ACTIVE"
+    Core:Evaluate()
+end
+
+-- v2.1: zone change triggers a context re-detect so the engine flips
+-- between arena / bg / world / none as the player crosses thresholds
+-- (Wintergrasp portal, BG portal, arena door, world city).
+local function onZoneChange()
+    Core:DetectPvPContext()
     Core:Evaluate()
 end
 
@@ -1276,6 +1455,7 @@ function Core:Boot()
     EB:Subscribe("ARENA_OPPONENT_UPDATE", onArenaOpponentUpdate)
     EB:Subscribe("GROUP_ROSTER_UPDATE",   onGroupRosterUpdate)
     EB:Subscribe("UPDATE_BATTLEFIELD_STATUS", function() Core:UpdateBracket() end)
+    EB:Subscribe("ZONE_CHANGED_NEW_AREA", onZoneChange)
     EB:Subscribe("UNIT_AURA",             onUnitAura)
     EB:Subscribe("PLAYER_REGEN_DISABLED", onRegenDisabled)
     EB:Subscribe("PLAYER_REGEN_ENABLED",  onRegenEnabled)
