@@ -38,7 +38,8 @@ The addon stores SavedVariables in `ArenaCoachTBCDB`.
 | `/acc help`                              | print all commands                      |
 | `/acc toggle`                            | show / hide the recommendation frame    |
 | `/acc lock` / `/acc unlock`              | lock or unlock the frame for dragging   |
-| `/acc test`                              | simulate 5 sample enemy comps           |
+| `/acc test`                              | 14s DBM-style UI demo (mode flips, BURST_NOW, DEFEND flash) |
+| `/acc test print`                        | legacy chat-only summary of 5 sample comps |
 | `/acc enemy war mage priest druid pala`  | simulate a custom enemy comp            |
 | `/acc debug`                             | toggle debug logging                    |
 | `/acc reset`                             | wipe SavedVariables (requires `/reload`)|

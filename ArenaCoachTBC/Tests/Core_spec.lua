@@ -167,12 +167,46 @@ H.it(g, "Evaluate is a no-op when disabled", function()
     _G.ArenaCoachTBCDB.enabled = true
 end)
 
-H.it(g, "RunTestMode produces output for every sample comp", function()
+H.it(g, "RunTestMode (default) runs the scripted demo and emits start + per-beat + end lines", function()
     _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    _G.C_Timer = nil  -- force synchronous fallback so beats fire inline
+    if not H.ns.UI.frame then H.ns.UI:CreateFrame() end
     startCapture()
     Core:RunTestMode()
     stopCapture()
-    H.assertTrue(#captured >= 5, "captured output is too short")
+    -- Demo: start line + 7 beat notes + end line = 9
+    H.assertTrue(#captured >= 8,
+        "demo should emit start + per-beat + end (>= 8 lines), got " .. #captured)
+    -- Verify the start line appeared
+    local sawStart = false
+    for _, ln in ipairs(captured) do
+        if ln:find("demo starting", 1, true) or ln:find("演示开始", 1, true) then
+            sawStart = true; break
+        end
+    end
+    H.assertTrue(sawStart, "expected demo-start message")
+end)
+
+H.it(g, "RunTestMode 'print' triggers the legacy chat-only summary", function()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    startCapture()
+    Core:RunTestMode("print")
+    stopCapture()
+    -- Print mode walks all testComps (5 of them) + header
+    H.assertTrue(#captured >= 5, "print mode should emit >=5 lines")
+end)
+
+H.it(g, "RunTestMode demo restores frame visibility when it started hidden", function()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    _G.C_Timer = nil  -- synchronous fallback runs end-of-demo restore immediately
+    if not H.ns.UI.frame then H.ns.UI:CreateFrame() end
+    H.ns.UI:Hide()
+    startCapture()
+    Core:RunTestMode()
+    stopCapture()
+    -- After the synchronous restore fires, frame should be hidden again
+    H.assertFalse(H.ns.UI.frame._shown,
+        "demo should restore hidden state when it started hidden")
 end)
 
 H.it(g, "RunEnemySim with classes simulates a comp", function()
