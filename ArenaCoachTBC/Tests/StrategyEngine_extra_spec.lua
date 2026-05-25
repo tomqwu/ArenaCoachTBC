@@ -335,6 +335,60 @@ H.it(g, "Evaluate flags compSpecConfirmed=true when spec-keyed comp matches", fu
     H.assertEq(rec.compConfidence, 1.0)
 end)
 
+-- =================================================================
+-- Chain scoring plumbed into Evaluate (M8 #61)
+-- =================================================================
+
+H.it(g, "Evaluate emits a chain field for a comp that has chains", function()
+    H.load("Chain.lua")
+    H.ns.DRTracker:Clear()
+    H.ns.CooldownTracker:Clear()
+    local state = SE:BuildTestState({"WARLOCK","DRUID","WARRIOR"})
+    state.combatPhase = "ACTIVE"
+    state.bracket = 5
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.comp, "WLD")
+    H.assertNotNil(rec.chain, "expected rec.chain for WLD which has chains")
+    H.assertEq(rec.chain.id, "wld_fear_into_cyclone")
+    H.assertTrue(rec.chain.expectedProb > 0)
+end)
+
+H.it(g, "Evaluate omits rec.chain when the comp has no chains", function()
+    H.load("Chain.lua")
+    H.ns.DRTracker:Clear()
+    H.ns.CooldownTracker:Clear()
+    -- WMH_3V3 (warrior/mage/priest, bracket-3 "thunder cleave") has no
+    -- chains entry today. Default roles give exactly 1 healer (priest),
+    -- so the static matcher picks it instead of dynamic DOUBLE_HEALER.
+    local state = SE:BuildTestState({"WARRIOR","MAGE","PRIEST"})
+    state.combatPhase = "ACTIVE"
+    state.bracket = 3
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.comp, "WMH_3V3")
+    H.assertNil(rec.chain, "WMH_3V3 has no chains field")
+end)
+
+H.it(g, "Evaluate prefers the higher-prob chain when DR pre-bumps one", function()
+    H.load("Chain.lua")
+    H.ns.DRTracker:Clear()
+    H.ns.CooldownTracker:Clear()
+    local state = SE:BuildTestState({"WARLOCK","DRUID","WARRIOR"})
+    state.combatPhase = "ACTIVE"
+    state.bracket = 5
+    -- First measure the baseline expected prob for WLD's fear chain.
+    local baseline = SE:Evaluate(state).chain.expectedProb
+    -- Now pre-bump FEAR DR on the primary target so the chain's
+    -- expected prob drops.
+    local rec = SE:Evaluate(state)
+    H.assertNotNil(rec.primaryTarget)
+    H.ns.DRTracker:Apply(rec.primaryTarget, "FEAR", H._gameTime or 0)
+    local after = SE:Evaluate(state).chain.expectedProb
+    H.assertTrue(after < baseline,
+        "expected prob should drop after FEAR DR applied (baseline=" ..
+        baseline .. ", after=" .. tostring(after) .. ")")
+    H.ns.DRTracker:Clear()
+end)
+
 H.it(g, "Evaluate's reason text includes the comp tag and confidence", function()
     local state = SE:BuildTestState({"WARLOCK","DRUID","WARRIOR"})
     state.combatPhase = "PRE"

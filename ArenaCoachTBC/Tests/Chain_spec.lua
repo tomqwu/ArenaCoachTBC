@@ -148,6 +148,50 @@ H.it(g, "ExpectedProb returns 0.0 for an empty chain", function()
     H.assertEq(Chain:ExpectedProb(Chain:Build({})), 0.0)
 end)
 
+-- =================================================================
+-- ScoreAll (M8 #61)
+-- =================================================================
+
+H.it(g, "ScoreAll returns chains sorted descending by ExpectedProb", function()
+    freshState()
+    -- Pre-bump STUN DR on g-priest so chain B (stun-priest) is halved.
+    H.ns.DRTracker:Apply("g-priest", "STUN", 998)
+    H._gameTime = 1000
+    local chainA = Chain:Build({ { target = "g-mage",   category = "STUN" } })  -- fresh -> 1.0
+    local chainB = Chain:Build({ { target = "g-priest", category = "STUN" } })  -- DRd  -> 0.5
+    local scored = Chain:ScoreAll({ chainB, chainA })  -- intentionally out of order
+    H.assertEq(scored[1].prob, 1.0)
+    H.assertEq(scored[2].prob, 0.5)
+end)
+
+H.it(g, "ScoreAll keeps zero-prob chains in the output", function()
+    freshState()
+    H.ns.DRTracker:Apply("g-priest", "STUN", 998)
+    H.ns.DRTracker:Apply("g-priest", "STUN", 998.1)
+    H.ns.DRTracker:Apply("g-priest", "STUN", 998.2)
+    H._gameTime = 1000
+    local chainImmune = Chain:Build({ { target = "g-priest", category = "STUN" } })
+    local scored = Chain:ScoreAll({ chainImmune })
+    H.assertEq(#scored, 1)
+    H.assertEq(scored[1].prob, 0.0)
+end)
+
+H.it(g, "ScoreAll honours topK to clip the output", function()
+    freshState()
+    local chains = {
+        Chain:Build({ { target = "g-a", category = "STUN" } }),
+        Chain:Build({ { target = "g-b", category = "STUN" } }),
+        Chain:Build({ { target = "g-c", category = "STUN" } }),
+        Chain:Build({ { target = "g-d", category = "STUN" } }),
+    }
+    local scored = Chain:ScoreAll(chains, { topK = 2 })
+    H.assertEq(#scored, 2)
+end)
+
+H.it(g, "ScoreAll returns empty table when given nil", function()
+    H.assertEq(#Chain:ScoreAll(nil), 0)
+end)
+
 H.it(g, "Validate handles missing target/category gracefully (treats as full mult)", function()
     -- A degenerate chain link with no target/category shouldn't crash;
     -- the link is treated as full-multiplier (no DR signal to consult).

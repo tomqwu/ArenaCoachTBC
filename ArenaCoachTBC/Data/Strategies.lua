@@ -581,6 +581,69 @@ ST.testComps = {
     },
 }
 
+-- Instantiate a comp's chains against the live state. Returns an array
+-- of concrete chains (each in the shape Chain:Build expects):
+--   { id, label, links = { {spellID, category, target, by}, ... } }
+--
+-- byClass templates are resolved by walking `enemies` for an alive enemy
+-- of that class; targetRole templates resolve via:
+--   "primary"        -> primaryGUID
+--   "off-healer"     -> secondaryGUID (best-effort; falls back to primary)
+--   "off-healer-2"   -> third pick (any alive enemy that isn't primary
+--                       or secondary); falls back to secondary then primary
+--   "any" / unknown  -> primaryGUID
+--
+-- A link whose byClass has no live enemy is *dropped* (the link cannot
+-- be cast); a chain with zero remaining links is omitted from the
+-- output. This lets the engine score only chains that have a chance.
+function ST:InstantiateChains(comp, primaryGUID, secondaryGUID, enemies)
+    if not comp or not comp.chains then return {} end
+    local out = {}
+
+    -- Pre-index alive enemies by class for O(1) byClass lookup.
+    local byClass = {}
+    local extras = {}
+    for _, e in pairs(enemies or {}) do
+        if e.alive ~= false and e.class and e.guid then
+            byClass[e.class] = byClass[e.class] or e.guid
+            if e.guid ~= primaryGUID and e.guid ~= secondaryGUID then
+                table.insert(extras, e.guid)
+            end
+        end
+    end
+
+    local function resolveTarget(role)
+        if role == "primary" then return primaryGUID end
+        if role == "off-healer" then return secondaryGUID or primaryGUID end
+        if role == "off-healer-2" then
+            return extras[1] or secondaryGUID or primaryGUID
+        end
+        -- "any" or anything unrecognised falls back to primary
+        return primaryGUID
+    end
+
+    for _, template in ipairs(comp.chains) do
+        local links = {}
+        for _, link in ipairs(template.links or {}) do
+            local caster = byClass[link.byClass]
+            if caster then
+                table.insert(links, {
+                    spellID   = link.spellID,
+                    category  = link.category,
+                    by        = caster,
+                    target    = resolveTarget(link.targetRole),
+                    castTimeS = link.castTimeS,
+                })
+            end
+        end
+        if #links > 0 then
+            table.insert(out, { id = template.id, label = template.label, links = links })
+        end
+    end
+
+    return out
+end
+
 -- Apply the variant overrides for a given own archetype on top of a comp
 -- entry. Returns a shallow-merged copy. Safe to call with `nil` ownArchetype.
 function ST:ApplyOwnVariant(comp, ownArchetypeId)

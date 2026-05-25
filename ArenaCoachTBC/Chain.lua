@@ -78,6 +78,28 @@ function Chain:Validate(chain, state)
     return true
 end
 
+-- Score a list of already-instantiated chains and return a new array
+-- sorted descending by ExpectedProb. Chains that return 0.0 are kept
+-- so callers can see "everything is impossible right now" instead of
+-- an empty list. opts.topK (default math.huge) clips the output to
+-- the top K — useful for #61's bounded branching gate.
+function Chain:ScoreAll(chains, opts)
+    if not chains then return {} end
+    local topK = (opts and opts.topK) or math.huge
+    local scored = {}
+    for _, c in ipairs(chains) do
+        table.insert(scored, { chain = c, prob = self:ExpectedProb(c) })
+    end
+    -- Stable sort by descending prob: bubble down equal-prob ties to
+    -- preserve catalog declaration order (matters so the engine's
+    -- pick is reproducible across evaluations).
+    table.sort(scored, function(a, b) return a.prob > b.prob end)
+    if topK < #scored then
+        for i = #scored, topK + 1, -1 do scored[i] = nil end
+    end
+    return scored
+end
+
 -- Returns a float in [0..1]: the product of effective DR multipliers
 -- across all links. 0.0 if any link's CD is not ready or any DR is
 -- already immune (consistent with Validate's rejection conditions).
