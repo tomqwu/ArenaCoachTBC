@@ -1,9 +1,20 @@
 # wow_tbc_arena_pvp_strategy
 
-A World of Warcraft addon — **ArenaCoachTBC** — that coaches a 5v5
-melee cleave team during TBC Classic / TBC Anniversary arena.
+A World of Warcraft addon — **ArenaCoachTBC** — that coaches your
+team during TBC Classic / TBC Anniversary arena.
 
-Team comp it's tuned for:
+> **v2.0 just shipped.** Your coach now learns your opponents. A team
+> that always trinkets Fear stops getting the "tremor for fear"
+> callout — Tremor gets saved for HoJ instead. A mage that consistently
+> Ice Blocks at 30% causes the burst gate to hold. None of this is
+> hardcoded — it learns from `/acc record` logs, per-team, no names
+> persisted. See `docs/architecture.md` for the new module surface
+> (Chain, OpponentProfile, Lookahead, Patterns, KillProb) and the
+> recommendation shape.
+
+Originally tuned for the 5v5 melee cleave
+
+Original team comp:
 
 - Arms Warrior
 - Enhancement Shaman
