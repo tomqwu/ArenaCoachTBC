@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.5] - 2026-05-25
+
+### Added
+- **CurseForge auto-upload wired up.** Added `## X-Curse-Project-ID: 1552792` to the TOC. The release workflow's BigWigs packager step (already fixed in v2.1.4) now has both the API token (`CF_API_KEY` GitHub secret) and the project ID needed to publish each tagged release straight to the CurseForge ArenaCoachTBC project page. Tagged releases (`vX.Y.Z`) auto-push the addon zip to CurseForge; dev prereleases (`vX.Y.Z-dev.N` from `main` pushes) still only publish to GitHub.
+
+### Notes
+- Wago upload still pending — `WAGO_API_TOKEN` secret is set but no `## X-Wago-ID:` in the TOC yet. Add the Wago slug to the TOC + cut another patch to enable Wago uploads.
+
 ## [2.1.4] - 2026-05-25
 
 ### Added
