@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.2] - 2026-05-25
+
+### Fixed
+- **Frame stayed at "Awaiting opener..." in WSG / BGs / world PvP when no combat was happening.** Reported: "doesn't work in WSG". Root cause: `Core:Evaluate` runs the non-arena enemy refresh (`RefreshEnemiesNonArena`), but `Evaluate` itself only fired on arena events / CLEU / aura events. While running across a BG map with no combat, no event ticked, so the engine never re-scanned nameplates and never saw enemies become visible. v2.1.2 subscribes to `NAME_PLATE_UNIT_ADDED` / `NAME_PLATE_UNIT_REMOVED` and re-evaluates whenever the player's nameplate set changes — only when `pvpContext == "bg" / "world" / "world_idle"` (arena keeps the original event-driven flow). Headless tests cover BG context evaluation, non-PvP context ignoring nameplate events, and the world-context re-evaluation path.
+
+**You do not need a WeakAura to make ArenaCoachTBC work in BG.** The addon's own frame should populate naturally as you run past enemies. The WA bridge (including `_G.ArenaCoachTBC.GetPvPContext()` from v2.1.1) is still there if you want a custom HUD on top, but the default frame is the supported path.
+
 ## [2.1.1] - 2026-05-25
 
 Polish + visibility on top of v2.1. Same engine; surface and docs upgraded.

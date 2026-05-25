@@ -1240,3 +1240,44 @@ H.it(g, "/acc test world runs the world PvP walk-through demo", function()
     end
     H.assertTrue(sawStart, "expected world-mode demo start banner")
 end)
+
+-- =================================================================
+-- v2.1.2: nameplate event → re-evaluate in BG / world
+-- =================================================================
+
+H.it(g, "NAME_PLATE_UNIT_ADDED triggers Evaluate in BG context", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    Core.state.pvpContext = "bg"
+    local evalCount = 0
+    local saved = Core.Evaluate
+    Core.Evaluate = function() evalCount = evalCount + 1 end
+    EB:Dispatch("NAME_PLATE_UNIT_ADDED", "nameplate1")
+    EB:Dispatch("NAME_PLATE_UNIT_REMOVED", "nameplate1")
+    Core.Evaluate = saved
+    H.assertEq(evalCount, 2, "BG context should re-evaluate on add + remove")
+end)
+
+H.it(g, "NAME_PLATE events do NOT trigger Evaluate outside PvP contexts", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    Core.state.pvpContext = "none"
+    local evalCount = 0
+    local saved = Core.Evaluate
+    Core.Evaluate = function() evalCount = evalCount + 1 end
+    EB:Dispatch("NAME_PLATE_UNIT_ADDED", "nameplate1")
+    Core.Evaluate = saved
+    H.assertEq(evalCount, 0, "non-PvP context should ignore nameplate events")
+end)
+
+H.it(g, "NAME_PLATE events trigger Evaluate in arena world context", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    Core.state.pvpContext = "world"
+    local evalCount = 0
+    local saved = Core.Evaluate
+    Core.Evaluate = function() evalCount = evalCount + 1 end
+    EB:Dispatch("NAME_PLATE_UNIT_ADDED", "nameplate1")
+    Core.Evaluate = saved
+    H.assertEq(evalCount, 1, "world context should re-evaluate on nameplate add")
+end)

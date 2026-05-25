@@ -1541,6 +1541,20 @@ local function onZoneChange()
     Core:Evaluate()
 end
 
+-- v2.1.2: nameplate add/remove triggers a re-evaluation in BG / world.
+-- Pre-v2.1.2 the engine only refreshed enemies inside Evaluate(), and
+-- Evaluate() only fired on arena events / CLEU / aura events. In BG
+-- with quiet combat (you're running across the map) no event fired,
+-- so the frame stayed at "Awaiting opener..." even as enemies became
+-- visible. Subscribing to NAME_PLATE_UNIT_ADDED / REMOVED closes the
+-- gap — every nameplate change re-evaluates in the non-arena branch.
+local function onNameplateChange()
+    local ctx = Core.state and Core.state.pvpContext
+    if ctx == "bg" or ctx == "world" or ctx == "world_idle" then
+        Core:Evaluate()
+    end
+end
+
 -- M15 (v2.1): duel detection.
 -- DUEL_REQUESTED fires when someone right-clicks you with the duel UI.
 -- DUEL_INBOUND_CHALLENGE / DUEL_OUTBOUND_CHALLENGE_* and
@@ -1623,6 +1637,10 @@ function Core:Boot()
     EB:Subscribe("ZONE_CHANGED_NEW_AREA", onZoneChange)
     EB:Subscribe("DUEL_REQUESTED", onDuelStart)
     EB:Subscribe("DUEL_FINISHED",  onDuelEnd)
+    -- v2.1.2: nameplate add/remove keeps the frame fresh in BG / world
+    -- when there's no other combat event ticking.
+    EB:Subscribe("NAME_PLATE_UNIT_ADDED",   onNameplateChange)
+    EB:Subscribe("NAME_PLATE_UNIT_REMOVED", onNameplateChange)
     EB:Subscribe("UNIT_AURA",             onUnitAura)
     EB:Subscribe("PLAYER_REGEN_DISABLED", onRegenDisabled)
     EB:Subscribe("PLAYER_REGEN_ENABLED",  onRegenEnabled)
