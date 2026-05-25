@@ -36,6 +36,7 @@ function API.GetSecondaryTargetClass() return WAB._last and WAB._last.secondaryT
 function API.GetCallouts()       return WAB._last and WAB._last.callouts or {} end
 function API.IsBurstAllowed()    return WAB._last and WAB._last.burstAllowed or false end
 function API.GetBurstBlocker()   return WAB._last and WAB._last.burstBlockedBy end
+function API.GetBurstDecision()  return WAB._last and WAB._last.burstDecision end
 
 -- ----- Comp identification -----
 function API.GetEnemyComp()        return WAB._last and WAB._last.comp end

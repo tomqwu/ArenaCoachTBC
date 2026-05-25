@@ -111,6 +111,17 @@ H.it(g, "GetKillProb + GetKillProbBreakdown surface the kill model (M11)", funct
     H.assertNotNil(b.hp)
 end)
 
+H.it(g, "GetBurstDecision surfaces the multi-gate burst breakdown (M11 #73)", function()
+    local rec = {}
+    for k, v in pairs(sampleRec) do rec[k] = v end
+    rec.burstDecision = { allowed = false, blockedBy = "kill_prob",
+        gates = { kill_prob = { allowed = false, value = 0.3, threshold = 0.45 } } }
+    WAB:Publish(rec, sampleState)
+    local out = API.GetBurstDecision()
+    H.assertEq(out.blockedBy, "kill_prob")
+    H.assertFalse(out.allowed)
+end)
+
 H.it(g, "GetKillProb returns 0 for unknown GUID", function()
     H.load("StrategyEngine.lua")
     H.assertEq(API.GetKillProb("nonexistent"), 0)
