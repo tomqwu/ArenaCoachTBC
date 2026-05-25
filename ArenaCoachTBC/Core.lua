@@ -44,6 +44,7 @@ local DEFAULTS = {
         maxEvents = 1000,
         events    = {},
     },
+    profiles = {},  -- M9 #63: per-opponent-team Bayesian tendency profiles
     debug = false,
 }
 

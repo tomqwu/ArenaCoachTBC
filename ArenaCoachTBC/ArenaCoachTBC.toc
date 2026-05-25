@@ -22,6 +22,7 @@ EventBus.lua
 CooldownTracker.lua
 DRTracker.lua
 Chain.lua
+OpponentProfile.lua
 StrategyEngine.lua
 UI.lua
 Options.lua

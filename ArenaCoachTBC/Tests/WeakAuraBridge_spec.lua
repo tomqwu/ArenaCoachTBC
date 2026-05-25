@@ -96,6 +96,41 @@ H.it(g, "GetChain / GetChainId / GetChainExpectedProb expose chain selection", f
     H.assertNotNil(API.GetChain())
 end)
 
+H.it(g, "GetOpponentProfile + GetOpponentSignature + GetTendencyMean surface the profile (M9)", function()
+    H.load("OpponentProfile.lua")
+    -- Restore DB and pre-seed with a known profile.
+    _G.ArenaCoachTBCDB = { profiles = {} }
+    local OP = H.ns.OpponentProfile
+    local sig = OP:Signature({
+        a = { class = "MAGE",   name = "Alf"   },
+        b = { class = "PRIEST", name = "Bea"   },
+        c = { class = "ROGUE",  name = "Cal"   },
+    })
+    OP:Update(sig, { tendency = "trinketsFear", observed = true  }, _G.ArenaCoachTBCDB)
+    OP:Update(sig, { tendency = "trinketsFear", observed = true  }, _G.ArenaCoachTBCDB)
+    OP:Update(sig, { tendency = "trinketsFear", observed = false }, _G.ArenaCoachTBCDB)
+    -- alpha=3, beta=2 -> mean = 0.6
+    WAB:Publish(sampleRec, {
+        enemies = {
+            a = { class = "MAGE",   name = "Alf" },
+            b = { class = "PRIEST", name = "Bea" },
+            c = { class = "ROGUE",  name = "Cal" },
+        },
+    })
+    H.assertEq(API.GetOpponentSignature(), sig)
+    H.assertNotNil(API.GetOpponentProfile())
+    H.assertTrue(math.abs(API.GetTendencyMean("trinketsFear") - 0.6) < 1e-9)
+end)
+
+H.it(g, "GetOpponentProfile returns nil when no state has been published", function()
+    H.load("OpponentProfile.lua")
+    WAB._last = nil
+    WAB._state = nil
+    H.assertNil(API.GetOpponentProfile())
+    H.assertNil(API.GetOpponentSignature())
+    H.assertEq(API.GetTendencyMean("trinketsFear"), 0.5)
+end)
+
 H.it(g, "GetChain returns nil and ExpectedProb returns 0 when no chain in rec", function()
     local rec = {}
     for k, v in pairs(sampleRec) do rec[k] = v end
