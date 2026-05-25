@@ -414,6 +414,41 @@ H.it(g, "CLEU SPELL_CAST_SUCCESS updates specGuess via SpellSpecHints", function
     H.assertEq(Core.state.enemies.arena1.roleGuess, "CASTER")
 end)
 
+H.it(g, "CLEU SPELL_AURA_APPLIED updates specGuess via SpellSpecHints (issue #57)", function()
+    -- Shadowform is a self-aura; it never fires SPELL_CAST_SUCCESS on a unit
+    -- already in form (only on the form-shift). Aura events have to drive the
+    -- hint or the engine never learns this priest is SHADOW.
+    H.load("Data/SpellSpecHints.lua")
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    H.setUnit("arena1", { class = "PRIEST", guid = "guid-sf", hp = 100, hpMax = 100 })
+    Core:RefreshArenaEnemies()
+    Core.state.enemies.arena1.specGuess = nil
+    Core.state.enemies.arena1.roleGuess = nil
+    H.fireCLEU(0, "SPELL_AURA_APPLIED", false, "guid-sf", "Priest",
+               nil, nil, "guid-sf", "Priest", nil, nil, H.ns.Spells.SHADOWFORM, "Shadowform")
+    EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
+    H.assertEq(Core.state.enemies.arena1.specGuess, "SHADOW")
+    H.assertEq(Core.state.enemies.arena1.roleGuess, "CASTER")
+end)
+
+H.it(g, "CLEU SPELL_AURA_REFRESH also drives specGuess (issue #57)", function()
+    -- AURA_REFRESH fires when an existing aura is reapplied (Moonkin staying in
+    -- form, Tree of Life refreshing). Must also drive spec inference.
+    H.load("Data/SpellSpecHints.lua")
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    H.setUnit("arena1", { class = "DRUID", guid = "guid-mk", hp = 100, hpMax = 100 })
+    Core:RefreshArenaEnemies()
+    Core.state.enemies.arena1.specGuess = nil
+    Core.state.enemies.arena1.roleGuess = nil
+    H.fireCLEU(0, "SPELL_AURA_REFRESH", false, "guid-mk", "Boomkin",
+               nil, nil, "guid-mk", "Boomkin", nil, nil, H.ns.Spells.MOONKIN_FORM, "Moonkin Form")
+    EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
+    H.assertEq(Core.state.enemies.arena1.specGuess, "BALANCE")
+    H.assertEq(Core.state.enemies.arena1.roleGuess, "CASTER")
+end)
+
 H.it(g, "CLEU SPELL_CAST_SUCCESS does nothing for unmatched spell IDs", function()
     H.load("Data/SpellSpecHints.lua")
     rebootForEvents()
