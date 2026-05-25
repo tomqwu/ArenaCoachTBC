@@ -21,6 +21,7 @@ Data\SpellSpecHints.lua
 EventBus.lua
 CooldownTracker.lua
 DRTracker.lua
+Chain.lua
 StrategyEngine.lua
 UI.lua
 Options.lua
