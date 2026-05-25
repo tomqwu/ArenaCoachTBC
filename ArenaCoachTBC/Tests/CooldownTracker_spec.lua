@@ -64,6 +64,15 @@ H.it(g, "OnCombatLogEvent records on SPELL_CAST_SUCCESS for known spell", functi
     H.assertFalse(CT:IsReady("guid-c", 27619))
 end)
 
+H.it(g, "tracks Cold Snap and Icy Veins on separate cooldowns", function()
+    CT:Clear()
+    H._gameTime = 500
+    CT:OnCombatLogEvent("SPELL_CAST_SUCCESS", "guid-mage", "guid-mage", 11958)
+    CT:OnCombatLogEvent("SPELL_CAST_SUCCESS", "guid-mage", "guid-mage", 12472)
+    H.assertEq(CT:GetRemaining("guid-mage", 11958), 480)
+    H.assertEq(CT:GetRemaining("guid-mage", 12472), 180)
+end)
+
 H.it(g, "OnCombatLogEvent ignores SPELL_CAST_SUCCESS for unknown spell", function()
     CT:Clear()
     CT:OnCombatLogEvent("SPELL_CAST_SUCCESS", "guid-c", "guid-dest", 999999)

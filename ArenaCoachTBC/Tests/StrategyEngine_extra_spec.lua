@@ -200,6 +200,36 @@ H.it(g, "Evaluate consumes state.bracket so scoring picks up overrides", functio
     H.assertNotNil(rec)  -- engine still produces a rec under bracket=2
 end)
 
+H.it(g, "comp openTarget biases PRE target selection", function()
+    local state = SE:BuildTestState({"WARLOCK","DRUID","WARRIOR"})
+    state.combatPhase = "PRE"
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.comp, "WLD")
+    H.assertEq(rec.primaryTargetClass, "WARLOCK")
+end)
+
+H.it(g, "aggression setting changes swap threshold", function()
+    local state = SE:BuildTestState({"PRIEST","MAGE"})
+    state.combatPhase = "ACTIVE"
+    state.config.strategy.aggression = "greedy"
+    local priest = findEnemyByClass(state, "PRIEST")
+    local mage = findEnemyByClass(state, "MAGE")
+    mage.hasTrinket = false
+    state.lastPrimaryGUID = priest.guid
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.primaryTargetClass, "MAGE")
+    H.assertEq(rec.mode, "SWAP")
+
+    local safeState = SE:BuildTestState({"PRIEST","MAGE"})
+    safeState.combatPhase = "ACTIVE"
+    safeState.config.strategy.aggression = "safe"
+    findEnemyByClass(safeState, "MAGE").hasTrinket = false
+    safeState.lastPrimaryGUID = findEnemyByClass(safeState, "PRIEST").guid
+    local safeRec = SE:Evaluate(safeState)
+    H.assertEq(safeRec.primaryTargetClass, "MAGE")
+    H.assertEq(safeRec.mode, "KILL")
+end)
+
 H.it(g, "kill_defensive_soon penalty fires when major defensive <15s away", function()
     H.load("CooldownTracker.lua")
     local CT = H.ns.CooldownTracker

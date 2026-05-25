@@ -11,12 +11,11 @@ behaviour is what tests can't see.
 
 ## Slash commands
 
-- [ ] `/acc` prints help text with version line
+- [ ] `/acc` prints help text
 - [ ] `/acc help` same
-- [ ] `/acc show` makes the frame visible
-- [ ] `/acc hide` hides it
+- [ ] `/acc toggle` hides and shows the frame
 - [ ] `/acc lock` toggles drag-lock; frame can be repositioned when unlocked
-- [ ] `/acc reset` returns frame to default position
+- [ ] `/acc reset` wipes SavedVariables; `/reload` restores defaults
 - [ ] `/acc debug` toggles debug printing
 - [ ] `/acc test` walks through a series of sample comps; UI updates each step
 - [ ] `/acc enemy war mage priest druid pala` populates manual enemy list and engine emits a recommendation
@@ -31,7 +30,7 @@ behaviour is what tests can't see.
 ## In-arena
 
 - [ ] Join 2v2 / 3v3 / 5v5 skirmish or rated arena
-- [ ] Engine identifies the comp (`/acc comp` to confirm) within 5 seconds of gates opening
+- [ ] Engine identifies the comp via the frame, WeakAura bridge, or `/acc trace dump` within 5 seconds of gates opening
 - [ ] At least one swap target callout fires during the match
 - [ ] Trinket tracker correctly flips `enemy.hasTrinket` after a known trinket cast
 - [ ] DR tracker registers Fear / HoJ / Cyclone properly

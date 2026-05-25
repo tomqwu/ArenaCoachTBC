@@ -443,7 +443,7 @@ function ST:Identify(enemyClassList, enemies, bracket)
     -- Prefer the enemies table when available so roleGuess overrides win.
     if enemies and next(enemies) then
         for _, e in pairs(enemies) do
-            if e.class then
+            if e.alive ~= false and e.class then
                 presence[e.class] = true
                 local role = e.roleGuess
                 if not role and Classes then role = Classes:DefaultRole(e.class) end

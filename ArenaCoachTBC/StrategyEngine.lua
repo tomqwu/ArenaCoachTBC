@@ -51,6 +51,8 @@ SE.weights = {
     windfury_active      =  10,
     priest_can_dispel    =  10,
     off_healer_cc        =  15,
+    comp_open_target     =  20,
+    comp_swap_target     =  10,
     -- penalties
     target_immune        = -100,
     target_unreachable   =  -30,
@@ -198,7 +200,7 @@ end
 -- ============================================================
 -- Scoring
 -- ============================================================
-local function scoreEnemy(enemy, state)
+local function scoreEnemy(enemy, state, comp)
     local w = SE:GetWeights(state and state.bracket)
     local score = 0
     local contrib = {}  -- ordered list of {reasonKey, points}
@@ -243,6 +245,16 @@ local function scoreEnemy(enemy, state)
     end
     if hasPurgeableBuff(enemy) then
         add(w.purgeable_defensive, "purgeable_defensive")
+    end
+
+    local phase = state.combatPhase or "PRE"
+    local cfg = (state.config and state.config.strategy) or {}
+    if comp and comp.openTarget and phase == "PRE" and enemy.class == comp.openTarget then
+        add(w.comp_open_target, "comp_open_target")
+    end
+    if comp and comp.swapTarget and phase ~= "PRE" and cfg.allowDpsSwap ~= false
+       and enemy.class == comp.swapTarget then
+        add(w.comp_swap_target, "comp_swap_target")
     end
 
     -- ----- team synergy
@@ -433,8 +445,15 @@ local function decideMode(state, topTarget, secondTarget, comp)
 
     -- last call differs from this one -> swap
     if state.lastPrimaryGUID and topTarget.guid and state.lastPrimaryGUID ~= topTarget.guid then
+        local cfg = (state.config and state.config.strategy) or {}
+        if cfg.allowDpsSwap == false and not isHealer(topTarget) then
+            return "KILL"
+        end
+        local threshold = 10
+        if cfg.aggression == "safe" then threshold = 20
+        elseif cfg.aggression == "greedy" then threshold = 0 end
         -- only call SWAP if the swap target is significantly more attractive
-        if not secondTarget or (topTarget._score - secondTarget._score) > 10 then
+        if not secondTarget or (topTarget._score - secondTarget._score) > threshold then
             return "SWAP"
         end
     end
@@ -484,7 +503,7 @@ function SE:Evaluate(state)
     local fullReason = {}
     for _, e in pairs(state.enemies) do
         if isAlive(e) then
-            local s, contrib, immunity = scoreEnemy(e, state)
+            local s, contrib, immunity = scoreEnemy(e, state, comp)
             e._score = s
             e._contrib = contrib
             e._immunity = immunity
@@ -550,6 +569,7 @@ function SE:Evaluate(state)
         primaryTargetClass= topTarget and topTarget.class or nil,
         secondaryTarget = secondTarget and secondTarget.guid or nil,
         secondaryTargetName = secondTarget and secondTarget.name or nil,
+        secondaryTargetClass = secondTarget and secondTarget.class or nil,
         confidence      = confidence,
         reason          = reason,
         callouts        = callouts,

@@ -11,6 +11,15 @@ local EB = ns.EventBus
 EB._subs       = {}   -- gameEvent -> { handler1, handler2 ... }
 EB._addonSubs  = {}   -- addonEvent -> { handler1, handler2 ... }
 
+local function reportHandlerError(context, err)
+    if ns.ErrorReporter and ns.ErrorReporter.Capture then
+        pcall(function() ns.ErrorReporter:Capture(err, context) end)
+    end
+    if ns.Core and ns.Core.DebugPrint then
+        ns.Core.DebugPrint(context .. ": " .. tostring(err))
+    end
+end
+
 -- A single frame is enough for all events in TBC 2.5.x
 local frame
 local function ensureFrame()
@@ -60,8 +69,8 @@ function EB:Dispatch(gameEvent, ...)
     for _, handler in ipairs(list) do
         -- Pcall each handler so a broken subscriber doesn't kill the rest.
         local ok, err = pcall(handler, gameEvent, ...)
-        if not ok and ns.Core and ns.Core.DebugPrint then
-            ns.Core.DebugPrint("handler error on " .. tostring(gameEvent) .. ": " .. tostring(err))
+        if not ok then
+            reportHandlerError("handler error on " .. tostring(gameEvent), err)
         end
     end
 end
@@ -78,8 +87,8 @@ function EB:Emit(addonEvent, ...)
     if not list then return end
     for _, handler in ipairs(list) do
         local ok, err = pcall(handler, addonEvent, ...)
-        if not ok and ns.Core and ns.Core.DebugPrint then
-            ns.Core.DebugPrint("addon handler error on " .. tostring(addonEvent) .. ": " .. tostring(err))
+        if not ok then
+            reportHandlerError("addon handler error on " .. tostring(addonEvent), err)
         end
     end
 end

@@ -21,7 +21,8 @@ CT._cooldowns = {}   -- guid -> { spellID -> { used = ts, ready = ts+dur, dur = 
 CT.defaults = {
     -- Mage
     [27619] = 300, -- Ice Block (5m, glyph reduced post-TBC; conservative here)
-    [12472] = 480, -- Cold Snap (8m)
+    [11958] = 480, -- Cold Snap (8m)
+    [12472] = 180, -- Icy Veins (3m)
     [27090] = 30,  -- Counterspell (24s baseline; 30s for safety)
     -- Rogue
     [31224] = 120, -- Cloak of Shadows (1.5m; spec'd lower)

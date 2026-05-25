@@ -13,6 +13,7 @@ local sampleRec = {
     primaryTargetClass = "PRIEST",
     secondaryTarget = "guid-mage",
     secondaryTargetName = "Mageman",
+    secondaryTargetClass = "MAGE",
     confidence = 0.7,
     reason = "test reason",
     callouts = { "CALL_HOJ_KILL", "CALL_PURGE" },
@@ -58,6 +59,7 @@ H.it(g, "target getters", function()
     H.assertEq(API.GetPrimaryTargetClass(), "PRIEST")
     H.assertEq(API.GetSecondaryTarget(), "guid-mage")
     H.assertEq(API.GetSecondaryTargetName(), "Mageman")
+    H.assertEq(API.GetSecondaryTargetClass(), "MAGE")
 end)
 
 H.it(g, "callouts / burst getters", function()
@@ -117,6 +119,7 @@ H.it(g, "no-state safety: getters return empty/nil when nothing published", func
     H.assertNil(API.GetCombatPhase())
     H.assertNil(API.GetPrimaryTarget())
     H.assertNil(API.GetSecondaryTarget())
+    H.assertNil(API.GetSecondaryTargetClass())
     H.assertNil(API.GetEnemyComp())
     H.assertNil(API.GetOwnComp())
     H.assertEq(next(API.GetCapabilities()), nil)

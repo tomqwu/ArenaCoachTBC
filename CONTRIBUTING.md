@@ -16,9 +16,11 @@ sudo apt-get install lua5.1 luarocks
 sudo luarocks --lua-version=5.1 install luacov
 lua5.1 -lluacov ArenaCoachTBC/Tests/run_all.lua
 luacov && tail -n 20 luacov.report.out
+lua5.1 ArenaCoachTBC/Tests/StrategyEngine_spec.lua
 ```
 
-Tests must pass and **total coverage must stay >= 99%**. CI enforces this.
+Tests must pass and **total coverage must stay >= 99%**. CI enforces this and
+also runs the standalone strategy smoke spec.
 
 ## Project layout
 

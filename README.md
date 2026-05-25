@@ -66,17 +66,15 @@ spell-ID extension guide, and limitations.
 
 ## Running the tests
 
-The strategy engine runs outside the WoW client with stubbed APIs:
+The addon test suite runs outside the WoW client with stubbed APIs:
 
 ```bash
+lua5.1 -lluacov ArenaCoachTBC/Tests/run_all.lua && luacov
 lua5.1 ArenaCoachTBC/Tests/StrategyEngine_spec.lua
 ```
 
-Expected:
-
-```
-Results: 10 passed, 0 failed
-```
+`run_all.lua` is the coverage suite. `StrategyEngine_spec.lua` is a standalone
+smoke spec that CI runs separately.
 
 ## License
 

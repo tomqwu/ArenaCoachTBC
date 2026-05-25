@@ -30,6 +30,7 @@ function API.GetPrimaryTargetName()    return WAB._last and WAB._last.primaryTar
 function API.GetPrimaryTargetClass()   return WAB._last and WAB._last.primaryTargetClass end
 function API.GetSecondaryTarget()      return WAB._last and WAB._last.secondaryTarget end
 function API.GetSecondaryTargetName()  return WAB._last and WAB._last.secondaryTargetName end
+function API.GetSecondaryTargetClass() return WAB._last and WAB._last.secondaryTargetClass end
 
 -- ----- Callouts & burst -----
 function API.GetCallouts()       return WAB._last and WAB._last.callouts or {} end

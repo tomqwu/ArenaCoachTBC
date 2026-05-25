@@ -37,6 +37,17 @@ H.it(g, "Handler error in one subscriber does not kill the rest", function()
     H.assertTrue(bRan)
 end)
 
+H.it(g, "Handler errors are captured for bug reports", function()
+    H.load("ErrorReporter.lua")
+    EB:_Reset()
+    _G.ArenaCoachTBCDB = { errors = { log = {} } }
+    EB:Subscribe("ERR_EVENT", function() error("captured boom") end)
+    EB:Dispatch("ERR_EVENT")
+    local recent = H.ns.ErrorReporter:Recent(1)
+    H.assertEq(#recent, 1)
+    H.assertNotNil(recent[1].context:find("ERR_EVENT"))
+end)
+
 H.it(g, "Unsubscribe removes a specific handler", function()
     EB:_Reset()
     local hits = 0

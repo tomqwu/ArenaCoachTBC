@@ -226,22 +226,16 @@ end
 
 ## Running the Tests
 
-193 unit tests, **99.46% line coverage** over the production modules
-(all sources at 100% except UI.lua at 98.94% due to a luacov multi-line
-attribution quirk).
+The headless suite runs outside WoW with stubbed APIs and enforces at least
+99% line coverage over production modules.
 
 ```bash
-cd ArenaCoachTBC
-lua5.1 Tests/run_all.lua                          # all tests
-lua5.1 -lluacov Tests/run_all.lua && luacov       # with coverage
+lua5.1 -lluacov ArenaCoachTBC/Tests/run_all.lua && luacov
+lua5.1 ArenaCoachTBC/Tests/StrategyEngine_spec.lua
 ```
 
-Expected:
-
-```
-Results: 193 passed, 0 failed
-Total                                             3297 18     99.46%
-```
+`run_all.lua` is the main coverage suite. `StrategyEngine_spec.lua` is a
+standalone smoke spec and is run separately in CI.
 
 CI (`.github/workflows/test.yml`) runs this on every PR and enforces a
 99% minimum.
@@ -250,6 +244,9 @@ CI (`.github/workflows/test.yml`) runs this on every PR and enforces a
 
 - **Enemy specs are guessed** from class alone unless observed casts
   reveal otherwise.
+- **Burst gates depend on observed auras.** Mortal Strike and Windfury are
+  read from live unit auras when the client exposes them; missing aura data
+  keeps burst calls conservative.
 - **Cooldown durations** are conservative TBC 2.4.3 values; edit
   `CooldownTracker.lua > CT.defaults` for TBC Anniversary tweaks.
   When unsure, we mark a CD ready rather than block on unknowns.
@@ -287,7 +284,7 @@ ArenaCoachTBC/
 ├── Tests/
 │   ├── test_helpers.lua       (mocks + harness)
 │   ├── run_all.lua            (runs every spec in one process)
-│   └── *_spec.lua             (16 spec files, 193 tests)
+│   └── *_spec.lua             (headless specs plus standalone smoke tests)
 └── README.md
 ```
 

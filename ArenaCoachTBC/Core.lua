@@ -164,7 +164,7 @@ Core.state = {
 -- Train-detection: ring of damage event timestamps against friendlies in the
 -- last TRAIN_WINDOW seconds. When count exceeds TRAIN_THRESHOLD, the engine
 -- forces DEFEND. Configurable via db.strategy.peelTriggerWindow / peelTriggerDamage.
-Core._friendlyGUIDs    = {}  -- guid -> true
+Core._friendlyGUIDs    = {}  -- guid -> friendly model
 Core._friendlyDamageTs = {}  -- list of timestamps
 
 local function pruneFriendlyDamage(now, window)
@@ -235,6 +235,39 @@ local function newFriendly(unit)
     }
 end
 
+local function resetVolatileUnitState(model)
+    model.guid = nil
+    model.name = nil
+    model.class = nil
+    model.specGuess = nil
+    model.roleGuess = nil
+    model.healthPct = 0
+    model.manaPct = nil
+    if model.hasTrinket ~= nil then model.hasTrinket = true end
+    if model.importantBuffs then model.importantBuffs = {} end
+    if model.importantDebuffs then model.importantDebuffs = {} end
+    if model.observedSpells then model.observedSpells = {} end
+    if model.buffs then model.buffs = {} end
+    if model.debuffs then model.debuffs = {} end
+    model.lastCast = nil
+    model.ccDR = model.ccDR and {} or nil
+    model.score = model.score and 0 or nil
+end
+
+local function resetForNewGUID(model)
+    model.specGuess = nil
+    model.roleGuess = nil
+    if model.hasTrinket ~= nil then model.hasTrinket = true end
+    if model.importantBuffs then model.importantBuffs = {} end
+    if model.importantDebuffs then model.importantDebuffs = {} end
+    if model.observedSpells then model.observedSpells = {} end
+    if model.buffs then model.buffs = {} end
+    if model.debuffs then model.debuffs = {} end
+    model.lastCast = nil
+    model.ccDR = model.ccDR and {} or nil
+    model.score = model.score and 0 or nil
+end
+
 local function pct(cur, max)
     if not cur or not max or max == 0 then return 100 end
     return math.floor((cur / max) * 100 + 0.5)
@@ -244,9 +277,15 @@ local function refreshUnit(model, unit)
     if not unit or type(UnitExists) ~= "function" then return end
     if not UnitExists(unit) then
         model.alive = false
+        resetVolatileUnitState(model)
         return
     end
-    if type(UnitGUID) == "function" then model.guid = UnitGUID(unit) end
+    model.alive = true
+    if type(UnitGUID) == "function" then
+        local guid = UnitGUID(unit)
+        if model.guid and guid and model.guid ~= guid then resetForNewGUID(model) end
+        model.guid = guid
+    end
     if type(UnitName) == "function" then model.name = UnitName(unit) end
     if type(UnitClass) == "function" then
         local _, classFile = UnitClass(unit)
@@ -276,9 +315,19 @@ function Core:RefreshArenaEnemies()
     -- Rebuild class list
     local list = {}
     for _, e in pairs(self.state.enemies) do
-        if e.class then table.insert(list, e.class) end
+        if e.alive ~= false and e.class then table.insert(list, e.class) end
     end
     self.state.enemyClassList = list
+    if ns.ErrorReporter and ns.ErrorReporter.SetKnownNames then
+        local names = {}
+        for _, e in pairs(self.state.enemies) do
+            if e.name then table.insert(names, e.name) end
+        end
+        for _, f in pairs(self.state.friendlies or {}) do
+            if f.name then table.insert(names, f.name) end
+        end
+        ns.ErrorReporter:SetKnownNames(names)
+    end
 end
 
 function Core:RefreshFriendlies()
@@ -290,9 +339,165 @@ function Core:RefreshFriendlies()
         local model = self.state.friendlies[u] or newFriendly(u)
         refreshUnit(model, u)
         self.state.friendlies[u] = model
-        if model.guid then guids[model.guid] = true end
+        if model.alive ~= false and model.guid then guids[model.guid] = model end
     end
     Core._friendlyGUIDs = guids
+    if ns.ErrorReporter and ns.ErrorReporter.SetKnownNames then
+        local names = {}
+        for _, f in pairs(self.state.friendlies) do
+            if f.name then table.insert(names, f.name) end
+        end
+        for _, e in pairs(self.state.enemies or {}) do
+            if e.name then table.insert(names, e.name) end
+        end
+        ns.ErrorReporter:SetKnownNames(names)
+    end
+end
+
+local function auraAPIAvailable()
+    return type(UnitAura) == "function"
+        or type(UnitBuff) == "function"
+        or type(UnitDebuff) == "function"
+end
+
+local function eachAura(unit, filter, fn)
+    if not unit then return end
+    local auraFn
+    local useFilter = false
+    if type(UnitAura) == "function" then
+        auraFn = UnitAura
+        useFilter = true
+    elseif filter == "HELPFUL" and type(UnitBuff) == "function" then
+        auraFn = UnitBuff
+    elseif filter == "HARMFUL" and type(UnitDebuff) == "function" then
+        auraFn = UnitDebuff
+    end
+    if not auraFn then return end
+    for i = 1, 40 do
+        local values
+        if useFilter then values = { auraFn(unit, i, filter) }
+        else values = { auraFn(unit, i) } end
+        local name = values[1]
+        if not name then break end
+        local spellID = values[10] or values[11]
+        fn(spellID, name)
+    end
+end
+
+local function spellNameMatches(spellID, name, id)
+    if spellID and spellID == id then return true end
+    local S = ns.Spells
+    if name and S and S.Name and S:Name(id) == name then return true end
+    return false
+end
+
+local function spellInSet(spellID, name, set)
+    if not set then return false end
+    if spellID and set[spellID] then return true end
+    for id, _ in pairs(set) do
+        if spellNameMatches(spellID, name, id) then return true, id end
+    end
+    return false
+end
+
+local function friendlyIsHealer(f)
+    if not f then return false end
+    if ns.Classes and ns.Classes.IsHealer then return ns.Classes:IsHealer(f.class, f.spec) end
+    return f.class == "PRIEST" or f.class == "DRUID"
+end
+
+local function markFriendlyDebuff(f, spellID, name)
+    local S = ns.Spells
+    if not S then return end
+    local cat = spellID and S.CATEGORIES and S.CATEGORIES[spellID] or nil
+    if cat == "STUN" then f.debuffs.stunned = true
+    elseif cat == "FEAR" then f.debuffs.feared = true
+    elseif cat == "INCAPACITATE" then f.debuffs.sheeped = true
+    elseif cat == "DISORIENT" then f.debuffs.disoriented = true
+    elseif cat == "ROOT" or spellNameMatches(spellID, name, S.HAMSTRING) then f.debuffs.rooted = true end
+    if spellNameMatches(spellID, name, S.COUNTERSPELL) or spellNameMatches(spellID, name, S.SPELL_LOCK) then
+        f.debuffs.silenced = true
+    end
+end
+
+function Core:RefreshAuraObservations()
+    if not auraAPIAvailable() then return end
+    local S = ns.Spells
+    if not S then return end
+
+    local obs = self.state.observations or {}
+    local trained = obs.healerUnderPressure
+    local ownCaps = ns.OwnComps and ns.OwnComps:Infer(self.state.friendlies or {}) or {}
+    obs.msActiveOn = nil
+    obs.windfuryActive = false
+    obs.bloodlustActive = false
+    obs.bloodlustReady = ownCaps.hasBloodlust == true
+    obs.hojReady = ownCaps.hasHoJ == true
+    obs.priestCanDispel = ownCaps.hasDispelMagic == true
+    obs.enemyBloodlustActive = false
+    obs.multipleBurstsDetected = false
+    obs.healerUnderPressure = trained
+
+    for _, f in pairs(self.state.friendlies or {}) do
+        if f.alive ~= false and f.unit then
+            f.buffs = {}
+            f.debuffs = {}
+            eachAura(f.unit, "HELPFUL", function(spellID, name)
+                if spellNameMatches(spellID, name, S.BLESSING_FREEDOM) then f.buffs.freedom = true end
+                if spellNameMatches(spellID, name, S.WINDFURY_TOTEM) then obs.windfuryActive = true end
+                if spellNameMatches(spellID, name, S.BLOODLUST) or spellNameMatches(spellID, name, S.HEROISM) then
+                    obs.bloodlustActive = true
+                end
+            end)
+            eachAura(f.unit, "HARMFUL", function(spellID, name)
+                markFriendlyDebuff(f, spellID, name)
+                if ownCaps.hasDispelMagic and spellID and S.MAGIC_CC_TO_DISPEL and S.MAGIC_CC_TO_DISPEL[spellID] then
+                    obs.priestCanDispel = true
+                end
+            end)
+        end
+    end
+
+    local burstCount = 0
+    for _, e in pairs(self.state.enemies or {}) do
+        if e.alive ~= false and e.unit then
+            local scannedBuffs = {}
+            eachAura(e.unit, "HELPFUL", function(spellID, name)
+                local matchedID
+                local matched, id = spellInSet(spellID, name, S.IMMUNITY_BUFFS)
+                if matched then
+                    matchedID = spellID or id
+                else
+                    matched, id = spellInSet(spellID, name, S.MAJOR_DEFENSIVES)
+                    if matched then
+                        matchedID = spellID or id
+                    else
+                        matched, id = spellInSet(spellID, name, S.PURGEABLE)
+                        if matched then matchedID = spellID or id end
+                    end
+                end
+                if matchedID then scannedBuffs[matchedID] = true end
+                if spellNameMatches(spellID, name, S.BLOODLUST) or spellNameMatches(spellID, name, S.HEROISM) then
+                    obs.enemyBloodlustActive = true
+                    burstCount = burstCount + 1
+                elseif spellNameMatches(spellID, name, S.DEATH_WISH)
+                    or spellNameMatches(spellID, name, S.AVENGING_WRATH)
+                    or spellNameMatches(spellID, name, S.ICY_VEINS) then
+                    burstCount = burstCount + 1
+                end
+            end)
+            e.importantBuffs = scannedBuffs
+            e.importantDebuffs = {}
+            eachAura(e.unit, "HARMFUL", function(spellID, name)
+                if e.guid and spellNameMatches(spellID, name, S.MORTAL_STRIKE) then
+                    obs.msActiveOn = e.guid
+                end
+                if spellID then e.importantDebuffs[spellID] = true end
+            end)
+        end
+    end
+    obs.multipleBurstsDetected = burstCount >= 2
+    self.state.observations = obs
 end
 
 -- ============================================================
@@ -311,6 +516,7 @@ function Core:Evaluate()
     pruneFriendlyDamage(now, window)
     self.state.observations = self.state.observations or {}
     self.state.observations.healerUnderPressure = (#Core._friendlyDamageTs >= threshold)
+    self:RefreshAuraObservations()
 
     local rec = ns.StrategyEngine and ns.StrategyEngine:Evaluate(self.state) or nil
     if not rec then return end
@@ -350,7 +556,8 @@ local function onCLEU()
 
     -- Train detection: collect damage events landing on our friendlies.
     -- Pruned to the configured window in Evaluate.
-    if subEvent and Core._friendlyGUIDs[destGUID]
+    local damagedFriendly = Core._friendlyGUIDs[destGUID]
+    if subEvent and damagedFriendly and friendlyIsHealer(damagedFriendly)
        and (subEvent:find("_DAMAGE$") or subEvent == "SWING_DAMAGE") then
         table.insert(Core._friendlyDamageTs, ts or 0)
     end

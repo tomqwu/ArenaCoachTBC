@@ -78,6 +78,7 @@ function H.installStubs()
     H.installed = true
 
     H._unitData     = H._unitData or {}      -- unit -> {class, guid, name, hp, hpMax, mp, mpMax, dead, exists}
+    H._auras        = H._auras or {}         -- unit -> HELPFUL/HARMFUL -> { {name, spellID}, ... }
     H._lastCLEU     = nil
     H._curLocale    = "enUS"
     H._gameTime     = 100
@@ -112,6 +113,13 @@ function H.installStubs()
         if not H._lastCLEU then return nil end
         return unpack(H._lastCLEU)
     end
+    _G.UnitAura = function(u, i, filter)
+        local byUnit = H._auras[u]
+        local list = byUnit and byUnit[filter or "HELPFUL"] or nil
+        local aura = list and list[i] or nil
+        if not aura then return nil end
+        return aura.name, nil, nil, nil, nil, nil, nil, nil, nil, aura.spellID
+    end
 
     _G.CreateFrame = function(kind, name, parent, template)
         local f = makeMockFrame{ kind = kind, name = name, template = template }
@@ -136,6 +144,15 @@ end
 
 function H.setUnit(unit, data)
     H._unitData[unit] = data
+end
+
+function H.setAuras(unit, filter, list)
+    H._auras[unit] = H._auras[unit] or {}
+    H._auras[unit][filter or "HELPFUL"] = list or {}
+end
+
+function H.clearAuras()
+    H._auras = {}
 end
 
 function H.fireCLEU(...)

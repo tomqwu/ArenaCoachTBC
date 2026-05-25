@@ -122,6 +122,16 @@ H.it(g, "Refresh marks unit not alive when it doesn't exist", function()
     H.assertFalse(Core.state.enemies.arena3.alive)
 end)
 
+H.it(g, "Refresh clears stale enemy identity when arena unit disappears", function()
+    H.setUnit("arena4", { class = "MAGE", guid = "guid-stale-mage", hp = 100, hpMax = 100 })
+    Core:RefreshArenaEnemies()
+    H.assertEq(Core.state.enemies.arena4.class, "MAGE")
+    H.setUnit("arena4", nil)
+    Core:RefreshArenaEnemies()
+    H.assertFalse(Core.state.enemies.arena4.alive)
+    H.assertNil(Core.state.enemies.arena4.class)
+end)
+
 H.it(g, "Refresh handles dead unit", function()
     H.setUnit("arena1", { class = "MAGE", hp = 0, hpMax = 100, dead = true })
     Core:RefreshArenaEnemies()
@@ -474,12 +484,12 @@ H.it(g, "UpdateBracket falls back to previous when no active battlefield", funct
     _G.GetMaxBattlefieldID, _G.GetBattlefieldStatus = nil, nil
 end)
 
-H.it(g, "train detection accumulates damage on friendlies", function()
+H.it(g, "train detection accumulates damage on friendly healers", function()
     rebootForEvents()
     _G.ArenaCoachTBCDB = nil; Core:InitDB()
-    H.setUnit("player", { class = "WARRIOR", guid = "guid-me", hp = 100, hpMax = 100 })
+    H.setUnit("player", { class = "PRIEST", guid = "guid-me", hp = 100, hpMax = 100 })
     Core:RefreshFriendlies()
-    -- Three damage events on player in quick succession
+    -- Three damage events on a healer in quick succession
     H._gameTime = 100
     for i = 1, 3 do
         H.fireCLEU(100 + i, "SPELL_DAMAGE", false, "enemy-src", "Source",
@@ -487,6 +497,18 @@ H.it(g, "train detection accumulates damage on friendlies", function()
         EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
     end
     H.assertEq(#Core._friendlyDamageTs, 3)
+end)
+
+H.it(g, "train detection ignores damage on non-healer friendlies", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    H.setUnit("player", { class = "WARRIOR", guid = "guid-war", hp = 100, hpMax = 100 })
+    Core:RefreshFriendlies()
+    Core._friendlyDamageTs = {}
+    H.fireCLEU(100, "SPELL_DAMAGE", false, "enemy-src", "Source",
+               nil, nil, "guid-war", "Me", nil, nil, 30330, "Mortal Strike", nil, 1000)
+    EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
+    H.assertEq(#Core._friendlyDamageTs, 0)
 end)
 
 H.it(g, "train detection forces DEFEND when threshold exceeded", function()
@@ -525,6 +547,82 @@ H.it(g, "train detection ignores damage on non-friendly destGUIDs", function()
                nil, nil, "guid-stranger", "Stranger", nil, nil, 30330, "MS", nil, 1000)
     EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
     H.assertEq(#Core._friendlyDamageTs, 0)
+end)
+
+H.it(g, "aura observations detect live burst, CC, and dispel signals", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    H.clearAuras()
+    H.setUnit("player", { class = "PRIEST", guid = "guid-me", hp = 100, hpMax = 100 })
+    H.setUnit("arena1", { class = "PRIEST", guid = "guid-pr", hp = 100, hpMax = 100 })
+    H.setAuras("player", "HELPFUL", {
+        { name = "Windfury Totem", spellID = H.ns.Spells.WINDFURY_TOTEM },
+        { name = "Blessing of Freedom", spellID = H.ns.Spells.BLESSING_FREEDOM },
+        { name = "Bloodlust", spellID = H.ns.Spells.BLOODLUST },
+    })
+    H.setAuras("player", "HARMFUL", {
+        { name = "Hammer of Justice", spellID = H.ns.Spells.HAMMER_OF_JUSTICE },
+        { name = "Psychic Scream", spellID = H.ns.Spells.PSYCHIC_SCREAM },
+        { name = "Polymorph", spellID = H.ns.Spells.POLYMORPH_SHEEP },
+        { name = "Blind", spellID = H.ns.Spells.BLIND },
+        { name = "Frost Nova", spellID = H.ns.Spells.FROST_NOVA },
+        { name = "Counterspell", spellID = H.ns.Spells.COUNTERSPELL },
+    })
+    H.setAuras("arena1", "HELPFUL", {
+        { name = "Ice Block", spellID = H.ns.Spells.ICE_BLOCK },
+        { name = "Pain Suppression", spellID = H.ns.Spells.PAIN_SUPPRESSION },
+        { name = "Blessing of Freedom", spellID = H.ns.Spells.BLESSING_FREEDOM },
+        { name = "Bloodlust", spellID = H.ns.Spells.BLOODLUST },
+        { name = "Death Wish", spellID = H.ns.Spells.DEATH_WISH },
+    })
+    H.setAuras("arena1", "HARMFUL", {
+        { name = "Mortal Strike", spellID = H.ns.Spells.MORTAL_STRIKE },
+    })
+    Core:RefreshFriendlies()
+    Core:RefreshArenaEnemies()
+    Core:Evaluate()
+    H.assertEq(Core.state.observations.msActiveOn, "guid-pr")
+    H.assertTrue(Core.state.observations.windfuryActive)
+    H.assertTrue(Core.state.observations.bloodlustActive)
+    H.assertTrue(Core.state.observations.enemyBloodlustActive)
+    H.assertTrue(Core.state.observations.multipleBurstsDetected)
+    H.assertTrue(Core.state.observations.priestCanDispel)
+    H.assertTrue(Core.state.friendlies.player.buffs.freedom)
+    H.assertTrue(Core.state.friendlies.player.debuffs.stunned)
+    H.assertTrue(Core.state.friendlies.player.debuffs.feared)
+    H.assertTrue(Core.state.friendlies.player.debuffs.sheeped)
+    H.assertTrue(Core.state.friendlies.player.debuffs.disoriented)
+    H.assertTrue(Core.state.friendlies.player.debuffs.rooted)
+    H.assertTrue(Core.state.friendlies.player.debuffs.silenced)
+    H.assertTrue(Core.state.enemies.arena1.importantBuffs[H.ns.Spells.ICE_BLOCK])
+    H.assertTrue(Core.state.enemies.arena1.importantBuffs[H.ns.Spells.PAIN_SUPPRESSION])
+    H.assertTrue(Core.state.enemies.arena1.importantBuffs[H.ns.Spells.BLESSING_FREEDOM])
+    H.clearAuras()
+end)
+
+H.it(g, "aura observations fall back to UnitBuff and UnitDebuff", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    H.setUnit("player", { class = "SHAMAN", guid = "guid-me", hp = 100, hpMax = 100 })
+    H.setUnit("arena1", { class = "PRIEST", guid = "guid-pr", hp = 100, hpMax = 100 })
+    Core:RefreshFriendlies()
+    Core:RefreshArenaEnemies()
+    local savedAura, savedBuff, savedDebuff = _G.UnitAura, _G.UnitBuff, _G.UnitDebuff
+    _G.UnitAura = nil
+    _G.UnitBuff = function(unit, i)
+        if unit == "player" and i == 1 then
+            return "Windfury Totem", nil, nil, nil, nil, nil, nil, nil, nil, H.ns.Spells.WINDFURY_TOTEM
+        end
+    end
+    _G.UnitDebuff = function(unit, i)
+        if unit == "arena1" and i == 1 then
+            return "Mortal Strike", nil, nil, nil, nil, nil, nil, nil, nil, H.ns.Spells.MORTAL_STRIKE
+        end
+    end
+    Core:RefreshAuraObservations()
+    H.assertTrue(Core.state.observations.windfuryActive)
+    H.assertEq(Core.state.observations.msActiveOn, "guid-pr")
+    _G.UnitAura, _G.UnitBuff, _G.UnitDebuff = savedAura, savedBuff, savedDebuff
 end)
 
 H.it(g, "trace records snapshots when enabled and stays under cap", function()

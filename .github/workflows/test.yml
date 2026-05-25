@@ -36,6 +36,9 @@ jobs:
           lua5.1 -lluacov ArenaCoachTBC/Tests/run_all.lua
           luacov
 
+      - name: Run standalone strategy smoke spec
+        run: lua5.1 ArenaCoachTBC/Tests/StrategyEngine_spec.lua
+
       - name: Enforce minimum coverage (99%)
         run: |
           total=$(grep -E '^Total' luacov.report.out | awk '{print $NF}' | tr -d '%')

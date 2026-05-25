@@ -38,6 +38,12 @@ H.it(g, "PURGEABLE includes Blessing of Freedom + Icy Veins", function()
     H.assertNotNil(S.PURGEABLE[S.ICY_VEINS])
 end)
 
+H.it(g, "Cold Snap and Icy Veins use distinct spell IDs", function()
+    H.assertEq(S.COLD_SNAP, 11958)
+    H.assertEq(S.ICY_VEINS, 12472)
+    H.assertNotEq(S.COLD_SNAP, S.ICY_VEINS)
+end)
+
 H.it(g, "PVP_TRINKET_EFFECT is 42292 (shared trinket aura)", function()
     H.assertEq(S.PVP_TRINKET_EFFECT, 42292)
 end)

@@ -33,7 +33,7 @@ The public bridge API (also in `ArenaCoachTBC/WeakAuraBridge.lua`):
 | `_G.ArenaCoachTBC.GetReason()` | short string |
 | `_G.ArenaCoachTBC.GetCallouts()` | array of locale keys |
 | `_G.ArenaCoachTBC.GetEnemyComp()` | comp id, e.g. `"RMP_3V3"` |
-| `_G.ArenaCoachTBC.GetOwnComp()` | archetype, e.g. `"BURST_CLEAVE"` |
+| `_G.ArenaCoachTBC.GetOwnComp()` | archetype, e.g. `"MELEE_CLEAVE"` |
 | `_G.ArenaCoachTBC.GetBracket()` | `2` / `3` / `5` |
 | `_G.ArenaCoachTBC.GetCombatPhase()` | `"PRE"` / `"ACTIVE"` / `"POST"` |
 | `_G.ArenaCoachTBC.IsBurstAllowed()` | bool |

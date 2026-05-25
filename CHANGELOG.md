@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Live arena observations now scan unit auras for Mortal Strike, Windfury, Bloodlust/Heroism, and enemy burst buffs before each evaluation, so burst gating is driven by observed state instead of permanently missing `msActiveOn` / `windfuryActive` flags.
+- Train detection now counts damage events only when they land on friendly healers, preventing ordinary melee damage on DPS teammates from forcing DEFEND mode.
+- Arena unit refresh now clears stale class/GUID/spec data when an `arenaN` or party unit disappears, preventing old rosters from polluting later comp identification.
+- EventBus handler failures are captured by `ErrorReporter`, so `/acc bugreport` includes real in-addon handler errors instead of only manually captured failures.
+- Cold Snap and Icy Veins now use distinct spell IDs and cooldown durations.
+- Dev prerelease tags (`vX.Y.Z-dev.N`) are skipped by the release workflow's tag-trigger path so they cannot be republished as stable releases.
+
+### Changed
+- Strategy scoring now applies `openTarget` / `swapTarget` hints from the comp catalog, exposes `secondaryTargetClass`, and makes `strategy.aggression` affect the SWAP threshold.
+- CI now runs the standalone `StrategyEngine_spec.lua` smoke spec in addition to the coverage suite.
+
 ### Added
 - **WeakAura template pack** (`docs/weakaura-pack.md`) — five copy-paste trigger templates (mode badge, burst gate, defensive alert, callout list, comp readout) that consume the `_G.ArenaCoachTBC` bridge. `WeakAuraBridge.L(key)` exposed so templates can resolve callout keys to the user's active locale without re-implementing the fallback chain.
 - **`/acc record` CLEU recording + `tools/replay.lua`.** When `record` is on (default off), every CLEU event passed through `Core.onCLEU` is appended to `ArenaCoachTBCDB.record.events` (ring buffer, default cap 1000). `tools/replay.lua <SavedVariables.lua>` re-runs the captured log through the StrategyEngine offline and prints periodic recommendation snapshots, so a maintainer can second-guess specific calls without recreating the arena. `/acc record on/off/status/dump/clear`. enUS + zhCN `HELP_RECORD` strings.

@@ -84,7 +84,7 @@ S.WILL_OF_THE_FORSAKEN = 7744   -- Undead racial - 5s immunity to fear/sleep/cha
 
 -- Mage
 S.ICE_BLOCK          = 27619
-S.COLD_SNAP          = 12472
+S.COLD_SNAP          = 11958
 S.COUNTERSPELL       = 27090
 S.POLYMORPH          = 28272  -- Pig version, rank 4 area
 S.POLYMORPH_SHEEP    = 12826
