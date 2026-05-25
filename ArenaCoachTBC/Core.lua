@@ -770,11 +770,12 @@ local function onCLEU()
         end
     end
 
-    -- M10 #69: feed the pattern recogniser. Only SPELL_CAST_SUCCESS
-    -- counts as a step trigger (auras can fire spuriously from glance
-    -- effects).
+    -- M10 #69 / M16 (v2.1): feed the pattern recogniser. Only
+    -- SPELL_CAST_SUCCESS counts as a step trigger (auras can fire
+    -- spuriously from glance effects). sourceGUID is now passed so
+    -- multiple casters of the same spell track progress independently.
     if ns.Patterns and subEvent == "SPELL_CAST_SUCCESS" then
-        ns.Patterns:Observe(spellID, ts)
+        ns.Patterns:Observe(spellID, ts, sourceGUID)
     end
 
     -- Immunity / major defensives book-keeping on auras

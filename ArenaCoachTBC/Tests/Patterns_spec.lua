@@ -114,3 +114,53 @@ H.it(g, "Unrelated cast in the middle does not break the chain", function()
     H.assertEq(P:Probability("RMP_CHEAP_BLIND"), 1.0,
         "unrelated casts should not reset the chain progress")
 end)
+
+-- =================================================================
+-- M16 (v2.1): per-source progress tracking
+-- =================================================================
+
+H.it(g, "per-source progress: two priests casting PSYCHIC_SCREAM don't collide", function()
+    reset()
+    -- Two priests each cast PSYCHIC_SCREAM at the start of the FEAR_INTO_POLY
+    -- chain. Before v2.1 progress was keyed by pattern only, so the second
+    -- cast either reset state or false-completed via the next mage poly.
+    P:Observe(S.HOWL_OF_TERROR, 1000, "g-priestA")
+    P:Observe(S.HOWL_OF_TERROR, 1001, "g-priestB")
+    -- priestA: stepIdx=1 (Howl); priestB: stepIdx=1 (Howl). Independent.
+    H.assertEq(P:Probability("FEAR_INTO_POLY", "g-priestA"), 0.5)
+    H.assertEq(P:Probability("FEAR_INTO_POLY", "g-priestB"), 0.5)
+end)
+
+H.it(g, "per-source progress: completing chain on one source doesn't advance another", function()
+    reset()
+    -- priestA completes the chain (Howl → Poly within 4s); priestB only has
+    -- step 1. Probability per-source should reflect that.
+    P:Observe(S.HOWL_OF_TERROR, 1000, "g-priestA")
+    P:Observe(S.HOWL_OF_TERROR, 1001, "g-priestB")
+    P:Observe(S.POLYMORPH, 1003, "g-mage")  -- mage casts the poly
+    -- Without per-source semantics on step 2 this would NOT advance either
+    -- priest's chain because the caster is different. Within-source
+    -- semantics: neither priest's chain advances.
+    H.assertEq(P:Probability("FEAR_INTO_POLY", "g-priestA"), 0.5,
+        "priest A's chain should stay at step 1 (poly was cast by mage)")
+    H.assertEq(P:Probability("FEAR_INTO_POLY", "g-priestB"), 0.5,
+        "priest B's chain should stay at step 1")
+end)
+
+H.it(g, "legacy 2-arg Observe still works for callers that haven't been updated", function()
+    reset()
+    P:Observe(S.KIDNEY_SHOT, 1000)
+    P:Observe(S.BLIND,       1003)
+    -- The sourceGUID defaulted to "_anon" sentinel; chain completes.
+    H.assertEq(P:Probability("RMP_CHEAP_BLIND"), 1.0,
+        "legacy 2-arg Observe must still complete the chain")
+end)
+
+H.it(g, "Probability without sourceGUID returns MAX across all tracked sources", function()
+    reset()
+    P:Observe(S.KIDNEY_SHOT, 1000, "g-rogueA")
+    P:Observe(S.KIDNEY_SHOT, 1000, "g-rogueB")
+    P:Observe(S.BLIND,       1002, "g-rogueA")  -- rogueA completes
+    -- rogueA: 1.0, rogueB: 0.5. Probability(id) with no source picks the max.
+    H.assertEq(P:Probability("RMP_CHEAP_BLIND"), 1.0)
+end)
