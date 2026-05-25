@@ -235,6 +235,13 @@ function UI:Apply(recommendation)
         end
         table.insert(subParts, table.concat(labels, " | "))
     end
+    if recommendation.comp then
+        local badgeKey = recommendation.compSpecConfirmed
+            and "COMP_BADGE_SPEC_CONFIRMED"
+            or "COMP_BADGE_CLASS_GUESSED"
+        local label = recommendation.compLabel or recommendation.comp
+        table.insert(subParts, string.format("%s (%s)", label, L(badgeKey)))
+    end
     f.subText:SetText(table.concat(subParts, "\n"))
 
     -- Screen flash for URGENT (defensive)

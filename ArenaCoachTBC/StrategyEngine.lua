@@ -312,7 +312,7 @@ local function shouldDefend(state)
 
     -- enemy comp = triple DPS, no clean opener
     local Strategies = ns.Strategies
-    local comp = Strategies and Strategies:Identify(state.enemyClassList or {}, state.enemies, state.bracket)
+    local comp = Strategies and (Strategies:Identify(state.enemyClassList or {}, state.enemies, state.bracket))
     if comp and comp.defaultMode == "DEFEND" then
         if (state.combatPhase or "PRE") == "PRE" then
             return true, "triple_dps_pre"
@@ -493,7 +493,10 @@ function SE:Evaluate(state)
     state._ownArchetype = ownArchetype
 
     local Strategies = ns.Strategies
-    local comp = Strategies and Strategies:Identify(classes, state.enemies, state.bracket) or nil
+    local comp, compConfidence = nil, 0.0
+    if Strategies then
+        comp, compConfidence = Strategies:Identify(classes, state.enemies, state.bracket)
+    end
     if Strategies and Strategies.ApplyOwnVariant and ownArchetype then
         comp = Strategies:ApplyOwnVariant(comp, ownArchetype.id)
     end
@@ -539,6 +542,11 @@ function SE:Evaluate(state)
         -- KILL / SWAP / OPEN always have a topTarget (decideMode invariant)
         reason = string.format("%s [%s]", topTarget.class or "?", table.concat(reasonParts, ", "))
     end
+    -- Append comp-match confidence so /acc trace + the bug report can show it.
+    if comp and comp.id then
+        local tag = (comp.specs ~= nil) and "spec-confirmed" or "class-guessed"
+        reason = reason .. string.format(" | %s %s (%.2f)", comp.id, tag, compConfidence or 0.0)
+    end
 
     -- Burst guidance
     local burstOK, burstWhy = burstAllowed(state, topTarget)
@@ -576,6 +584,8 @@ function SE:Evaluate(state)
         priority        = priority,
         comp            = comp and comp.id or nil,
         compLabel       = comp and comp.label or nil,
+        compConfidence  = compConfidence,
+        compSpecConfirmed = (comp ~= nil) and (comp.specs ~= nil) or false,
         ownArchetype    = ownArchetype and ownArchetype.id or nil,
         ownArchetypeLabel = ownArchetype and ownArchetype.label or nil,
         ownCapabilities = ownCaps,
