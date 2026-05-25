@@ -23,7 +23,8 @@ local DEFAULTS = {
     locked   = false,
     language = "auto",
     ownComp  = "WAR_ENH_RET_RDUID_DISC",
-    frame    = { point = "CENTER", x = 0, y = 120, scale = 1.0, compactMode = false },
+    -- v2.2.1: compactMode dropped (it gated the now-removed icon rows).
+    frame    = { point = "CENTER", x = 0, y = 120, scale = 1.0 },
     alerts   = { sound = true, raidWarning = false, partyChat = false, screenFlash = true,
                  -- v2.2.0: visual layers on top of the base frame. Both
                  -- default on; toggle via /acc glow off and /acc nameplate off.

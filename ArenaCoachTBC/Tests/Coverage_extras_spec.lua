@@ -85,35 +85,9 @@ H.it(g, "DRTracker.now() falls back to os.time when no GetTime", function()
 end)
 
 -- ============================================================
--- UI: tooltip, drag handlers, _Flash OnUpdate loop, primaryTargetName branch
+-- UI: drag handlers, _Flash OnUpdate loop, primaryTargetName branch
+-- (icon-row coverage dropped in v2.2.1 along with the underlying frames.)
 -- ============================================================
-H.it(g, "UI spellIcon falls back to nil without GetSpellTexture", function()
-    -- Force re-build of icon row with GetSpellTexture absent.
-    UI:CreateFrame()
-    UI.frame.friendlyIconMap = nil
-    UI.frame.enemyIconMap = nil
-    local saved = _G.GetSpellTexture
-    _G.GetSpellTexture = nil
-    UI:_PopulateIconRows()
-    _G.GetSpellTexture = saved
-end)
-
-H.it(g, "UI icon tooltip OnEnter/OnLeave run without error", function()
-    UI:CreateFrame()
-    local btn = next(UI.frame.friendlyIconMap) and UI.frame.friendlyIconMap[next(UI.frame.friendlyIconMap)]
-    H.assertNotNil(btn)
-    btn.tooltip = "test"
-    btn._scripts.OnEnter(btn)
-    btn._scripts.OnLeave(btn)
-end)
-
-H.it(g, "UI icon OnEnter is a no-op when no tooltip", function()
-    UI:CreateFrame()
-    local btn = next(UI.frame.friendlyIconMap) and UI.frame.friendlyIconMap[next(UI.frame.friendlyIconMap)]
-    btn.tooltip = nil
-    btn._scripts.OnEnter(btn)
-end)
-
 H.it(g, "UI frame drag OnMouseDown / OnMouseUp", function()
     UI:CreateFrame()
     _G.ArenaCoachTBCDB = _G.ArenaCoachTBCDB or {}

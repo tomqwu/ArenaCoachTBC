@@ -99,8 +99,6 @@ ns.locales.enUS = {
     -- UI labels
     UI_TITLE             = "Arena Coach",
     UI_NO_ARENA          = "Out of arena",
-    UI_FRIENDLY_CDS      = "Friendly cooldowns",
-    UI_ENEMY_CDS         = "Enemy cooldowns",
     -- v2.1.6: target stats row
     UI_HP_LABEL          = "HP",
     UI_KILL_PROB_LABEL   = "kill",

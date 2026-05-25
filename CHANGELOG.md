@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.1] - 2026-05-25
+
+### Fixed
+- **WeakAura import strings rejected by WA-Classic.** v2.1.6 switched the exporter to FormatVersion 1 (`!`-prefixed Deflate) on a wrong hunch — actual round-trip verification through Wago showed WA-Classic accepts the FormatVersion 2 (`!WA:2!` binary-serialized) format that the exporter had always used. Reverted `tools/export_weakauras.mjs` to FormatVersion 2 and regenerated all 5 templates in `docs/weakaura-imports.md` + the inline copies in `README.md`. The strings now import cleanly.
+- **Dead icon rows at the bottom of the recommendation frame.** Since v1 the frame rendered 14 friendly + 9 enemy cooldown reminder icons across two rows at the bottom, but `UI:UpdateIcons` was only ever called from tests — no production code fed it a "ready set", so every icon sat at its initial 0.4 alpha forever and communicated nothing. Stripped the icon rows, the populate function, the unused `UpdateIcons` method, and the `frame.compactMode` toggle that gated their visibility. Frame height drops from 170px to 110px so the HUD is more compact. `UI_FRIENDLY_CDS` / `UI_ENEMY_CDS` locale keys removed from both locales (110 keys each, parity green).
+
+### Removed
+- `UI.friendlyIcons`, `UI.enemyIcons`, `UI:_PopulateIconRows`, `UI:UpdateIcons` — dead UI code.
+- `db.frame.compactMode` SavedVariable — there's nothing to toggle now that the icon rows are gone. Existing installs that have this set in SavedVariables will see it simply ignored on next login (no migration needed).
+- 7 tests that exercised the removed surface (Apply compactMode show/hide, UpdateIcons happy/nil paths, icon button spellID, icon tooltip OnEnter/OnLeave, _PopulateIconRows fallback). Test count 613 → 606.
+
 ## [2.2.0] - 2026-05-25
 
 **Eyes Up.** Two new peripheral-vision layers on top of the v2.1.6 HUD, so the engine's call reaches you even when your eyes are on the action — not on the frame.

@@ -99,8 +99,6 @@ ns.locales.zhCN = {
     -- UI labels
     UI_TITLE             = "竞技场教练",
     UI_NO_ARENA          = "未在竞技场",
-    UI_FRIENDLY_CDS      = "己方冷却",
-    UI_ENEMY_CDS         = "敌方冷却",
     -- v2.1.6: 目标信息行
     UI_HP_LABEL          = "血量",
     UI_KILL_PROB_LABEL   = "击杀率",

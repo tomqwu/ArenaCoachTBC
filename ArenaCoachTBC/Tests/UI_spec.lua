@@ -141,51 +141,9 @@ H.it(g, "Apply with chain narrates to chat once per chain id change", function()
     _G.print = origPrint
 end)
 
-H.it(g, "Apply respects compactMode by hiding icon rows", function()
-    UI:CreateFrame()
-    _G.ArenaCoachTBCDB = _G.ArenaCoachTBCDB or {
-        enabled = true, locked = false, language = "auto",
-        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0, compactMode = true },
-        alerts = { sound = true, screenFlash = false },
-        strategy = {}, debug = false,
-    }
-    _G.ArenaCoachTBCDB.frame.compactMode = true
-    UI:Apply({ mode = "KILL", reason = "x", callouts = {}, priority = "HIGH" })
-    -- Mock frame's SetShown stores the value somewhere accessible — we
-    -- assert the call happened by inspecting _shown.
-    local f = UI.frame
-    H.assertEq(f.friendlyRow._shown, false, "compactMode should hide friendlyRow")
-    H.assertEq(f.enemyRow._shown,    false, "compactMode should hide enemyRow")
-end)
-
 H.it(g, "Apply ignores nil recommendation", function()
     UI:CreateFrame()
     UI:Apply(nil)
-end)
-
-H.it(g, "UpdateIcons brightens matched keys", function()
-    UI:CreateFrame()
-    UI:UpdateIcons({ MORTAL_STRIKE = true }, { PVP_TRINKET = true })
-end)
-
-H.it(g, "UpdateIcons handles nil maps", function()
-    UI:CreateFrame()
-    UI:UpdateIcons(nil, nil)
-end)
-
-H.it(g, "v2.0.1: icon buttons carry spellID for locale-correct GameTooltip", function()
-    UI:CreateFrame()
-    local f = UI.frame
-    H.assertNotNil(f.friendlyIconMap)
-    H.assertNotNil(f.enemyIconMap)
-    -- Sample a known key — Mortal Strike's spellID is 30330.
-    local ms = f.friendlyIconMap.MORTAL_STRIKE
-    H.assertNotNil(ms, "MORTAL_STRIKE icon should exist")
-    H.assertEq(ms.spellID, 30330,
-        "icon must carry spellID so GameTooltip:SetSpellByID renders the localized tooltip")
-    local trink = f.enemyIconMap.PVP_TRINKET
-    H.assertNotNil(trink)
-    H.assertEq(trink.spellID, 42292)
 end)
 
 H.it(g, "Show/Hide are no-ops when frame missing", function()
@@ -193,7 +151,6 @@ H.it(g, "Show/Hide are no-ops when frame missing", function()
     UI.frame = nil
     UI:Show(); UI:Hide(); UI:Toggle()
     UI:Apply({ mode = "KILL", callouts = {}, priority = "HIGH" })
-    UI:UpdateIcons({}, {})
     UI.frame = saved
 end)
 

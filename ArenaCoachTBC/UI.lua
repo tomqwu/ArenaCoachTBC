@@ -77,7 +77,8 @@ function UI:CreateFrame()
     local fcfg = db.frame or { point = "CENTER", x = 0, y = 120, scale = 1.0 }
 
     local f = CreateFrame("Frame", "ArenaCoachTBCFrame", UIParent)
-    f:SetSize(360, 170)
+    -- v2.2.1: dropped the icon rows + 60px of vertical space.
+    f:SetSize(360, 110)
     f:SetPoint(fcfg.point or "CENTER", UIParent, fcfg.point or "CENTER",
                fcfg.x or 0, fcfg.y or 120)
     f:SetScale(fcfg.scale or 1.0)
@@ -130,16 +131,6 @@ function UI:CreateFrame()
     f.subText:SetWidth(340)
     f.subText:SetText("")
 
-    -- Friendly cooldown icons row
-    f.friendlyRow = CreateFrame("Frame", nil, f)
-    f.friendlyRow:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 8, 38)
-    f.friendlyRow:SetSize(340, 24)
-
-    -- Enemy cooldown icons row
-    f.enemyRow = CreateFrame("Frame", nil, f)
-    f.enemyRow:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 8, 8)
-    f.enemyRow:SetSize(340, 24)
-
     -- Drag handlers (respect db.locked)
     f:SetScript("OnMouseDown", function(self, button)
         if button == "LeftButton" and not (ArenaCoachTBCDB and ArenaCoachTBCDB.locked) then
@@ -157,67 +148,7 @@ function UI:CreateFrame()
     end)
 
     self.frame = f
-    self:_PopulateIconRows()
     return f
-end
-
--- Friendly/enemy icon definitions. Each entry: { spellID, tooltip }.
--- These are *reminder* icons (visual only); we don't bind any actions to them.
-UI.friendlyIcons = {
-    {id=30330, key="MORTAL_STRIKE",       tip="Warrior Mortal Strike"},
-    {id=8512,  key="WINDFURY_TOTEM",      tip="Shaman Windfury Totem"},
-    {id=2825,  key="BLOODLUST",           tip="Shaman Bloodlust/Heroism"},
-    {id=8177,  key="GROUNDING_TOTEM",     tip="Shaman Grounding Totem"},
-    {id=8143,  key="TREMOR_TOTEM",        tip="Shaman Tremor Totem"},
-    {id=1044,  key="BLESSING_FREEDOM",    tip="Paladin Blessing of Freedom"},
-    {id=10308, key="HAMMER_OF_JUSTICE",   tip="Paladin Hammer of Justice"},
-    {id=10278, key="BLESSING_PROTECTION", tip="Paladin Blessing of Protection"},
-    {id=33786, key="CYCLONE",             tip="Druid Cyclone"},
-    {id=17116, key="NATURES_SWIFTNESS",   tip="Druid Nature's Swiftness"},
-    {id=33206, key="PAIN_SUPPRESSION",    tip="Priest Pain Suppression"},
-    {id=10890, key="PSYCHIC_SCREAM",      tip="Priest Psychic Scream"},
-    {id=988,   key="DISPEL_MAGIC",        tip="Priest Dispel Magic"},
-    {id=10876, key="MANA_BURN",           tip="Priest Mana Burn"},
-}
-
-UI.enemyIcons = {
-    {id=42292, key="PVP_TRINKET",       tip="PvP Trinket"},
-    {id=27619, key="ICE_BLOCK",         tip="Ice Block"},
-    {id=642,   key="DIVINE_SHIELD",     tip="Divine Shield"},
-    {id=10278, key="E_BOP",             tip="Blessing of Protection"},
-    {id=33206, key="E_PAIN_SUP",        tip="Pain Suppression"},
-    {id=17116, key="E_NS",              tip="Nature's Swiftness"},
-    {id=29166, key="INNERVATE",         tip="Innervate"},
-    {id=27223, key="DEATH_COIL",        tip="Death Coil"},
-    {id=27090, key="COUNTERSPELL",      tip="Counterspell / Spell Lock"},
-}
-
-function UI:_PopulateIconRows()
-    local f = self.frame; if not f then return end
-    local ICON_SIZE = 22
-    local SPACING = 2
-
-    local function place(parent, defs)
-        local x = 0
-        local icons = {}
-        for i, d in ipairs(defs) do
-            local btn = makeIcon(parent, ICON_SIZE)
-            if btn then
-                btn:SetPoint("LEFT", parent, "LEFT", x, 0)
-                local tex = spellIcon(d.id)
-                if tex then btn.tex:SetTexture(tex) end
-                btn.spellID = d.id   -- v2.0.1: feeds GameTooltip:SetSpellByID for locale-correct tooltip
-                btn.tooltip = d.tip  -- english fallback when no WoW API
-                btn:SetAlpha(0.4)   -- start dim
-                icons[d.key] = btn
-                x = x + ICON_SIZE + SPACING
-            end
-        end
-        return icons
-    end
-
-    f.friendlyIconMap = place(f.friendlyRow, self.friendlyIcons)
-    f.enemyIconMap    = place(f.enemyRow, self.enemyIcons)
 end
 
 -- ============================================================
@@ -244,19 +175,6 @@ end
 
 function UI:Apply(recommendation)
     local f = self.frame; if not f or not recommendation then return end
-
-    -- M12 #77: compact mode. When toggled in SavedVariables, the frame
-    -- hides the friendly + enemy icon rows so the recommendation block
-    -- alone occupies the smallest possible footprint. Toggles update
-    -- on next Apply so the user just sees the change after re-evaluation.
-    local compact = (ArenaCoachTBCDB and ArenaCoachTBCDB.frame
-        and ArenaCoachTBCDB.frame.compactMode) or false
-    if f.friendlyRow then
-        if compact then f.friendlyRow:Hide() else f.friendlyRow:Show() end
-    end
-    if f.enemyRow then
-        if compact then f.enemyRow:Hide() else f.enemyRow:Show() end
-    end
 
     local mode = recommendation.mode or "RESET"
     local color = modeColors[mode] or {1, 1, 1}
@@ -461,20 +379,7 @@ function UI:_Flash()
     end
 end
 
--- Brighten / dim icons depending on a "ready set" passed in
--- readyFriendly / readyEnemy : map keyed by the same `key` used in icon defs
-function UI:UpdateIcons(readyFriendly, readyEnemy)
-    local f = self.frame; if not f then return end
-    if f.friendlyIconMap then
-        for k, btn in pairs(f.friendlyIconMap) do
-            btn:SetAlpha(readyFriendly and readyFriendly[k] and 1.0 or 0.4)
-        end
-    end
-    if f.enemyIconMap then
-        for k, btn in pairs(f.enemyIconMap) do
-            -- For enemy icons, "ready" actually means "available to enemy"
-            -- (i.e. NOT on cooldown). Highlight = enemy can use this.
-            btn:SetAlpha(readyEnemy and readyEnemy[k] and 1.0 or 0.4)
-        end
-    end
-end
+-- v2.2.1: UpdateIcons + friendlyIconMap / enemyIconMap removed. The icon
+-- rows had been displayed since v1 but no production code ever called
+-- UpdateIcons, so the icons sat at their initial 0.4 alpha forever and
+-- communicated nothing. Stripped along with the underlying frame rows.

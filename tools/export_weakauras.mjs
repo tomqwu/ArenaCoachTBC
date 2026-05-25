@@ -21,12 +21,14 @@ import { dirname, join } from 'node:path';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // ----------------------------------------------------------------------
-// FormatVersion 1 (`!`-prefixed Deflate) has the widest WA-Classic
-// compatibility — WA-Classic for TBC didn't always ship the v2 binary
-// serialization decoder needed for `!WA:2!` strings. Default (no arg)
-// to encode() targets v2, so we pass 1 explicitly.
+// FormatVersion 2 (`!WA:2!`-prefixed binary serialization). Proven to
+// round-trip cleanly into WA-Classic on TBC Anniversary — verified via
+// a Wago.io export the user pasted back into the client successfully.
+// (v2.1.6 briefly switched this to format 1 / Deflate on a wrong hunch
+// that Classic WA didn't accept v2; user confirmed the resulting `!`-
+// prefix strings actually failed to import. Reverted to 2 for v2.2.1.)
 // ----------------------------------------------------------------------
-const FORMAT_VERSION = 1;
+const FORMAT_VERSION = 2;
 
 // ----------------------------------------------------------------------
 // Shared WoW client metadata. tocversion is TBC Anniversary 2.5.5.

@@ -4,7 +4,7 @@
 ## Notes: Strategy coach for TBC Anniversary / Classic PvP - arena, BG, world (advice only, no automation)
 ## Notes-zhCN: TBC怀旧服周年服PvP战术教练 - 竞技场、战场、野外（仅提示，不自动施法）
 ## Author: ACC Team
-## Version: 2.2.0
+## Version: 2.2.1
 ## SavedVariables: ArenaCoachTBCDB
 ## X-Category: PvP
 ## X-License: MIT
