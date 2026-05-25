@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-05-25
+
+**Quiet HUD.** Information density on the recommendation frame had grown to 5-6 lines of text per evaluation — too dense to parse mid-fight. User screenshots showed the wall-of-text problem in zhCN clients (where some keys still rendered as raw identifiers). v2.4 cuts the default HUD to two lines + the mode badge + the target stats row, moves the rest behind a `/acc verbose` toggle, and patches the last untranslated callout.
+
+### Fixed
+- **`BURST_NOW` callout rendered as the raw key in non-English clients** ("BURST_NOW | 无敌锤上焦点" in the user's zh screenshot). Added the key to both `Locales/enUS.lua` ("BURST NOW") and `Locales/zhCN.lua` ("立即爆发"). Both locales now at 111 keys, parity green.
+
+### Changed
+- **HUD subText cut to one callout line in default mode.** Pre-v2.4 every evaluation rendered: `[reasonKey] | [callout1 | callout2 | callout3] | [comp badge] | [chain title (62%)] | [step 1] | [step 2] | [step 3]` — six to seven lines mid-fight. v2.4 default shows just `▸ [top callout]` (plus the localised reasonKey for DEFEND/RESET). The big mode label + target name + target stats row (HP%/kill prob/BURST READY) + edge glow + nameplate borders already convey everything actionable.
+- **Demo chat spam silenced.** `/acc test` (and `/acc test bg`, `/acc test world`) previously printed the beat-by-beat note to chat — 7 lines for the arena demo. Now only the start + end banners fire by default. The per-beat notes still print when verbose mode is on.
+
+### Added
+- **`/acc verbose [on|off]`** — new slash command that toggles `db.frame.verbose`. When **on**, the HUD reverts to the v2.3.1 information density (full callout list, comp badge, chain title + step lines) and the demo chat spam returns. When **off** (default), you get the Quiet HUD. Persists across `/reload`. Aliases: none (it's an additive toggle, not a master switch).
+- New `db.frame.verbose` SavedVariable key (defaults to `false`). Existing installs auto-merge it on next login via the standard `DEFAULTS` merger; no migration needed.
+
+### Notes
+- This is a UI-render-only change. The engine still emits the full callout list, comp identification, and chain data on every evaluation — `/acc trace dump`, the bridge API (`_G.ArenaCoachTBC.GetCallouts()`, `GetChain()`, `GetEnemyCompLabel()`), and WeakAura consumers see everything unchanged.
+- Tests: 608 still passing. Updated three demo specs in `Tests/Core_spec.lua` to set `db.frame.verbose = true` before running so the per-beat chat assertions still hold.
+
 ## [2.3.1] - 2026-05-25
 
 ### Fixed

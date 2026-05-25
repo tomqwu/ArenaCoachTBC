@@ -128,6 +128,7 @@ ns.locales.zhCN = {
     CALL_FAKE_KICK_2          = "对方踢第一次治疗，假打第二个",
     CALL_SAVE_TREMOR_HOJ      = "对方习惯换人解恐惧 - 留陷阱图腾对审判",
     CALL_BURST_BLOCK_INCOMING = "对方可能冰块 - 暂停爆发",
+    BURST_NOW                 = "立即爆发",
 
     -- M10 #69: pattern recognition callouts
     CALL_PATTERN_RMP_CHEAP_BLIND     = "肾击+致盲连击 - 剥离并使用饰品",

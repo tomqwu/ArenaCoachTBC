@@ -192,45 +192,51 @@ function UI:Apply(recommendation)
     end
 
     local subParts = {}
+    local verbose = (ArenaCoachTBCDB and ArenaCoachTBCDB.frame
+                     and ArenaCoachTBCDB.frame.verbose) or false
+
     -- v2.1.3: prefer the localized reasonKey when set (DEFEND / RESET
-    -- modes have stable reason codes). Falls back to the English
-    -- debug `reason` string for KILL / SWAP / OPEN where the reason
-    -- carries variable score-contributor data.
+    -- modes have stable reason codes).
     if recommendation.reasonKey then
         table.insert(subParts, L(recommendation.reasonKey))
     end
-    -- v2.3.1: do NOT render recommendation.reason for KILL/SWAP/OPEN. The
-    -- raw field is dev-only — it carries internal score-contributor
-    -- identifiers ("PRIEST [role_healer(25), trinket_down(20), ...] |
-    -- RMP_DISC_3V3 spec-confirmed (1.00)") meant for /acc trace dump.
-    -- The mode label, target name, target stats row, callouts list, comp
-    -- badge, and chain block together already say everything the user
-    -- needs. Pre-v2.3.1 the user saw these underscore identifiers in
-    -- the frame and read them as untranslated gibberish.
+
+    -- v2.4.0 Quiet HUD: show ONLY the top callout in non-verbose mode.
+    -- Pre-v2.4 we concatenated every callout with " | " separators,
+    -- producing 3-callout strings the user couldn't parse at a glance
+    -- mid-fight. The remaining callouts are still on the recommendation
+    -- object — power users see them via `/acc trace dump` or the
+    -- WeakAura bridge. Verbose mode (set via `/acc verbose on`) keeps
+    -- the full list for diagnostic reviews.
     if recommendation.callouts and #recommendation.callouts > 0 then
-        local labels = {}
-        for _, key in ipairs(recommendation.callouts) do
-            table.insert(labels, L(key))
+        if verbose then
+            local labels = {}
+            for _, key in ipairs(recommendation.callouts) do
+                table.insert(labels, L(key))
+            end
+            table.insert(subParts, table.concat(labels, " | "))
+        else
+            -- Just the top one. BURST_NOW (v2.4.0 locale fix) is now
+            -- properly translated.
+            table.insert(subParts, "▸ " .. L(recommendation.callouts[1]))
         end
-        table.insert(subParts, table.concat(labels, " | "))
     end
-    if recommendation.comp then
+
+    -- v2.4.0: comp badge only in verbose mode. The big colour-coded
+    -- mode label + target name + edge glow + nameplate already tell the
+    -- user what's happening; the comp identity is post-match analysis.
+    if verbose and recommendation.comp then
         local badgeKey = recommendation.compSpecConfirmed
             and "COMP_BADGE_SPEC_CONFIRMED"
             or "COMP_BADGE_CLASS_GUESSED"
-        -- Prefer the human-readable compLabel ("RMP (confirmed Disc Priest)")
-        -- over the raw comp id ("RMP_DISC_3V3") that pre-v2.3.1 sometimes
-        -- leaked here when the engine forgot to set compLabel.
         local label = recommendation.compLabel
         if not label or label == "" then label = "?" end
         table.insert(subParts, string.format("%s (%s)", label, L(badgeKey)))
     end
-    -- M8 #62: render the picked chain as a localized title + numbered
-    -- per-link summary, and narrate to chat once when the picked chain
-    -- id changes (placeholder until M4 voice ships). Step text uses
-    -- byClass + category tokens directly (spell-name localization
-    -- comes from GetSpellInfo in-client; headless testing falls back
-    -- to the token).
+
+    -- v2.4.0: chain narration to chat fires only once per chain change.
+    -- That was correct pre-v2.4 and stays. The narration is useful
+    -- regardless of verbose mode — it lands in chat, not on the HUD.
     if recommendation.chain and recommendation.chain.id ~= self._lastChainId then
         self._lastChainId = recommendation.chain.id
         local ch = recommendation.chain
@@ -239,7 +245,12 @@ function UI:Apply(recommendation)
             L("CHAIN_PICKED_PREFIX"), title,
             math.floor(((ch.expectedProb or 0) * 100) + 0.5)))
     end
-    if recommendation.chain then
+
+    -- v2.4.0: chain title + steps render on the HUD only in verbose
+    -- mode. Default-mode users see the chain via the chat narration
+    -- above (fires once per change) and don't get a wall of step lines
+    -- cluttering the frame mid-fight.
+    if verbose and recommendation.chain then
         local ch = recommendation.chain
         local title = (ch.labelKey and L(ch.labelKey)) or ch.label or ch.id or ""
         local pct = math.floor(((ch.expectedProb or 0) * 100) + 0.5)
@@ -251,13 +262,6 @@ function UI:Apply(recommendation)
                 if type(GetSpellInfo) == "function" then
                     spellName = GetSpellInfo(link.spellID)
                 end
-                -- v2.3.1: drop the redundant "(CATEGORY)" suffix when the
-                -- spell name is available. Pre-v2.3.1 every line rendered
-                -- as "Step 1. Sap (INCAPACITATE)" — the category was
-                -- already implicit in the chain title and just added
-                -- noise. When GetSpellInfo returns nil (very first call
-                -- on an unknown spell) we still fall back to the
-                -- category enum so the line is never blank.
                 local label = spellName or tostring(link.category or "?")
                 local stepText = string.format("  %s %d. %s",
                     L("CHAIN_STEP_PREFIX"), i, label)

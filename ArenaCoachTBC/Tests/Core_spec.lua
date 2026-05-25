@@ -169,6 +169,9 @@ end)
 
 H.it(g, "RunTestMode (default) runs the scripted demo and emits start + per-beat + end lines", function()
     _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    -- v2.4.0: per-beat notes only print in verbose mode now. Flip the
+    -- toggle so the test's >= 8-line assertion still holds.
+    _G.ArenaCoachTBCDB.frame.verbose = true
     _G.C_Timer = nil  -- force synchronous fallback so beats fire inline
     if not H.ns.UI.frame then H.ns.UI:CreateFrame() end
     startCapture()
@@ -310,6 +313,8 @@ end)
 
 H.it(g, "/acc test runs", function()
     _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    -- v2.4.0: per-beat chat lines only print in verbose mode now.
+    _G.ArenaCoachTBCDB.frame.verbose = true
     startCapture()
     SlashCmdList["ARENACOACH"]("test")
     stopCapture()
@@ -1213,6 +1218,10 @@ end)
 
 H.it(g, "/acc test bg runs the BG walk-through demo", function()
     _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    -- v2.4.0: per-beat notes (including the "flag" beat) only print in
+    -- verbose mode now. Flip the toggle so this test's beat assertion
+    -- still holds.
+    _G.ArenaCoachTBCDB.frame.verbose = true
     _G.C_Timer = nil
     if not H.ns.UI.frame then H.ns.UI:CreateFrame() end
     startCapture()

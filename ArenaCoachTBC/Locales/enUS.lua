@@ -128,6 +128,7 @@ ns.locales.enUS = {
     CALL_FAKE_KICK_2          = "They kick the first heal - fake your second",
     CALL_SAVE_TREMOR_HOJ      = "They trinket Fear - save Tremor for HoJ",
     CALL_BURST_BLOCK_INCOMING = "Ice Block expected - hold burst",
+    BURST_NOW                 = "BURST NOW",
 
     -- M10 #69: pattern recognition callouts (recurring kill setups)
     CALL_PATTERN_RMP_CHEAP_BLIND     = "Kidney+Blind chain detected - peel and trinket",

@@ -24,7 +24,11 @@ local DEFAULTS = {
     language = "auto",
     ownComp  = "WAR_ENH_RET_RDUID_DISC",
     -- v2.2.1: compactMode dropped (it gated the now-removed icon rows).
-    frame    = { point = "CENTER", x = 0, y = 120, scale = 1.0 },
+    -- v2.4.0: `verbose` controls the HUD information density. Off by
+    -- default = the "Quiet HUD" (mode label + target stats + top
+    -- callout only). On = full v2.3.1 detail (all callouts, comp
+    -- badge, chain title + steps). Toggle via /acc verbose on|off.
+    frame    = { point = "CENTER", x = 0, y = 120, scale = 1.0, verbose = false },
     alerts   = { sound = true, raidWarning = false, partyChat = false, screenFlash = true,
                  -- v2.2.0: visual layers on top of the base frame. Both
                  -- default on; toggle via /acc glow off and /acc nameplate off.
@@ -869,6 +873,17 @@ local function handleSlash(input)
         Core:RunBugReport()
     elseif cmd == "whatif" then
         Core:RunWhatIf(rest)
+    elseif cmd == "verbose" then
+        -- v2.4.0: toggle the HUD's verbose (full detail) mode.
+        db.frame = db.frame or {}
+        local arg = (rest or ""):lower()
+        if arg == "off" then db.frame.verbose = false
+        elseif arg == "on" then db.frame.verbose = true
+        else db.frame.verbose = not db.frame.verbose end
+        chatPrint(string.format("HUD verbose: %s (%s)",
+            db.frame.verbose and "on" or "off",
+            db.frame.verbose and "full callouts + comp badge + chain steps"
+                             or "Quiet HUD — top callout only"))
     elseif cmd == "off" or cmd == "disable" then
         -- v2.2.5: master kill switch. Sets db.enabled = false which
         -- short-circuits Evaluate() at the top, and hides the frame +
@@ -1490,7 +1505,15 @@ function Core:_RunTestDemoMode(beats, label)
             if ns.WeakAuraBridge and ns.WeakAuraBridge.Publish then
                 ns.WeakAuraBridge:Publish(beat.rec, Core.state)
             end
-            if beat.note then
+            -- v2.4.0: Pre-v2.4 the demo printed every beat note to chat
+            -- (7 lines for the arena demo). That spammed the chat box
+            -- mid-fight. Now beat notes are silent on screen — only
+            -- visible in verbose mode (set via `/acc verbose on`). The
+            -- start + end banners (chatPrint outside the loop) still
+            -- fire so the user knows the demo is running.
+            local verbose = (ArenaCoachTBCDB and ArenaCoachTBCDB.frame
+                             and ArenaCoachTBCDB.frame.verbose) or false
+            if verbose and beat.note then
                 chatPrint(string.format("|cff8b7548[ACC %d/%d]|r %s", i, total, beat.note))
             end
         end
