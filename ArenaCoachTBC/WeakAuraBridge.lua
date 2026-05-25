@@ -84,6 +84,31 @@ function API.L(key)
     return key
 end
 
+-- ----- Opponent profile (M9 #63) -----
+-- Computes the signature from the current live state and returns the
+-- corresponding profile (creating a fresh one in SavedVariables if this
+-- is a first encounter). Returns nil if there's no live state, no
+-- OpponentProfile module loaded, or no enemies yet.
+function API.GetOpponentProfile()
+    if not (ns.OpponentProfile and WAB._state and WAB._state.enemies) then return nil end
+    local sig = ns.OpponentProfile:Signature(WAB._state.enemies)
+    if not sig then return nil end
+    local db = _G.ArenaCoachTBCDB
+    if not db then return nil end
+    return ns.OpponentProfile:Get(sig, db)
+end
+
+function API.GetOpponentSignature()
+    if not (ns.OpponentProfile and WAB._state and WAB._state.enemies) then return nil end
+    return ns.OpponentProfile:Signature(WAB._state.enemies)
+end
+
+function API.GetTendencyMean(tendency)
+    local p = API.GetOpponentProfile()
+    if not p or not ns.OpponentProfile then return 0.5 end
+    return ns.OpponentProfile:Mean(p, tendency)
+end
+
 -- ----- Debug / version -----
 function API.GetDebugState()
     return {
