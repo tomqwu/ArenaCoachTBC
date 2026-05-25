@@ -51,7 +51,13 @@ const COMMON = {
   tocversion: 20505,
   triggers: [],
   uid: () => Math.random().toString(36).slice(2, 14),
-  url: 'https://github.com/tomqwu/wow_tbc_arena_pvp_strategy',
+  url: 'https://github.com/tomqwu/ArenaCoachTBC',
+  // `internalVersion` is the schema epoch WeakAuras uses to decide whether
+  // to run migration steps on import. Setting it to the current upstream
+  // (90 as of WA repo main, 2026) keeps the client from showing the
+  // "this aura was created with a very old version of WeakAuras" warning
+  // we hit in v2.2.1 with internalVersion undefined.
+  internalVersion: 90,
   version: 1,
   wagoID: '',
   xOffset: 0,
