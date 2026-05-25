@@ -298,6 +298,61 @@ local function scoreEnemy(enemy, state, comp)
 end
 
 -- ============================================================
+-- M11 #72: Kill-probability model with auditable breakdown
+-- ============================================================
+-- Each component contributes additively in [0..1], summed and clamped.
+-- The breakdown is surfaced so /acc trace + WeakAuras can show the
+-- engine's "why we think we can kill" reasoning to the player.
+SE.KILL_PROB_WEIGHTS = {
+    hpDelta            = 1.0,   -- 1 - hp/100, weighted directly
+    defensiveDown      = 0.10,  -- target has used trinket
+    immunityAbsent     = 0.10,  -- target has no active Ice Block / DS / BoP
+    burstReady         = 0.05,  -- our HoJ/burst ready
+    healerLowMana      = 0.10,  -- their healer below mana threshold
+    drClean            = 0.05,  -- target's STUN DR is at 1.0
+}
+
+function SE:KillProb(target, state)
+    if not target then return { prob = 0, components = {} } end
+    local W = self.KILL_PROB_WEIGHTS
+    local hp = 1 - ((target.healthPct or 100) / 100)
+    local comps = { hp = hp * W.hpDelta }
+    if target.hasTrinket == false then comps.defensiveDown = W.defensiveDown
+    else comps.defensiveDown = 0 end
+    local activeImm = false
+    if target.importantBuffs and ns.Spells and ns.Spells.IMMUNITY_BUFFS then
+        for id, _ in pairs(target.importantBuffs) do
+            if ns.Spells.IMMUNITY_BUFFS[id] then activeImm = true; break end
+        end
+    end
+    comps.immunityAbsent = (not activeImm) and W.immunityAbsent or 0
+    comps.burstReady = (state and state.observations and state.observations.hojReady)
+        and W.burstReady or 0
+    comps.healerLowMana = 0
+    if state and state.enemies then
+        for _, e in pairs(state.enemies) do
+            local role = e.roleGuess
+            if role == "HEALER" and e.manaPct and e.manaPct < 30 then
+                comps.healerLowMana = W.healerLowMana
+                break
+            end
+        end
+    end
+    comps.drClean = 0
+    if ns.DRTracker and ns.DRTracker.NextMultiplier and target.guid then
+        if ns.DRTracker:NextMultiplier(target.guid, "STUN") == 1.0 then
+            comps.drClean = W.drClean
+        end
+    end
+    local total = 0
+    for _, v in pairs(comps) do total = total + v end
+    return {
+        prob       = math.max(0, math.min(1.0, total)),
+        components = comps,
+    }
+end
+
+-- ============================================================
 -- Defense / phase heuristics
 -- ============================================================
 local function shouldDefend(state)
