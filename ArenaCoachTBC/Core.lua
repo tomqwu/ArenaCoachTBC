@@ -89,6 +89,7 @@ local function appendTrace(rec, state)
         bracket        = state and state.bracket,
         combatPhase    = state and state.combatPhase,
         callouts       = rec.callouts and table.concat(rec.callouts, ",") or "",
+        profileContrib = rec.profileContrib or "",
     }
     table.insert(db.trace.log, snapshot)
     while #db.trace.log > cap do table.remove(db.trace.log, 1) end
@@ -518,6 +519,17 @@ function Core:Evaluate()
     self.state.observations = self.state.observations or {}
     self.state.observations.healerUnderPressure = (#Core._friendlyDamageTs >= threshold)
     self:RefreshAuraObservations()
+
+    -- M9 #65: resolve opponent profile from signature, attach to state
+    -- so the engine's buildCallouts can consult Bayesian tendencies.
+    -- Profile is created on-demand if this is a first encounter.
+    if ns.OpponentProfile and _G.ArenaCoachTBCDB and self.state.enemies then
+        local sig = ns.OpponentProfile:Signature(self.state.enemies)
+        if sig then
+            self.state.opponentSignature = sig
+            self.state.opponentProfile = ns.OpponentProfile:Get(sig, _G.ArenaCoachTBCDB)
+        end
+    end
 
     local rec = ns.StrategyEngine and ns.StrategyEngine:Evaluate(self.state) or nil
     if not rec then return end
