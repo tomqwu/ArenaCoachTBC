@@ -1,9 +1,10 @@
 -- ArenaCoachTBC - UI layer
--- One movable frame that shows the current recommendation, callouts, and
--- two icon rows (friendly reminders + enemy cooldowns). All updates are
--- event-driven; the only OnUpdate is a very low-frequency icon refresh
--- (1Hz, guarded by elapsed accumulator). No protected actions are ever
--- bound to any visible button.
+-- One movable frame that shows the current recommendation (mode, target,
+-- HP%, kill prob, callouts). Driven event-by-event from Core; no polling.
+-- v2.2.0 added two peripheral visual layers wired in here: a pulsing
+-- mode-coloured screen-edge glow (ScreenEdgeGlow.lua) and a coloured
+-- border on the kill / swap target's nameplate (Nameplate.lua). No
+-- protected actions are ever bound to any visible button.
 
 local ADDON_NAME, ns = ...
 ns = ns or {}
@@ -21,49 +22,6 @@ local function L(key, ...)
         return s
     end
     return key
-end
-
--- Helper: create a small icon button with a texture by spell ID
-local function makeIcon(parent, size)
-    if type(CreateFrame) ~= "function" then return nil end
-    local b = CreateFrame("Frame", nil, parent)
-    b:SetSize(size, size)
-    b.tex = b:CreateTexture(nil, "ARTWORK")
-    b.tex:SetAllPoints(true)
-    b.text = b:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    b.text:SetPoint("BOTTOM", b, "BOTTOM", 0, -10)
-    b:SetScript("OnEnter", function(self)
-        if not GameTooltip then return end
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        -- v2.0.1: prefer the localized spell tooltip from the WoW client
-        -- so mouse-over follows GetLocale() instead of our hardcoded
-        -- English fallback labels. SetSpellByID renders the canonical
-        -- icon + localized name + flavor text just like the spellbook.
-        if self.spellID and type(GameTooltip.SetSpellByID) == "function" then
-            local ok = pcall(GameTooltip.SetSpellByID, GameTooltip, self.spellID)
-            if ok then GameTooltip:Show(); return end
-        end
-        -- Fallback: localized name via GetSpellInfo, then our context label.
-        local fallback = self.tooltip
-        if self.spellID and type(GetSpellInfo) == "function" then
-            local name = GetSpellInfo(self.spellID)
-            if name and name ~= "" then fallback = name end
-        end
-        if fallback then
-            GameTooltip:SetText(fallback)
-            GameTooltip:Show()
-        end
-    end)
-    b:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
-    return b
-end
-
--- spell ID -> texture path via WoW API. Defensive on missing API.
-local function spellIcon(spellID)
-    if type(GetSpellTexture) == "function" then
-        return GetSpellTexture(spellID)
-    end
-    return nil
 end
 
 -- ============================================================
@@ -350,20 +308,25 @@ function UI:Apply(recommendation)
     -- context — outside actual combat (idle world) the constant glow /
     -- nameplate paint would be distracting noise.
     --
+    -- v2.3.0: `forceShow` also bypasses the inPvP gate so /acc test
+    -- can demo the full HUD (text + glow + nameplate) without being
+    -- in arena/BG/world. Pre-v2.3.0 the demo only painted the text.
+    --
     -- edgeGlow: pulsing mode-colored band around the screen edges.
     -- nameplate: paint the kill / swap target's nameplate border so
     -- the player can identify them in a fight with multiple enemies.
     local alerts = ArenaCoachTBCDB and ArenaCoachTBCDB.alerts or nil
     local inPvP  = inArena or (ctx == "bg") or (ctx == "world")
+    local showVisualLayers = inPvP or forceShow
     if ns.ScreenEdgeGlow then
-        if inPvP and alerts and alerts.edgeGlow then
+        if showVisualLayers and alerts and alerts.edgeGlow then
             ns.ScreenEdgeGlow:SetMode(mode)
         else
             ns.ScreenEdgeGlow:Hide()
         end
     end
     if ns.Nameplate then
-        if inPvP and alerts and alerts.nameplate then
+        if showVisualLayers and alerts and alerts.nameplate then
             ns.Nameplate:Apply(recommendation)
         else
             ns.Nameplate:ClearAll()

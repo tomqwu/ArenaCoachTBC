@@ -1,8 +1,8 @@
-# ArenaCoachTBC architecture (v2.0) / 架构 (v2.0)
+# ArenaCoachTBC architecture (v2.2) / 架构 (v2.2)
 
-This document explains the engine modules introduced across the M7–M12 milestones and how data flows through them at evaluation time.
+This document explains the engine modules introduced across the M7–M12 milestones (v2.0) plus the visual + lifecycle additions in v2.1 (BG / world / duel support) and v2.2 (peripheral-vision visual layers, auto-hide gate, master switch).
 
-本文档说明 M7–M12 各里程碑引入的引擎模块，以及评估时数据如何在它们之间流转。
+本文档说明 M7–M12 各里程碑（v2.0）引入的引擎模块，以及 v2.1（战场 / 户外 / 决斗支持）与 v2.2（视觉外圈层、自动隐藏门禁、主开关）的新增。
 
 ---
 
@@ -27,7 +27,9 @@ WoW --> | Core.lua (CLEU)    | -- builds state --> StrategyEngine:Evaluate(state
               v        \
         Chain.lua       OpponentProfile.lua
         Patterns.lua    Lookahead.lua
-                         Sounds.lua (UI side)
+                         Sounds.lua  (UI side)
+                         ScreenEdgeGlow.lua  (UI side, v2.2.0)
+                         Nameplate.lua       (UI side, v2.2.0)
 ```
 
 ---
@@ -122,11 +124,33 @@ Three thresholds shift on this axis: SWAP score-gap (0/10/20), defensive HP gate
 
 此轴上有 3 个阈值会变化：SWAP 分差阈（0/10/20）、防御血量门禁（30/40/50%）、低蓝压上阈（30/25/20）。
 
-### Sounds.lua (M12)
+### Sounds.lua (M12, audio fix v2.1.6)
 
-Maps callout keys to PlaySoundFile paths. `UI:Apply` fires a one-shot cue per new top callout (gated by `db.alerts.sound`).
+Maps callout keys + mode names to numeric SoundKit IDs that ship with the WoW client itself (RaidWarning 8959, RaidBossEmote 8458, PvPVictory 12867, queue ding 8454). `UI:Apply` fires a one-shot cue per new top callout AND per mode transition (gated by `db.alerts.sound`, arena-only).
 
-将提示键映射到 PlaySoundFile 路径。`UI:Apply` 在新的顶层提示出现时触发一次性音效（受 `db.alerts.sound` 控制）。
+Pre-v2.1.6 this module referenced `Sound/Voice/*.ogg` paths that were never bundled in the addon zip, so every `PlaySoundFile` invocation silently failed and audio cues did not work in any earlier release.
+
+将提示键和模式名映射到 WoW 客户端内置的数字 SoundKit ID。`UI:Apply` 在新顶层提示和模式切换时触发一次性音效（受 `db.alerts.sound` 控制，仅竞技场触发）。v2.1.6 前引用的 `Sound/Voice/*.ogg` 路径并未打包进插件，所以历史版本的音效从未真正发出。
+
+### ScreenEdgeGlow.lua (v2.2.0)
+
+A full-screen frame with four edge bands (top / bottom / left / right). Each band's color follows the current recommendation mode (KILL=red, SWAP=orange, DEFEND=blue, OPEN=yellow). An `OnUpdate` script breathes the alpha between 0.18 and 0.42 over a 1.6 s cycle. `RESET` and `nil` mode hide the frame so between-fight downtime is dark. Toggle via `db.alerts.edgeGlow` / `/acc glow on|off`. Driven from `UI:Apply` after the recommendation is rendered.
+
+全屏框、四条边带（上/下/左/右）。每条带颜色随当前模式（KILL 红、SWAP 橙、DEFEND 蓝、OPEN 黄）。`OnUpdate` 让透明度在 0.18-0.42 间以 1.6 秒周期呼吸。`RESET` 和 `nil` 隐藏。通过 `db.alerts.edgeGlow` / `/acc glow on|off` 控制。
+
+### Nameplate.lua (v2.2.0)
+
+Iterates `nameplate1..nameplate40` to resolve the current frame for a given enemy GUID, then attaches a child overlay frame with four colored bands forming a border. The kill target gets a red border (`KILL` color); the swap candidate gets an orange one (`SWAP`). Overlays are cleared and re-painted on every `UI:Apply` so target changes update cleanly. We never modify the native nameplate's health bar / cast bar / name text, so Plater / KuiNameplates / TidyPlates coexist cleanly. Toggle via `db.alerts.nameplate` / `/acc nameplate on|off`.
+
+遍历 `nameplate1..nameplate40` 找到指定敌方 GUID 对应的当前铭牌，挂上一个含四条彩带的子覆盖框。击杀目标得红色边框，换火候选得橙色。`UI:Apply` 每次都清空重绘。从不修改铭牌原生的血条/施法条/姓名，与 Plater/KuiNameplates/TidyPlates 共存。
+
+### Auto-hide gate + master switch (v2.2.5)
+
+`UI:Apply` checks `Core.state.pvpContext` and hides the frame + screen-edge glow + nameplate overlays when the context is explicitly `"none"` or `"world_idle"`. This stops the engine from drawing a stale rec on screen between fights and stops `onNameplateChange` from re-evaluating in cities (where the firehose of nameplate add/remove events was a major frame-rate hit before v2.2.5).
+
+`/acc off` and `/acc on` (aliases `/acc disable` / `/acc enable`) toggle `db.enabled`. When off, `Core:Evaluate` short-circuits at the top — no event handlers, no engine work, all visual layers hidden. Persists across `/reload`. The `/acc test` demo bypasses both gates via a per-beat `recommendation._forceShow` flag so the walk-through paints the full HUD outside arena.
+
+`UI:Apply` 检查 `Core.state.pvpContext`，当上下文为 `"none"` 或 `"world_idle"` 时隐藏所有视觉层。`/acc off` / `/acc on` 切换 `db.enabled`，全局开关。`/acc test` 演示通过 `_forceShow` 标志绕过这些门禁。
 
 ---
 

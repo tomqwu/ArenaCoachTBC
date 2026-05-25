@@ -22,8 +22,8 @@ A strategy coach addon for **TBC Classic / TBC Anniversary** arena. Watches your
    ```
 2. Restart the client or `/reload`.
    重启客户端或在游戏内执行 `/reload`。
-3. If "Out of Date" appears at character select, enable "Load out of date AddOns". Edit `## Interface: 20504` in `ArenaCoachTBC.toc` to match your client to silence the warning.
-   若角色选择界面显示 "Out of Date"，启用底部的"载入过期插件"。或编辑 `ArenaCoachTBC.toc` 中的 `## Interface: 20504` 以匹配客户端版本。
+3. If "Out of Date" appears at character select, enable "Load out of date AddOns". Edit `## Interface: 20505` in `ArenaCoachTBC.toc` to match your client to silence the warning.
+   若角色选择界面显示 "Out of Date"，启用底部的"载入过期插件"。或编辑 `ArenaCoachTBC.toc` 中的 `## Interface: 20505` 以匹配客户端版本。
 
 The addon stores SavedVariables in `ArenaCoachTBCDB`.
 存档变量保存在 `ArenaCoachTBCDB`。
@@ -38,14 +38,22 @@ The addon stores SavedVariables in `ArenaCoachTBCDB`.
 | `/acc help` | print all commands | 显示所有命令 |
 | `/acc toggle` | show / hide the recommendation frame | 显示 / 隐藏提示框 |
 | `/acc lock` / `/acc unlock` | lock or unlock the frame for dragging | 锁定 / 解锁框体 |
-| `/acc test` | 14s DBM-style UI demo (mode flips, BURST_NOW, DEFEND flash) | 14 秒 DBM 风格 UI 演示 |
+| `/acc off` / `/acc on` (aliases `/acc disable` / `/acc enable`) | **master switch.** Stops the engine + hides every visual layer. Persists across `/reload`. | **主开关**。停止引擎并隐藏所有视觉层，`/reload` 后保持。 |
+| `/acc glow on\|off` | toggle the mode-coloured screen-edge glow (v2.2.0) | 切换屏幕边缘模式着色光晕（v2.2.0） |
+| `/acc nameplate on\|off` | toggle the KILL / SWAP target nameplate highlights (v2.2.0) | 切换击杀/换火目标的铭牌高亮（v2.2.0） |
+| `/acc test` | arena 7-beat UI demo — paints the full HUD (mode label, target stats, edge glow, nameplate, audio cues) | 竞技场 7 节拍 UI 演示——完整 HUD（模式、信息行、边缘光晕、铭牌、音效） |
+| `/acc test bg` | battleground walk-through (flag carrier + low-HP straggler) | 战场演示（夺旗者 + 低血单位） |
+| `/acc test world` | world PvP walk-through (single-target focus) | 户外 PvP 演示（单目标聚焦） |
 | `/acc test print` | legacy chat-only summary of 5 sample comps | 仅文字摘要（旧行为） |
 | `/acc enemy war mage priest druid pala` | simulate a custom enemy comp | 模拟自定义敌方阵容 |
 | `/acc debug` | toggle debug logging | 切换调试输出 |
 | `/acc reset` | wipe SavedVariables (requires `/reload`) | 清空存档（需 `/reload`） |
-| `/acc strategy safe` | be conservative on burst/swap calls | 保守模式 |
-| `/acc strategy balanced` | default | 默认 |
-| `/acc strategy greedy` | call more swaps/bursts | 激进模式 |
+| `/acc strategy safe \| balanced \| greedy` | conservative / default / aggressive burst+swap calls | 保守 / 默认 / 激进 模式 |
+| `/acc selftest [verbose]` | in-client validation suite | 客户端内自检 |
+| `/acc trace [on\|off\|dump\|clear\|status]` | decision-trace ring buffer | 决策追踪环缓冲 |
+| `/acc record [on\|off\|dump\|clear\|status]` | CLEU recording for offline replay | CLEU 录制（用于离线重放） |
+| `/acc whatif skip <i>` | counterfactual replay (skip event #i) | 反事实重放（跳过事件 #i） |
+| `/acc bugreport` | sanitised error report for GitHub issues | 已脱敏的错误报告 |
 
 ---
 
@@ -179,7 +187,7 @@ The addon publishes its current recommendation and full state through the global
 | `GetFriendlies()` | full friendlies map / 完整己方表 |
 | `GetEnemyByGUID(guid)` | one enemy / 单个敌方 |
 | `GetCombatPhase()` | "PRE" / "ACTIVE" / "POST" |
-| `GetVersion()` | "2.2.6" |
+| `GetVersion()` | "2.3.0" |
 
 ### Sample custom trigger / 自定义触发器示例
 

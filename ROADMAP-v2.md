@@ -248,3 +248,44 @@ M7 spec-aware comp     -> M8 chain planning   -> M10 lookahead   -> M12 calibrat
 M9 (opponent modelling) is the keystone — M10 lookahead and M11 risk
 gating both lean on the profile data it produces. If M9 slips, downstream
 milestones slip with it.
+
+---
+
+## What shipped after M12
+
+This v2 roadmap scoped M7-M12 as v2.0. The full set landed in v2.0.0 (May 2026). Everything below was unscheduled at the time the roadmap was written — added in response to user feedback during the v2.1-v2.3 patch cycle. Tagged with version + CHANGELOG anchor for cross-reference.
+
+### v2.1 — Wild PvP (BG / world / duels) · M13-M16
+
+Engine was effectively dormant outside arena (`Core:RefreshArenaEnemies` hardcoded to `arenaN` unit IDs). v2.1 extended it.
+
+- **v2.1.0**: `Core:DetectPvPContext()` returns `arena|bg|world|world_idle|none`; non-arena enemy discovery via nameplate iteration + CLEU stubs; BG-specific scoring branch (flag-carrier priority +200, low-HP straggler boost, class-prior tier for PUG'd rosters); world-PvP single-target focus; `DUEL_REQUESTED` auto-engages.
+- **v2.1.1**: `/acc test bg` + `/acc test world` walkthroughs; AV-scale 40-enemy perf test.
+- **v2.1.2**: nameplate event subscription so BG enemies populate even when no combat events fire.
+- **v2.1.3**: DEFEND / RESET no longer show a target name; reasonKey localisation.
+
+### v2.1.4-v2.1.6 — Publishing pipeline + audio + HUD
+
+- **v2.1.4**: TBC Anniversary support (`Interface: 20505`). BigWigs packager pipeline fix (.git symlink + `-t ArenaCoachTBC`).
+- **v2.1.5**: CurseForge auto-upload wired (`X-Curse-Project-ID: 1552792`).
+- **v2.1.6**: bigger 32pt mode label, target stats row (HP%, kill prob %, BURST READY), **audio cues fix** — pre-v2.1.6 the `Sound/Voice/*.ogg` paths were never bundled, so every audio call silently failed; v2.1.6 switched to numeric SoundKit IDs that ship with the client. Engine emits `primaryTargetHp` + `killProb` on the rec.
+
+### v2.2 — Eyes Up (visual layers + lifecycle)
+
+- **v2.2.0**: `ScreenEdgeGlow.lua` (mode-coloured pulsing band around the screen edges) + `Nameplate.lua` (red border on KILL target, orange on SWAP). Both PvP-context-gated, toggleable via `/acc glow` / `/acc nameplate`.
+- **v2.2.1**: removed the two cooldown icon rows at the bottom of the frame — they had been displayed since v1 but `UI:UpdateIcons` was only ever called from tests, never production. Dead UI. Frame height shrank 170 → 110 px. `db.frame.compactMode` toggle dropped (it gated the now-removed icon rows).
+- **v2.2.5**: **city-lag fix** — `onNameplateChange` was re-evaluating the engine on every nameplate change while PvP-flagged in `world_idle`. In Stormwind that's hundreds of events per second with nothing useful to recommend. Gate now only triggers Evaluate when context is `bg` or `world`. Frame auto-hides outside PvP contexts. `/acc off` / `/acc on` master switch (aliases `/acc disable` / `/acc enable`) flips `db.enabled` and persists across `/reload`.
+- **v2.2.6**: removed the WeakAura paste-string export pipeline. After 6 patches chasing why our generated `!WA:2!...` strings failed to import, root cause confirmed: the `node-weakauras-parser` library produces strings that decode correctly but fail WeakAuras' import-validator byte check (even when re-encoding a known-working Wago WA byte-identical). `docs/weakaura-pack.md` retains the trigger Lua snippets users paste into a hand-built WeakAura; bridge API (`_G.ArenaCoachTBC` + `WeakAuras.ScanEvents("ACC_RECOMMENDATION", rec)`) unchanged.
+
+### v2.3.0 — Quality release
+
+- Bug fix: `/acc test` was only painting text, not the v2.2.0 visual layers — `_forceShow` bypassed the v2.2.5 auto-hide gate but the visual-layer gate still required `inPvP`. Now `_forceShow` short-circuits both.
+- Dead code: deleted `makeIcon()` + `spellIcon()` from `UI.lua` (38 lines orphaned since v2.2.1).
+- Docs + roadmap refresh (this commit).
+
+### Themes implicit across v2.1-v2.3
+
+- **Calibration over confidence** held — every "the engine should learn X" feature added since M12 went through the same Beta-prior + per-team profile machinery rather than a new modelling layer.
+- **No automation** held — no new code can set raid markers, target enemies, or send chat.
+- **Local-only learning** held — `db.profiles` and `db.classPriors` never leave the SavedVariables file. No cloud telemetry shipped.
+- **99% coverage** held — 608 tests as of v2.3.0 (up from 538 at v2.0).

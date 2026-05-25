@@ -166,6 +166,84 @@ H.it(g, "Apply with primaryTargetClass fallback", function()
 end)
 
 -- =================================================================
+-- v2.3.0: /acc test demo paints the full HUD (edge glow + nameplate),
+-- not just the text. Regression for the bug where _forceShow bypassed
+-- the auto-hide gate but the visual-layer gate still required inPvP.
+-- =================================================================
+
+H.it(g, "v2.3.0: _forceShow bypasses inPvP gate for edge glow + nameplate", function()
+    -- Load the visual-layer modules so UI:Apply can drive them.
+    H.load("ScreenEdgeGlow.lua")
+    H.load("Nameplate.lua")
+    local Glow = H.ns.ScreenEdgeGlow
+    local NP   = H.ns.Nameplate
+    H.assertNotNil(Glow, "ScreenEdgeGlow must be loaded")
+    H.assertNotNil(NP,   "Nameplate must be loaded")
+
+    -- Ensure the alerts toggles default to on (matches DEFAULTS in Core).
+    _G.ArenaCoachTBCDB = _G.ArenaCoachTBCDB or {}
+    _G.ArenaCoachTBCDB.alerts = _G.ArenaCoachTBCDB.alerts or {}
+    _G.ArenaCoachTBCDB.alerts.edgeGlow  = true
+    _G.ArenaCoachTBCDB.alerts.nameplate = true
+
+    -- No PvP context — simulates running /acc test in a city.
+    H.ns.Core = H.ns.Core or {}
+    H.ns.Core.state = H.ns.Core.state or {}
+    H.ns.Core.state.pvpContext = "none"
+
+    -- Stub a nameplate so Nameplate:Apply has a target to paint.
+    H.setUnit("nameplate1", { guid = "guid-demo", class = "ROGUE",
+                              name = "DemoEnemy", exists = true })
+    _G.nameplate1 = _G.nameplate1 or H.makeMockFrame{ name = "nameplate1" }
+
+    UI:CreateFrame()
+    Glow:Hide()           -- reset state from any earlier test
+    NP:ClearAll()
+
+    -- Demo-style rec with _forceShow set: should paint the FULL HUD.
+    UI:Apply({
+        mode = "KILL",
+        primaryTarget = "guid-demo",
+        primaryTargetName = "DemoEnemy",
+        primaryTargetClass = "ROGUE",
+        callouts = {},
+        priority = "HIGH",
+        _forceShow = true,
+    })
+
+    H.assertEq(Glow:CurrentMode(), "KILL",
+        "edge glow should activate in KILL mode when _forceShow is set, even without pvp context")
+    local overlayCount = 0
+    for _ in pairs(NP._overlays) do overlayCount = overlayCount + 1 end
+    H.assertTrue(overlayCount >= 1,
+        "nameplate overlay should paint on the kill target when _forceShow is set")
+
+    -- Clean up: pvpContext = "none" would trip the v2.2.5 auto-hide
+    -- gate in any subsequent test that doesn't set its own context.
+    H.ns.Core.state.pvpContext = nil
+end)
+
+H.it(g, "v2.3.0: without _forceShow + no pvp context, visual layers stay hidden", function()
+    local Glow = H.ns.ScreenEdgeGlow
+    -- Same DB toggles as the previous test (alerts on).
+    H.ns.Core.state.pvpContext = "none"
+    UI:CreateFrame()
+    Glow:SetMode("KILL")   -- prime to a visible state
+    UI:Apply({
+        mode = "KILL",
+        primaryTarget = "guid-demo",
+        callouts = {},
+        priority = "HIGH",
+        -- no _forceShow → should hide everything (the early-return gate
+        -- catches this before the visual-layer block, but the assertion
+        -- below also verifies Glow gets cleared)
+    })
+    H.assertNil(Glow:CurrentMode(),
+        "edge glow must be cleared when context is 'none' and _forceShow is not set")
+    H.ns.Core.state.pvpContext = nil
+end)
+
+-- =================================================================
 -- v2.1.3: DEFEND / RESET don't show a target in bigText
 -- =================================================================
 

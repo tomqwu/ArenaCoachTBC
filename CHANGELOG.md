@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-05-25
+
+**Quality release.** One real bug fix on top of v2.2.6, plus a sweep of dead code and stale docs that had piled up across the v2.1-v2.2 patch cycle.
+
+### Fixed
+- **`/acc test` (and any non-arena trigger of `UI:Apply`) only painted the text frame — no screen edge glow, no nameplate highlight.** User report: *"I do not see any HUD in the latest release, only text."* Root cause: `UI:Apply`'s v2.2.0 visual-layer block gated on `inPvP = (arena|bg|world)` and ignored the `_forceShow` flag the demo sets to bypass the v2.2.5 auto-hide. Result: the early hide gate let the rec through, but the later edge-glow + nameplate gate still required real PvP context and so nothing painted on the periphery. Fixed with a 3-line change: `local showVisualLayers = inPvP or forceShow`. Regression-tested in `Tests/UI_spec.lua` (test #607 / #608).
+
+### Removed
+- **`UI.lua` dead code** (38 lines): `makeIcon(parent, size)` (lines 27-59) and `spellIcon(spellID)` (lines 62-67) — orphaned since v2.2.1 removed the icon rows that called them. Module header line about "two icon rows" updated to reflect the v2.2.0 visual-layer architecture.
+
+### Changed
+- **Docs refresh** — first comprehensive sweep since v2.0 shipped 9 patches ago:
+  - `docs/weakaura-pack.md`: removed the Path 1 paste-string section that directed users to a tool we deleted in v2.2.6. Added a deprecation note explaining the parser-library limitation. Path 2 (trigger-code snippets for hand-built WAs) unchanged.
+  - `docs/architecture.md`: title bump v2.0 → v2.2; new sections for `ScreenEdgeGlow.lua`, `Nameplate.lua`, the v2.2.5 auto-hide gate + `/acc off` master switch; `Sounds.lua` description corrected (numeric SoundKit IDs, not the broken `.ogg` paths from before v2.1.6).
+  - `docs/manual-smoke.md`: slash-command checklist extended with `/acc off`, `/acc on`, `/acc glow`, `/acc nameplate`; new HUD smoke step that asserts the full visual stack paints during `/acc test`; new city-lag smoke step; added Plater / KuiNameplates / TidyPlates to the addon-conflict matrix.
+  - `ArenaCoachTBC/README.md`: stale `Interface: 20504` reference bumped to `20505`; slash-command table expanded with the v2.2 commands.
+- **Roadmap refresh** — first sweep since v2.0:
+  - `ROADMAP.md` (v1): marked the items shipped through v2.2.6 as done with their actual shipping vehicle. Crossed-out the "Prepackaged WeakAura export string" item with a link to the v2.2.6 abandonment note. Moved M6 hardening items (`debugprofilestop` assertions, memory fuzz, multi-Lua CI matrix, headless replay tool, evaluation server) into a "Deferred — future hardening" section. Marked the M5 cloud-telemetry item as deferred indefinitely.
+  - `ROADMAP-v2.md`: added a "What shipped after M12" section that one-line-summarises every v2.1, v2.2, v2.3 release with a CHANGELOG anchor, so future readers understand why v2.0's "complete" still got 9 patches stacked on top.
+
+### Notes
+- Test count 606 → 608 (+2 regression tests for the HUD-demo bug; the v2.1.3 tests that briefly broke during development now pass cleanly).
+- Locale parity green: still 110 keys per locale (enUS, zhCN). No new locale work in this release.
+- No behaviour changes outside the bug fix. No new slash commands, no new SavedVariables keys, no schema migrations.
+
 ## [2.2.6] - 2026-05-25
 
 ### Removed
