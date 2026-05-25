@@ -35,6 +35,7 @@ local specs = {
     "Chain_spec.lua",
     "OpponentProfile_spec.lua",
     "OpponentModellingE2E_spec.lua",
+    "Lookahead_spec.lua",
     "WeakAuraBridge_spec.lua",
     "Locales_spec.lua",
     "StrategyEngine_extra_spec.lua",

@@ -23,6 +23,7 @@ CooldownTracker.lua
 DRTracker.lua
 Chain.lua
 OpponentProfile.lua
+Lookahead.lua
 StrategyEngine.lua
 UI.lua
 Options.lua

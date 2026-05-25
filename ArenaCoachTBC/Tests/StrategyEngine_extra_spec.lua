@@ -341,6 +341,7 @@ end)
 
 H.it(g, "Evaluate emits a chain field for a comp that has chains", function()
     H.load("Chain.lua")
+    H.load("Lookahead.lua")
     H.ns.DRTracker:Clear()
     H.ns.CooldownTracker:Clear()
     local state = SE:BuildTestState({"WARLOCK","DRUID","WARRIOR"})
@@ -354,6 +355,22 @@ H.it(g, "Evaluate emits a chain field for a comp that has chains", function()
     -- M8 #62: labelKey is propagated for UI rendering
     H.assertEq(rec.chain.labelKey, "CHAIN_WLD_FEAR_INTO_CYCLONE")
     H.assertEq(rec.chain.steps, 2)
+    -- M10 #67: lookahead expected value is set when Lookahead is loaded
+    H.assertNotNil(rec.chain.expectedValue, "lookahead should populate expectedValue")
+    H.assertTrue(rec.chain.expectedValue <= rec.chain.expectedProb,
+        "EV should not exceed raw chain prob")
+end)
+
+H.it(g, "Evaluate respects strategy.lookaheadEnabled=false to skip lookahead", function()
+    H.load("Chain.lua")
+    H.load("Lookahead.lua")
+    H.ns.DRTracker:Clear()
+    H.ns.CooldownTracker:Clear()
+    local state = SE:BuildTestState({"WARLOCK","DRUID","WARRIOR"})
+    state.combatPhase = "ACTIVE"
+    state.config.strategy.lookaheadEnabled = false
+    local rec = SE:Evaluate(state)
+    H.assertNil(rec.chain.expectedValue, "expectedValue should be nil when lookahead disabled")
 end)
 
 H.it(g, "Evaluate omits rec.chain when the comp has no chains", function()
