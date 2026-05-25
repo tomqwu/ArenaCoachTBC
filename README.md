@@ -165,12 +165,49 @@ The addon publishes its full recommendation through `_G.ArenaCoachTBC`. Build yo
 
 插件通过 `_G.ArenaCoachTBC` 全局发布完整的推荐数据。你可以基于这些 getter 构建自己的 HUD。
 
-**Two paths / 两种方式:**
+### Paste-ready import strings / 直接导入字符串
 
-1. **Paste-ready import strings (recommended)** — `docs/weakaura-imports.md` ships 5 generated `!WA:2!...` strings. Open `/wa`, click **Import**, paste, done.
-   **直接粘贴导入串（推荐）**——`docs/weakaura-imports.md` 提供 5 个生成好的 `!WA:2!...` 字符串。打开 `/wa`，点击 **Import**，粘贴即可。
-2. **Hand-built triggers** — `docs/weakaura-pack.md` documents the trigger code for 5 templates (mode badge, burst gate, defensive alert, callout list, comp readout). Paste into a Custom trigger you build yourself.
-   **手动构建触发器**——`docs/weakaura-pack.md` 提供了 5 个模板的触发器代码（模式徽章、爆发开关、防御警报、提示列表、阵容信息）。粘贴到你自行创建的 Custom 触发器里。
+5 ready-made templates. In WoW: `/wa` → **Import** (upper-left) → paste a string → **Import** in the preview dialog. Each is independent — grab any subset.
+
+5 个现成模板。游戏内：`/wa` → 点击左上角 **Import** → 粘贴字符串 → 在预览弹窗里再点 **Import**。每个模板互相独立，按需导入。
+
+**1. Mode badge / 模式徽章** — big colour-coded mode + target line. Hides outside arena.
+大字号、按模式着色的目标信息行。竞技场外自动隐藏。
+
+```
+!DwvBVTjmq4)linPoPP8wtRARu)qAcTkDjKSavt7lagWaEdWmJPjPQY)T233VSD2ett6s3KAqc8947E8zFpNJBFxhx7i5lunpLYwuYj0IkaG7AhslIihAhtsAgtkIPSCKC2gGmksXtDf2lmdvv5g4AxrEclbZRZ4e1QWWfi3BGa47CLMhG4sFLwf4hXmWaMSKHJXmh6dLriowrgolEjLuato20YXCfarRzHyiBYlPmaVQoyfo5LmMtdbcRKjP1GEN17So9aqgjjbqbxS6daoTqQHBlbcdRR40C9xVgWkoIxxbGP4WF4Ad5Qmx0Ugxxekpoo5JI7f(cFsSWVGYf(E31zKCBpMIctDUzSWNNIle(mmVMbFJrzvyHpUiQjWmAikt4NtJa0R)747ChMphMuVqAEAcq8mesbbiabeUpOXktBthdX9WkTl7HnZYzJ(M5kVvM3zA5nzQ9OBMzo5tc)dWnT0WJgpgWgVy(CtRjJCMUWsvjl27e8ihiT5iNv3SvvkazKeixEcNg0R)2nCqKyxZYCTt58YQR62nHWtRd6aQKUaN)CDD3101E8GqpLsYR8XsVkoduijBDTBR1YYQ9AucD6exBx7nlIJRWCxREs8TAR(xOSLzaSTe()(xc)5QZRauucuWzkTKJQ4ZXBG0nIuvMH26Om(qF9MTX(1kGDfsuj5O1XxjtuUDOYWW4TKfYNRvXSNAWNYuXSV7CelbZ335LmsoIT1rnHfkVnYJn)yzN8BqDindA)uuFYoXQuL95PZMz0KHkfOXZHXWVHrdJmAi6(Mz)xp7tO9xhT8ieE5L969(iCI5TG41yF6o)8GbXXVp6wS006i5NKud9jNek4u5JXlLDDTPP70yx1VD11Qa95CNo6QVCKXZSRG3ng7ysfARG5)gV(QaPdm9THnVg0o602rd1JKsDQ8QVBzKNe(FPgfbDGiHVJtZm2YR9To9Cz3fTMNrkGgOfp4mBQLPR93Hwgs82xUfFnjINc(pq1oMIjjPq35WlKwOIq4VLo8AF5fhU)b
+```
+
+**2. Burst gate / 爆发开关** — pulsing icon when `IsBurstAllowed()` is true on KILL mode.
+当 KILL 模式下 `IsBurstAllowed()` 为真时显示脉动图标。
+
+```
+!1nvZYPnmq43LCQDMoGbsOD6m5ayCzifmmy3d9ISfYY2AQrYr)ec5GET69(K1vYX0K02rZiT7N2D13(JqJqPOKc3g2ORfYTTAMGRaankHi4fSxRxYQ6Kz8sH8i2DBhqJa7JJrrZinyLcDaLOyprDGhnnAM)vKuognhCq)SPIJhWANTono9bQeuGlBL0sQmv8T2cSM6dgTPCNGXHldJItJ2dqcJKqb2CSvibCL5WEA1FySwqGaQCKmECWnb3miaaLSQkafmjEeaKEbYlEUfciXO0IJ9NzDGknwBuaynL8dGWDm7ITLgoXvpE37T3zZT5SsBoxOT5zlhmZL3HcmPoDEOnxxt52CjvBKWzjUrrT5uErNJ94V1VbRuZnsLEwtJ4eTO)D6wyW7)2JLu9grbfmn)2BT5x91vRxFL9o4PqjqTMRH0z36zFpAF2(OLrXzlwLmB(6OfFWM)k8O4E4zHHaw42nBIIxmlD12yFVK)IA4)OICjP0stxU6NbCEYaUe8KA0NMg8yZ4heaKSbLuR1TQppCyftxBomagugcb9(tMHNeNY0hiz(HPS2hAZuAj0kQoJsU0UDD2Kt4kXQfOeuYJBllvunkoWHFUxB0yVUJcqEzZ)1pT5(ASnVY3CL(XPuF)NbFaGFlmvBd(8kI)vMC9Kpo1fcIOri7hP62gFrAYfPR7LGm)eRqxJIN6WsQPSQADVgMtGFJVzAVcA7WFh)zhJ2XEK20b8fj9EdLto7sXPDyH)hofmyYZCYl9co5wOFd
+```
+
+**3. Defensive alert / 防御警报** — top-centred DEFEND callout with the reason.
+屏幕顶部居中的 DEFEND 提示，带触发原因。
+
+```
+!Tr1sUTnmq07IbkqcqR)1eNIcKfo2kboir21szr3qrAjkjMitQYprXbbe9q07s33JspjDiL)00Mn2CEZOrV59gk0aumkkZ9dXOlfY51AMGRaankkvWZyVooNv0EMXZfY1ex2wGkbX3hJIMKwruk0kuKI9m1bU2uPz(3IKYjOlGhqVTuX6veTRwxeN(ivcbqYAjnNkJf3vNr0uFZOv5lemoKCsqyCWsasyKPuGnRRfsaxzwTKwCGXArk0qLJKHd7FA)t72haLSIcafkjCaaeVhYFCtn0WuJslwV7)KwqLMOnkaSKM(aq4wMTV2Cdp1PhhDS9Al2ILuTrYT4KR6o2n2teK0Y4lMyXeE2)d39kQ(wrgfEC85NBXDMgCzq40o2RP8mueOmCn8YxCZ4VgSmzzWvbHjtNfn(IBcM(El(v4bH7GhpzcGnz(T3c9AC8S5HELN)xt8BW)9Cxlnul2ra9wpJbCz49Rh2WFQ5HgNVjRqrLADT6Z96vW0LMvDbxTh0ZV1y61iAs0Rst8oFs9J1jkTe0TInOO9EJZgIAifIztrrOONMNNROAuyFh(MDrFyWipGJcWCzX)6Nw8uynHRypc0KurDlbs)gqS3Y00NaKmMQUISj2h8Ub7g524)12QePKkOz1mWhEd3Zxel3I5c92Y0Lu(bnRthVI96LGoVKMNpA0QH55T(6lsl(3F)hqglUBxl(iOtUvGLuIQ1desxVoER)NkQeYDRSGWCcSr3E6mu4hDN8joz3j3KjC3vUuYE2I)IHKbYoXIJJBZe5UBgo8tofvy0vmoOxZVl(MzHbOO7bfILV5WvTgwMUefoQV3ckPSIsWsoXhr4PW3o2E3mE(c)Qc6p
+```
+
+**4. Callout stream / 提示流** — bottom-left stream of the top 3 callouts.
+左下角显示前 3 个提示。
+
+```
+!nsv7Unnmu03LIqQtAknTJHgiTF0LvMgQlbTK9laN4M4K4Uu7GTZAlF4hdEvGFZJcpjCTtAAhSFGQuQVhF95E8XxB0yuekmZ8b3Ok5IGAfLZKaGcfMYzz0hhNtlAhtz5CXkSz2wGko2YtJKeNwHLs0cuOK(zIbCvtLIARIGWWOlGfO6sLVAbwzY1eXipqeqamzTGKter87QZWkILmsv(74ugmP3m)Oz3cq8grkbuZQAUaWLnlULuSxXkEkqO0is)jUN6EQJlakOffakKI)yaiQhYoCBnqyAJuXxT7)4wqPcRAKayjj9EqWTkRp38gwQXpgEK(T6eDIGOAemDs8votnBBpooTm6cpyUVEUoHrR0VLWYqHWMMPaEN65fF7mVGBUzM)LtJUoW36sSdu3tuR(6OeneDIHrvN)sbYlxUC7y5g(YnaGOcauQA5RhnQGQkBw4ahaJak)06MrR5RJvlsJThsX1puhlvcylwSff2BJghlCnUGF9LOqu4MG8Cjrb4V0mX2DHtCDnXgfaBlDYV(HoXdxvXBu6eGwcg2fc7zvK1CvKnGKZOY6k82iBWZhVBd3g)3gCfpfxPtW1uDY5pHpBtIMdwnx1LgxSpY5kIQtssW9kjS9E5GbwN8r1Xk9Z)NLAocm0(LVTVGpRnxiz3)hMROmI0Y9os6MyEFbN3wKEl4(do4V)agZnz16hJpwNa3qlDwrzdp54wvbllJ3MQ5NcVOI4qzsIqn0kdiVb)(7)e(QtCCajmew17PF8OotVVs9TDwkG3gsXhqXhydoQR9oLxXf7US5768QtH2JUHtq(N0o8ma9fMHMSmh2CZf9PcQXh8XcbFDlyO5nLU2nqAMkIcdUlA(1(ZqHlH(fAo0WoF2BG7lRPzQsOgtSDJLeArj0CEMncZsHx86Er5IGOOGBSlYC3b9h
+```
+
+**5. Comp readout / 阵容信息** — compact comp label + spec-confirmed / class-guessed badge.
+紧凑的阵容标签 + 天赋已确认 / 仅按职业推测徽章。
+
+```
+!TrvBpTnmq4)lvAsBFG(cBWgtQAQeQqGGuej8vN464KyiXoZV0sNq5V1(((LT7CAAPaTQP394hF5U7XNjtiXKOm8b1zlv6fnwHsAaaljIPKzId9ZffD2czUsxtXv7aQuuFCCgEcRIAmKLKiJ4pCeS2vzf(3IMlPKZHny3svvVKArUONKVIRbhyXgnpNRJvp0KrTCFW4v53PesyXG5HXZVhGuonJdztDJsd4g3Y75f7ZyRIbb0Gjz4XJpz8jdhdGArrbGcucNaaX7G8MBAGaYCgRQU))KoqJLADgaSKZEcs4UmBh3CNKH9Jp)L2RBtBt1CRtlBttUC4mSSduuwz85bTPuz27HhEj3oxYR3eOQBGyK2(Y02uPOQ9AUmJebTgPfE7ZccsUFEWIBVDE4fZIVArOVxkFvn8bz0USXQD82umI2TQGac(ttwn(XNQE0Sca0vKOsRTX8ZrJke2s3YHGmncc5Vx7gTwToXUKL4LYKMvnjgRgAefBir7A2yFnAnTqD1fKis0ZlYZnCljCmIVP37OjNI(ycavvB6)(BBkw9y2sZuoi70E5m23)T8NbKmHPPIUj278Pj9vBN)B1GkfJwbn8grB60pqk8Ke5qFwz3sZwYL7Bxdg4BwhenMpfN65FGQDdDjVcB2k97xShFWVg8MOjZFD0qUrnCwaoTPR5z91s)x)PNbVWYZp9u8NbiFeRN9l6bhshFNB5ZGpNDMF68Och3yEf9(cUR4goe2IFFD2(KS7CitvP09ZoGG(JtGzRTMKWV2z9Ds43qlKdklkCQDMwGfCivRvR7aJWlicNGCJa9UsibDEXdX3Cv4Cs0JGYkY3SFEFTiZwcHES)CujxuuchJo2VDQKbxGT9cI4f35pDt(pa
+```
+
+For the trigger code behind each template (if you want to roll your own variant), see `docs/weakaura-pack.md`.
+模板背后的触发器代码（如需自行变体）参见 `docs/weakaura-pack.md`。
 
 **Highlights of the bridge API / 主要 API:**
 

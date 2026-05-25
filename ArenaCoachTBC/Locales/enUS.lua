@@ -101,6 +101,10 @@ ns.locales.enUS = {
     UI_NO_ARENA          = "Out of arena",
     UI_FRIENDLY_CDS      = "Friendly cooldowns",
     UI_ENEMY_CDS         = "Enemy cooldowns",
+    -- v2.1.6: target stats row
+    UI_HP_LABEL          = "HP",
+    UI_KILL_PROB_LABEL   = "kill",
+    UI_BURST_READY       = "BURST READY",
 
     -- Comp-match confidence badges
     COMP_BADGE_SPEC_CONFIRMED = "spec-confirmed",

@@ -101,14 +101,31 @@ function UI:CreateFrame()
     f.title:SetPoint("TOP", f, "TOP", 0, -8)
     f.title:SetText(L("UI_TITLE"))
 
-    -- Big recommendation line ("KILL: Warlock")
+    -- Big recommendation line ("KILL: Warlock"). v2.1.6: enlarged from
+    -- GameFontNormalHuge (~22pt) to a custom 32pt outlined font so the
+    -- mode label is readable at a glance from across the screen.
     f.bigText = f:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
     f.bigText:SetPoint("TOP", f.title, "BOTTOM", 0, -8)
+    if f.bigText.SetFont then
+        local fontPath = (f.bigText.GetFont and select(1, f.bigText:GetFont()))
+            or "Fonts\\FRIZQT__.TTF"
+        pcall(f.bigText.SetFont, f.bigText, fontPath, 32, "OUTLINE")
+    end
     f.bigText:SetText(L("REASON_DEFAULT"))
+
+    -- v2.1.6: target stats row (HP% + kill prob%) under the mode line.
+    -- Renders only when the rec has a primary target with measurable
+    -- health / kill probability; hidden otherwise so it doesn't clutter
+    -- DEFEND / RESET states.
+    f.statsText = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    f.statsText:SetPoint("TOP", f.bigText, "BOTTOM", 0, -2)
+    f.statsText:SetJustifyH("CENTER")
+    f.statsText:SetWidth(340)
+    f.statsText:SetText("")
 
     -- Reason / callout text
     f.subText = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    f.subText:SetPoint("TOP", f.bigText, "BOTTOM", 0, -4)
+    f.subText:SetPoint("TOP", f.statsText, "BOTTOM", 0, -4)
     f.subText:SetJustifyH("CENTER")
     f.subText:SetWidth(340)
     f.subText:SetText("")
@@ -260,6 +277,26 @@ function UI:Apply(recommendation)
         f.bigText:SetText(label)
     end
 
+    -- v2.1.6: target stats row. We surface what the engine knows about
+    -- the primary kill target so a glance at the HUD tells the player
+    -- "how close is he to dead". Hidden on DEFEND / RESET (no target)
+    -- and when health / kill-prob data are unavailable.
+    if f.statsText then
+        local parts = {}
+        if showTarget and recommendation.primaryTargetHp then
+            local hp = math.floor((recommendation.primaryTargetHp * 100) + 0.5)
+            table.insert(parts, string.format("%s %d%%", L("UI_HP_LABEL"), hp))
+        end
+        if showTarget and recommendation.killProb then
+            local kp = math.floor((recommendation.killProb * 100) + 0.5)
+            table.insert(parts, string.format("%s %d%%", L("UI_KILL_PROB_LABEL"), kp))
+        end
+        if recommendation.burstAllowed and mode == "KILL" then
+            table.insert(parts, L("UI_BURST_READY"))
+        end
+        f.statsText:SetText(table.concat(parts, "   "))
+    end
+
     local subParts = {}
     -- v2.1.3: prefer the localized reasonKey when set (DEFEND / RESET
     -- modes have stable reason codes). Falls back to the English
@@ -356,6 +393,21 @@ function UI:Apply(recommendation)
             ns.Sounds:Play(top)
             self._lastVoiceCallout = top
         end
+    end
+
+    -- v2.1.6: mode-transition cue. Plays a distinct sound when the
+    -- recommended mode flips (KILL/SWAP/DEFEND/OPEN) so the user gets
+    -- an auditory ping even if they aren't looking at the frame. Same
+    -- alerts.sound gate as the per-callout cues; arena-gated for the
+    -- same noise-floor reason. Unlike callout cues, this is keyed on
+    -- the mode itself so it fires once per transition, not on every
+    -- evaluation.
+    if inArena and ns.Sounds and ns.Sounds.PlayMode
+       and ArenaCoachTBCDB and ArenaCoachTBCDB.alerts
+       and ArenaCoachTBCDB.alerts.sound
+       and mode ~= self._lastModeForSound then
+        ns.Sounds:PlayMode(mode)
+        self._lastModeForSound = mode
     end
 end
 

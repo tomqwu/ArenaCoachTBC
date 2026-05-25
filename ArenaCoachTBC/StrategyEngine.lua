@@ -824,6 +824,24 @@ function SE:Evaluate(state)
         table.insert(callouts, "BURST_NOW")
     end
 
+    -- v2.1.6: surface target HP fraction + kill probability in the
+    -- recommendation so the HUD can render a "HP 62% / kill 47%" stats
+    -- line without having to reach back into state. Both are 0..1
+    -- floats so the UI can compute integer percentages locally.
+    local primaryTargetHp
+    if topTarget then
+        if topTarget.hpPct then
+            primaryTargetHp = topTarget.hpPct
+        elseif topTarget.hp and topTarget.hpMax and topTarget.hpMax > 0 then
+            primaryTargetHp = topTarget.hp / topTarget.hpMax
+        end
+    end
+    local primaryKillProb
+    if topTarget and self.KillProb then
+        local kp = self:KillProb(topTarget, state)
+        primaryKillProb = kp and kp.prob or nil
+    end
+
     local confidence
     if not topTarget then
         confidence = 0.0
@@ -919,6 +937,8 @@ function SE:Evaluate(state)
         ownCapabilities = ownCaps,
         burstAllowed    = burstOK,
         burstBlockedBy  = (not burstOK) and burstWhy or nil,
+        primaryTargetHp = primaryTargetHp,   -- v2.1.6: 0..1 fraction
+        killProb        = primaryKillProb,    -- v2.1.6: 0..1 fraction
         _topScore       = topTarget and topTarget._score or 0,
         _secondScore    = secondTarget and secondTarget._score or 0,
     }

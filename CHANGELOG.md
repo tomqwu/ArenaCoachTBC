@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.6] - 2026-05-25
+
+### Fixed
+- **Audio cues were silently broken since v1.0.** `Sounds.lua` referenced `Sound/Voice/*.ogg` paths that were never bundled in the addon zip, so every `PlaySoundFile` invocation failed and "audio callouts" did nothing in any release. v2.1.6 rewires `Sounds:Play` and the new `Sounds:PlayMode` to numeric TBC Classic SoundKit IDs (RaidWarning chime, RaidBossEmote alert, PvPVictory chord, queue ding, quest pop) that ship with the WoW client itself. No new assets needed; cues fire reliably on every install. The `db.alerts.sound` toggle works as advertised.
+- **Mode-transition audio.** Pre-v2.1.6 the only audio cue was the per-callout sound, which fired on `CALL_HOJ_KILL` / `CALL_TREMOR_FEAR` / `BURST_NOW` events. v2.1.6 adds `Sounds:PlayMode(mode)` driven from `UI:Apply` that plays a distinct ding when the recommended mode flips (KILL / SWAP / DEFEND / OPEN), so even with your eyes off the frame you hear the engine's call. Same `alerts.sound` gate; arena-only for the same noise-floor reason.
+
+### Added
+- **Bigger, more readable mode label.** `f.bigText` upgraded from `GameFontNormalHuge` (~22pt) to a custom 32pt outlined font. The mode + target line is now legible from across a battleground screen, not buried in the corner.
+- **Target stats row.** A new `f.statsText` line below the mode label renders `HP <n>%   kill <n>%   BURST READY` when the rec carries a primary target. Hidden on DEFEND / RESET (no target). Engine now emits `primaryTargetHp` (0..1) and `killProb` (0..1) on the recommendation table so the HUD has the data it needs without reaching into state.
+- 3 new locale keys (109 → 112 per locale, parity green): `UI_HP_LABEL`, `UI_KILL_PROB_LABEL`, `UI_BURST_READY`.
+
+### Notes
+- This is the first half of v2.2 "Eyes Up" (visual + audio overhaul). The remaining items — mode-coloured screen edge glow, nameplate highlight for the kill / swap targets — will land as v2.2.0 once the HUD changes have been validated in real combat.
+
 ## [2.1.5] - 2026-05-25
 
 ### Added

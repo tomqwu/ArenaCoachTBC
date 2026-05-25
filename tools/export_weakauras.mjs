@@ -21,8 +21,15 @@ import { dirname, join } from 'node:path';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // ----------------------------------------------------------------------
-// Shared WoW client metadata. tocversion is the TBC Classic interface;
-// adjust if you target Wrath/Anniversary specifically.
+// FormatVersion 1 (`!`-prefixed Deflate) has the widest WA-Classic
+// compatibility — WA-Classic for TBC didn't always ship the v2 binary
+// serialization decoder needed for `!WA:2!` strings. Default (no arg)
+// to encode() targets v2, so we pass 1 explicitly.
+// ----------------------------------------------------------------------
+const FORMAT_VERSION = 1;
+
+// ----------------------------------------------------------------------
+// Shared WoW client metadata. tocversion is TBC Anniversary 2.5.5.
 // ----------------------------------------------------------------------
 const COMMON = {
   authorOptions: [],
@@ -39,7 +46,7 @@ const COMMON = {
   selfPoint: 'CENTER',
   source: 'import',
   subRegions: [],
-  tocversion: 20504,
+  tocversion: 20505,
   triggers: [],
   uid: () => Math.random().toString(36).slice(2, 14),
   url: 'https://github.com/tomqwu/wow_tbc_arena_pvp_strategy',
@@ -335,7 +342,7 @@ const lines = [
 
 console.log(`encoding ${templates.length} WeakAura templates...`);
 for (const t of templates) {
-  const encoded = await parser.encode(t.data);
+  const encoded = await parser.encode(t.data, FORMAT_VERSION);
   lines.push(`## ${t.name} / ${t.nameZh}`);
   lines.push('');
   lines.push(t.desc);

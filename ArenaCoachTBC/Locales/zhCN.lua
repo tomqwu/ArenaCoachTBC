@@ -101,6 +101,10 @@ ns.locales.zhCN = {
     UI_NO_ARENA          = "未在竞技场",
     UI_FRIENDLY_CDS      = "己方冷却",
     UI_ENEMY_CDS         = "敌方冷却",
+    -- v2.1.6: 目标信息行
+    UI_HP_LABEL          = "血量",
+    UI_KILL_PROB_LABEL   = "击杀率",
+    UI_BURST_READY       = "可爆发",
 
     -- Comp-match confidence badges
     COMP_BADGE_SPEC_CONFIRMED = "天赋已确认",
