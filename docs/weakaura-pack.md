@@ -1,37 +1,40 @@
-# WeakAura templates for ArenaCoachTBC
+# WeakAura templates for ArenaCoachTBC / WeakAura 模板
 
-ArenaCoachTBC publishes its current recommendation through the global
-`_G.ArenaCoachTBC` API (the `WeakAuraBridge` module). WeakAuras consume
-that surface directly. **Two paths**, pick whichever fits your workflow:
+ArenaCoachTBC publishes its current recommendation through the global `_G.ArenaCoachTBC` API (the `WeakAuraBridge` module). WeakAuras consume that surface directly. **Two paths**, pick whichever fits your workflow:
 
-## Path 1 · Paste-ready import strings (recommended)
+ArenaCoachTBC 通过全局 `_G.ArenaCoachTBC` API（`WeakAuraBridge` 模块）发布当前推荐。WeakAuras 直接消费这个表面。**两种方式**，按你的工作流挑选：
 
-Open **[`weakaura-imports.md`](weakaura-imports.md)** for 5 generated
-`!WA:2!...` strings. Open WeakAuras, click **Import**, paste, done.
-Strings are produced by `tools/export_weakauras.mjs` (node-weakauras-parser
-+ LibSerialize + LibDeflate) so you can regenerate them after editing
-the source templates:
+## Path 1 · Paste-ready import strings (recommended) / 路径 1 · 直接导入字符串（推荐）
+
+Open **[`weakaura-imports.md`](weakaura-imports.md)** for 5 generated `!WA:2!...` strings. Open WeakAuras, click **Import**, paste, done.
+
+打开 **[`weakaura-imports.md`](weakaura-imports.md)** 获取 5 个生成好的 `!WA:2!...` 字符串。打开 WeakAuras，点击 **Import**，粘贴即可。
+
+Strings are produced by `tools/export_weakauras.mjs` (node-weakauras-parser + LibSerialize + LibDeflate) so you can regenerate them after editing the source templates:
+
+字符串由 `tools/export_weakauras.mjs` 生成（node-weakauras-parser + LibSerialize + LibDeflate），所以修改源模板后可重新生成：
 
 ```bash
-cd tools && npm install        # one time
-node export_weakauras.mjs      # writes docs/weakaura-imports.md
+cd tools && npm install        # one time / 一次性
+node export_weakauras.mjs      # writes docs/weakaura-imports.md / 写入 docs/weakaura-imports.md
 ```
 
-## Path 2 · Trigger-code snippets (DIY)
+## Path 2 · Trigger-code snippets (DIY) / 路径 2 · 触发器代码片段（手动）
 
 What follows is the *trigger code* you paste into a manually-created WA — the same lookup logic the auto-generated strings install. Use this when you want to combine a template with your own custom display, or when you'd rather hand-build the WA in the UI.
 
-## Installation (one-time)
+下面是你手动创建 WA 时需要粘贴的*触发器代码*——与自动生成字符串安装的逻辑相同。当你想把模板与自己的自定义显示结合，或者偏好在 UI 内手动构建 WA 时使用此方式。
 
-1. `/wa` to open WeakAuras
-2. New → Icon (or Text, or Progress Bar — depending on the template below)
-3. Trigger → Custom → **Type: Status** for the per-tick polling templates
-   or **Type: Event** for the change-only templates
-4. Paste the **Trigger** function. Paste **Untrigger** if listed
-5. (For Text displays) paste the **Custom Text** function
-6. Set **Check On** = `Every Frame` for Status, or list the events for Event
+## Installation (one-time) / 安装（一次性）
 
-The public bridge API (also in `ArenaCoachTBC/WeakAuraBridge.lua`):
+1. `/wa` to open WeakAuras / 打开 WeakAuras
+2. New → Icon (or Text, or Progress Bar — depending on the template below) / 新建 → Icon（或 Text / Progress Bar，按模板需要）
+3. Trigger → Custom → **Type: Status** for per-tick polling templates, or **Type: Event** for change-only templates / 触发器 → Custom → **Status** 型（轮询）或 **Event** 型（变更触发）
+4. Paste the **Trigger** function. Paste **Untrigger** if listed / 粘贴 **Trigger** 函数；如有 **Untrigger** 也一并粘贴
+5. (For Text displays) paste the **Custom Text** function / （文字类型）粘贴 **Custom Text** 函数
+6. Set **Check On** = `Every Frame` for Status, or list the events for Event / Status 设为 `Every Frame`；Event 列出事件
+
+The public bridge API (also in `ArenaCoachTBC/WeakAuraBridge.lua`) / 公开桥接 API（同时也在 `ArenaCoachTBC/WeakAuraBridge.lua` 中）：
 
 | Getter | Returns |
 |---|---|

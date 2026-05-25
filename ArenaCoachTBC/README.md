@@ -1,70 +1,70 @@
 # ArenaCoachTBC
 
-A strategy coach addon for **TBC Classic / TBC Anniversary** arena. It
-watches your arena, detects both your own team capabilities and the enemy
-composition, scores enemies in real time, and tells you who to open on,
-who to swap to, when to burst, and when to defend.
+A strategy coach addon for **TBC Classic / TBC Anniversary** arena. Watches your arena, detects both your own team capabilities and the enemy composition, scores enemies in real time, and tells you who to open on, who to swap to, when to burst, and when to defend.
 
-Originally built for the 5v5 WAR/ENH/RET/RDRU/DISC melee cleave, it now
-**adapts dynamically to any team comp** by inferring capabilities
-(Mortal Strike? Bloodlust? Mass Dispel? Freedom? Cleanse?) from your
-party and selecting an archetype-aware strategy.
+**TBC 怀旧服 / TBC 周年服**竞技场战术教练插件。监视战斗、推断己方能力和敌方阵容、实时打分敌方目标，并告知你开打谁、何时切换、何时爆发、何时防御。
 
-> ⚠️ **This addon never automates gameplay.** It does not cast spells,
-> does not target enemies for you, does not click protected buttons,
-> and does not edit secure macros in combat. Everything it does is
-> visual / audio / text suggestions.
+**Adapts dynamically to any team comp** — capability inference (Mortal Strike? Bloodlust? Mass Dispel? Freedom? Cleanse?) drives the strategy, not class hardcodes.
+
+**自适应任意队伍组合**——通过能力推理驱动战术（致死打击？嗜血？群驱散？自由祝福？驱散？），而非职业硬编码。
+
+> ⚠️ **This addon never automates gameplay.** It does not cast spells, does not target enemies for you, does not click protected buttons, and does not edit secure macros in combat. Everything it does is visual / audio / text suggestions.
+>
+> ⚠️ **此插件绝不自动化操作。** 不施法、不切换目标、不点击受保护按钮、不修改安全宏。只提供视觉、音频、文字建议。
 
 ---
 
-## Installation
+## Installation / 安装
 
-1. Copy the `ArenaCoachTBC` folder into:
+1. Copy the `ArenaCoachTBC` folder into / 复制 `ArenaCoachTBC` 文件夹到：
    ```
    <WoW>/_classic_/Interface/AddOns/
    ```
 2. Restart the client or `/reload`.
-3. If "Out of Date" appears at character select, enable
-   "Load out of date AddOns". Edit `## Interface: 20504` in
-   `ArenaCoachTBC.toc` to match your client to silence the warning.
+   重启客户端或在游戏内执行 `/reload`。
+3. If "Out of Date" appears at character select, enable "Load out of date AddOns". Edit `## Interface: 20504` in `ArenaCoachTBC.toc` to match your client to silence the warning.
+   若角色选择界面显示 "Out of Date"，启用底部的"载入过期插件"。或编辑 `ArenaCoachTBC.toc` 中的 `## Interface: 20504` 以匹配客户端版本。
 
 The addon stores SavedVariables in `ArenaCoachTBCDB`.
+存档变量保存在 `ArenaCoachTBCDB`。
 
-## Slash Commands
+---
 
-| Command                                  | Effect                                  |
-| ---------------------------------------- | --------------------------------------- |
-| `/acc` or `/arenacoach`                  | alias root                              |
-| `/acc help`                              | print all commands                      |
-| `/acc toggle`                            | show / hide the recommendation frame    |
-| `/acc lock` / `/acc unlock`              | lock or unlock the frame for dragging   |
-| `/acc test`                              | 14s DBM-style UI demo (mode flips, BURST_NOW, DEFEND flash) |
-| `/acc test print`                        | legacy chat-only summary of 5 sample comps |
-| `/acc enemy war mage priest druid pala`  | simulate a custom enemy comp            |
-| `/acc debug`                             | toggle debug logging                    |
-| `/acc reset`                             | wipe SavedVariables (requires `/reload`)|
-| `/acc strategy safe`                     | be conservative on burst/swap calls     |
-| `/acc strategy balanced`                 | default                                 |
-| `/acc strategy greedy`                   | call more swaps/bursts                  |
+## Slash Commands / 命令
 
-## How it Works
+| Command | English | 中文 |
+|---|---|---|
+| `/acc` or `/arenacoach` | alias root | 命令根 |
+| `/acc help` | print all commands | 显示所有命令 |
+| `/acc toggle` | show / hide the recommendation frame | 显示 / 隐藏提示框 |
+| `/acc lock` / `/acc unlock` | lock or unlock the frame for dragging | 锁定 / 解锁框体 |
+| `/acc test` | 14s DBM-style UI demo (mode flips, BURST_NOW, DEFEND flash) | 14 秒 DBM 风格 UI 演示 |
+| `/acc test print` | legacy chat-only summary of 5 sample comps | 仅文字摘要（旧行为） |
+| `/acc enemy war mage priest druid pala` | simulate a custom enemy comp | 模拟自定义敌方阵容 |
+| `/acc debug` | toggle debug logging | 切换调试输出 |
+| `/acc reset` | wipe SavedVariables (requires `/reload`) | 清空存档（需 `/reload`） |
+| `/acc strategy safe` | be conservative on burst/swap calls | 保守模式 |
+| `/acc strategy balanced` | default | 默认 |
+| `/acc strategy greedy` | call more swaps/bursts | 激进模式 |
 
-### Dynamic team detection
+---
 
-`OwnComps:Infer(friendlies)` walks your party and returns a capability
-table — booleans like `hasMortalStrike`, `hasBloodlust`, `hasFreedom`,
-`hasMassDispel`, `hasCyclone`, `hasMainHealer`, etc. The engine reads
-capabilities instead of hardcoded class assumptions, so a Hunter/Lock/Druid
-group gets different advice than a WAR/ENH/RET cleave even against the
-same RMP.
+## How it Works / 工作原理
 
-`OwnComps:Identify(friendlies, caps)` then picks an **archetype**:
-`MELEE_CLEAVE`, `CASTER_CLEAVE`, `DRAIN`, `JUNGLE`, `DOUBLE_HEALER`.
+### Dynamic team detection / 动态队伍识别
 
-### Enemy comp database
+`OwnComps:Infer(friendlies)` walks your party and returns a capability table — booleans like `hasMortalStrike`, `hasBloodlust`, `hasFreedom`, `hasMassDispel`, `hasCyclone`, `hasMainHealer`, etc. The engine reads capabilities instead of hardcoded class assumptions, so a Hunter/Lock/Druid group gets different advice than a WAR/ENH/RET cleave even against the same RMP.
 
-`Strategies.comps` contains an expanded catalog of enemy comp
-signatures including:
+`OwnComps:Infer(friendlies)` 扫描你的队伍并返回能力布尔表 —— `hasMortalStrike`、`hasBloodlust`、`hasFreedom`、`hasMassDispel`、`hasCyclone`、`hasMainHealer` 等。引擎基于能力而非职业硬编码做判断，所以猎人/术士/德鲁伊队伍面对相同的 RMP 也能收到与 WAR/ENH/RET 不同的建议。
+
+`OwnComps:Identify(friendlies, caps)` then picks an **archetype**: `MELEE_CLEAVE`, `CASTER_CLEAVE`, `DRAIN`, `JUNGLE`, `DOUBLE_HEALER`.
+
+`OwnComps:Identify(friendlies, caps)` 然后选定**原型**：`MELEE_CLEAVE`、`CASTER_CLEAVE`、`DRAIN`、`JUNGLE`、`DOUBLE_HEALER`。
+
+### Enemy comp database / 敌方阵容数据库
+
+`Strategies.comps` contains an expanded catalog of enemy comp signatures.
+`Strategies.comps` 包含扩展的敌方阵容特征目录。
 
 ```
 RMP, WMS, WLD (Warlock+Druid), WLS, WLP (Warlock+Pally drain),
@@ -72,8 +72,9 @@ HUNTER_COMP, BEAST_CLEAVE, TSG (Warrior+Pally), RLS, MIRROR_MELEE,
 TRIPLE_CASTER, DOUBLE_HEALER, TRIPLE_DPS
 ```
 
-Each entry may carry an `ownVariants` table so the same enemy comp
-gives different advice to different own teams:
+Each entry may carry an `ownVariants` table so the same enemy comp gives different advice to different own teams:
+
+每个条目可能携带 `ownVariants` 表，使同一敌方阵容对不同的己方队伍给出不同建议：
 
 ```lua
 { id = "RMP",
@@ -86,19 +87,15 @@ gives different advice to different own teams:
 }
 ```
 
-Entries can also carry an optional `specs = { CLASS = "SPEC" }` map. A
-spec-keyed comp matches only when every required spec is explicitly
-observed via spec inference (`enemy.specGuess`); unknown or mismatched
-specs disqualify the spec-keyed entry and the engine falls through to
-the class-only sibling. This lets the catalog separate e.g.
-`RMP_DISC_3V3` (disc priest, kill-the-priest plan) from `SMR_3V3`
-(shadow priest, no-healer pressure) once the priest's spec has been
-observed in combat.
+Entries can also carry an optional `specs = { CLASS = "SPEC" }` map. A spec-keyed comp matches only when every required spec is explicitly observed via spec inference (`enemy.specGuess`). Unknown or mismatched specs disqualify the spec-keyed entry; the engine falls through to the class-only sibling. This lets the catalog separate `RMP_DISC_3V3` (kill-the-disc-priest plan) from `SMR_3V3` (shadow-priest, no-healer pressure) once the priest's spec has been observed.
 
-### Scoring engine
+条目还可附带可选的 `specs = { 职业 = "天赋" }` 字段。天赋特化阵容只有在所有必要天赋通过天赋推理（`enemy.specGuess`）明确观测到才匹配。天赋未知或不符时该条目失效，引擎退回到仅职业匹配的条目。这让目录可区分 `RMP_DISC_3V3`（戒律牧的击杀计划）和 `SMR_3V3`（暗牧无治疗压力）。
 
-`StrategyEngine:Evaluate(state)` scores every alive enemy with a weighted
-sum (defined in `StrategyEngine.lua > SE.weights`) and returns:
+### Scoring engine / 打分引擎
+
+`StrategyEngine:Evaluate(state)` scores every alive enemy with a weighted sum (defined in `StrategyEngine.lua > SE.weights`) and returns:
+
+`StrategyEngine:Evaluate(state)` 用加权和（定义在 `StrategyEngine.lua > SE.weights`）为每个存活敌方打分，返回：
 
 ```lua
 {
@@ -121,7 +118,7 @@ sum (defined in `StrategyEngine.lua > SE.weights`) and returns:
 }
 ```
 
-Scoring weights are exposed as a flat table:
+Scoring weights are exposed as a flat table / 打分权重以扁平表暴露：
 
 ```lua
 SE.weights = {
@@ -148,40 +145,43 @@ SE.weights = {
 }
 ```
 
-## Using ArenaCoachTBC from a WeakAura
+---
 
-The addon publishes its current recommendation and full state through
-the global `_G.ArenaCoachTBC`. **The complete API:**
+## Using ArenaCoachTBC from a WeakAura / 在 WeakAura 中使用
 
-| Getter                            | Returns                                 |
-| --------------------------------- | --------------------------------------- |
-| `GetRecommendation()`             | full table                              |
-| `GetMode()`                       | `"KILL" / "SWAP" / ...`                 |
-| `GetPriority()`                   | `"URGENT" / "HIGH" / ...`               |
-| `GetReason()`                     | human-readable reason                   |
-| `GetConfidence()`                 | 0 .. 1                                  |
-| `GetPrimaryTarget()`              | enemy GUID                              |
-| `GetPrimaryTargetName()`          | unit name                               |
-| `GetPrimaryTargetClass()`         | "PRIEST"                                |
-| `GetSecondaryTarget()`            | swap-candidate GUID                     |
-| `GetCallouts()`                   | array of locale keys                    |
-| `IsBurstAllowed()`                | true / false                            |
-| `GetBurstBlocker()`               | "no_ms" / "target_immune" / nil         |
-| `GetEnemyComp()`                  | "RMP" / "WLD" / ...                     |
-| `GetEnemyCompLabel()`             | friendly label                          |
-| `GetCompConfidence()`             | 0 .. 1 comp match confidence            |
-| `GetCompSpecConfirmed()`          | true if a spec-keyed comp matched       |
-| `GetOwnComp()`                    | "MELEE_CLEAVE" / "DRAIN" / ...          |
-| `GetOwnCompLabel()`               | friendly label                          |
-| `GetCapabilities()`               | full capability table                   |
-| `HasCapability("hasMortalStrike")`| true / false                            |
-| `GetEnemies()`                    | full enemies map                        |
-| `GetFriendlies()`                 | full friendlies map                     |
-| `GetEnemyByGUID(guid)`            | one enemy                               |
-| `GetCombatPhase()`                | "PRE" / "ACTIVE" / "POST"               |
-| `GetVersion()`                    | "2.0.1"                                 |
+The addon publishes its current recommendation and full state through the global `_G.ArenaCoachTBC`. **The complete API:**
 
-### Sample custom trigger
+插件通过全局 `_G.ArenaCoachTBC` 发布当前推荐和完整状态。**完整 API：**
+
+| Getter | Returns / 返回 |
+|---|---|
+| `GetRecommendation()` | full table / 完整推荐表 |
+| `GetMode()` | `"KILL" / "SWAP" / ...` |
+| `GetPriority()` | `"URGENT" / "HIGH" / ...` |
+| `GetReason()` | human-readable reason / 可读理由 |
+| `GetConfidence()` | 0 .. 1 |
+| `GetPrimaryTarget()` | enemy GUID / 敌方 GUID |
+| `GetPrimaryTargetName()` | unit name / 单位名 |
+| `GetPrimaryTargetClass()` | "PRIEST" |
+| `GetSecondaryTarget()` | swap-candidate GUID / 切换备选 GUID |
+| `GetCallouts()` | array of locale keys / 本地化键数组 |
+| `IsBurstAllowed()` | true / false |
+| `GetBurstBlocker()` | "no_ms" / "target_immune" / nil |
+| `GetEnemyComp()` | "RMP" / "WLD" / ... |
+| `GetEnemyCompLabel()` | friendly label / 友好标签 |
+| `GetCompConfidence()` | 0 .. 1 comp match confidence / 阵容匹配置信度 |
+| `GetCompSpecConfirmed()` | true if a spec-keyed comp matched / 是否匹配到天赋特化阵容 |
+| `GetOwnComp()` | "MELEE_CLEAVE" / "DRAIN" / ... |
+| `GetOwnCompLabel()` | friendly label / 友好标签 |
+| `GetCapabilities()` | full capability table / 完整能力表 |
+| `HasCapability("hasMortalStrike")` | true / false |
+| `GetEnemies()` | full enemies map / 完整敌方表 |
+| `GetFriendlies()` | full friendlies map / 完整己方表 |
+| `GetEnemyByGUID(guid)` | one enemy / 单个敌方 |
+| `GetCombatPhase()` | "PRE" / "ACTIVE" / "POST" |
+| `GetVersion()` | "2.0.2" |
+
+### Sample custom trigger / 自定义触发器示例
 
 ```lua
 function()
@@ -191,7 +191,7 @@ function()
 end
 ```
 
-### Sample custom text
+### Sample custom text / 自定义文本示例
 
 ```lua
 function()
@@ -209,9 +209,10 @@ function()
 end
 ```
 
-### Capability-driven aura example
+### Capability-driven aura example / 基于能力的光环示例
 
 Only show a "BURST NOW" warning if our team has both MS *and* WF:
+仅当我方同时具备 MS 和 WF 时显示 "BURST NOW" 警告：
 
 ```lua
 function()
@@ -223,10 +224,11 @@ function()
 end
 ```
 
-### Event-driven trigger
+### Event-driven trigger / 事件驱动触发器
 
-The addon emits `ACC_RECOMMENDATION` via `WeakAuras.ScanEvents` on
-every evaluation, so:
+The addon emits `ACC_RECOMMENDATION` via `WeakAuras.ScanEvents` on every evaluation:
+
+插件每次评估后通过 `WeakAuras.ScanEvents` 发出 `ACC_RECOMMENDATION` 事件：
 
 ```lua
 -- Trigger: Custom -> Event
@@ -236,58 +238,73 @@ function(event, rec)
 end
 ```
 
-## Running the Tests
+---
 
-The headless suite runs outside WoW with stubbed APIs and enforces at least
-99% line coverage over production modules.
+## Running the Tests / 运行测试
+
+The headless suite runs outside WoW with stubbed APIs and enforces at least 99% line coverage over production modules.
+
+无头测试套件在 WoW 外运行（已 stub 所需 API），强制要求生产模块行覆盖率不低于 99%。
 
 ```bash
 lua5.1 -lluacov ArenaCoachTBC/Tests/run_all.lua && luacov
 lua5.1 ArenaCoachTBC/Tests/StrategyEngine_spec.lua
 ```
 
-`run_all.lua` is the main coverage suite. `StrategyEngine_spec.lua` is a
-standalone smoke spec and is run separately in CI.
+`run_all.lua` is the main coverage suite. `StrategyEngine_spec.lua` is a standalone smoke spec and is run separately in CI.
 
-CI (`.github/workflows/test.yml`) runs this on every PR and enforces a
-99% minimum.
+`run_all.lua` 是主覆盖率套件。`StrategyEngine_spec.lua` 是独立冒烟测试，CI 中单独运行。
 
-## Limitations & Assumptions
+CI (`.github/workflows/test.yml`) runs this on every PR and enforces a 99% minimum.
 
-- **Enemy specs are guessed** from class alone unless observed casts
-  reveal otherwise.
-- **Burst gates depend on observed auras.** Mortal Strike and Windfury are
-  read from live unit auras when the client exposes them; missing aura data
-  keeps burst calls conservative.
-- **Cooldown durations** are conservative TBC 2.4.3 values; edit
-  `CooldownTracker.lua > CT.defaults` for TBC Anniversary tweaks.
-  When unsure, we mark a CD ready rather than block on unknowns.
+CI（`.github/workflows/test.yml`）在每个 PR 上运行此套件并强制 99% 最低覆盖率。
+
+---
+
+## Limitations & Assumptions / 限制与假设
+
+- **Enemy specs are guessed** from class alone unless observed casts reveal otherwise.
+  **敌方天赋按职业默认推测**，除非观测到的施法明确揭示。
+- **Burst gates depend on observed auras.** Mortal Strike and Windfury are read from live unit auras when the client exposes them; missing aura data keeps burst calls conservative.
+  **爆发门禁依赖观测到的光环。** 致死打击和风怒图腾从单位光环读取；光环数据缺失时爆发判断会更保守。
+- **Cooldown durations** are conservative TBC 2.4.3 values; edit `CooldownTracker.lua > CT.defaults` for TBC Anniversary tweaks. When unsure, we mark a CD ready rather than block on unknowns.
+  **冷却时间**采用 TBC 2.4.3 保守数值；调整 TBC 周年服值时编辑 `CooldownTracker.lua > CT.defaults`。未知情况下默认认为 CD 就绪。
 - **DR window** defaults to 17s; tune `DRTracker.lua > DR.resetWindow`.
-- **PvP trinket** uses the shared aura `42292`. Class-specific
-  trinkets need their own IDs.
+  **DR 时间窗**默认 17 秒；调整在 `DRTracker.lua > DR.resetWindow`。
+- **PvP trinket** uses the shared aura `42292`. Class-specific trinkets need their own IDs.
+  **PvP 饰品**使用通用光环 `42292`。职业专属饰品需要单独的 ID。
 - **No automation** — by design.
+  **无自动化**——刻意为之。
 
-## Adding / Adjusting
+---
 
-- **Spell IDs**: `Data/Spells.lua` is the single source of truth.
-- **Enemy comps**: `Data/Strategies.lua` — add a table entry.
-- **Own archetypes / capabilities**: `Data/OwnComps.lua`.
-- **Locales**: `Locales/enUS.lua` and `Locales/zhCN.lua`.
+## Adding / Adjusting / 扩展 / 调整
 
-## File Layout
+- **Spell IDs**: `Data/Spells.lua` is the single source of truth. / **法术 ID**：`Data/Spells.lua` 是唯一权威来源。
+- **Enemy comps**: `Data/Strategies.lua` — add a table entry. / **敌方阵容**：`Data/Strategies.lua`——添加表条目。
+- **Own archetypes / capabilities**: `Data/OwnComps.lua`. / **己方原型 / 能力**：`Data/OwnComps.lua`。
+- **Locales**: `Locales/enUS.lua` and `Locales/zhCN.lua`. / **本地化**：`Locales/enUS.lua` 和 `Locales/zhCN.lua`。
+
+---
+
+## File Layout / 文件结构
 
 ```
 ArenaCoachTBC/
 ├── ArenaCoachTBC.toc
 ├── Core.lua                 -- event wiring + slash commands + state
-├── EventBus.lua             -- tiny pub/sub
+│                               事件桥接 + 命令 + 状态
+├── EventBus.lua             -- tiny pub/sub / 微型发布订阅
 ├── Data/
-│   ├── Spells.lua           -- spell ID database
+│   ├── Spells.lua           -- spell ID database / 法术 ID 数据库
 │   ├── Classes.lua          -- class -> role / armor / specs
 │   ├── OwnComps.lua         -- capability inference + archetype detection
+│   │                           能力推理 + 原型识别
 │   └── Strategies.lua       -- enemy comp catalog + ownVariants
-├── StrategyEngine.lua       -- scoring + recommendation
+│                               敌方阵容目录 + ownVariants
+├── StrategyEngine.lua       -- scoring + recommendation / 打分 + 推荐
 ├── Chain.lua                -- CC chain primitive (DR + CD aware)
+│                               控制链基元（DR + CD 感知）
 ├── CooldownTracker.lua
 ├── DRTracker.lua
 ├── UI.lua
@@ -297,10 +314,12 @@ ArenaCoachTBC/
 ├── Tests/
 │   ├── test_helpers.lua       (mocks + harness)
 │   ├── run_all.lua            (runs every spec in one process)
-│   └── *_spec.lua             (headless specs plus standalone smoke tests)
+│   └── *_spec.lua             (headless specs)
 └── README.md
 ```
 
-## License
+---
+
+## License / 许可证
 
 MIT.
