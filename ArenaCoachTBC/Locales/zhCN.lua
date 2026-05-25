@@ -82,6 +82,10 @@ ns.locales.zhCN = {
     UI_FRIENDLY_CDS      = "己方冷却",
     UI_ENEMY_CDS         = "敌方冷却",
 
+    -- Comp-match confidence badges
+    COMP_BADGE_SPEC_CONFIRMED = "天赋已确认",
+    COMP_BADGE_CLASS_GUESSED  = "仅按职业推测",
+
     -- Debug
     DEBUG_PREFIX         = "[ACC]",
     DEBUG_ENABLED        = "调试开启",

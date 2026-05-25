@@ -303,3 +303,42 @@ H.it(g, "CALL_HOJ_KILL is allowed when no STUN DR observed", function()
     end
     H.assertTrue(hojIn, "CALL_HOJ_KILL should fire when DR is clean")
 end)
+
+-- =================================================================
+-- Comp-match confidence plumbed through Evaluate (M7 #56)
+-- =================================================================
+
+H.it(g, "Evaluate exposes compConfidence + compSpecConfirmed on the recommendation", function()
+    local state = SE:BuildTestState({"WARLOCK","DRUID","WARRIOR"})
+    state.combatPhase = "PRE"
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.comp, "WLD")
+    H.assertNotNil(rec.compConfidence, "compConfidence should be present")
+    H.assertNotNil(rec.compSpecConfirmed, "compSpecConfirmed should be present")
+    H.assertFalse(rec.compSpecConfirmed, "class-only WLD should not be spec-confirmed")
+end)
+
+H.it(g, "Evaluate flags compSpecConfirmed=true when spec-keyed comp matches", function()
+    local state = SE:BuildTestState({"ROGUE","MAGE","PRIEST"})
+    state.combatPhase = "ACTIVE"
+    state.bracket = 3
+    -- Pin the priest's spec to DISCIPLINE so RMP_DISC_3V3 wins
+    for _, e in pairs(state.enemies) do
+        if e.class == "PRIEST" then
+            e.specGuess = "DISCIPLINE"
+            e.roleGuess = "HEALER"
+        end
+    end
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.comp, "RMP_DISC_3V3")
+    H.assertTrue(rec.compSpecConfirmed, "spec-keyed comp match should set compSpecConfirmed")
+    H.assertEq(rec.compConfidence, 1.0)
+end)
+
+H.it(g, "Evaluate's reason text includes the comp tag and confidence", function()
+    local state = SE:BuildTestState({"WARLOCK","DRUID","WARRIOR"})
+    state.combatPhase = "PRE"
+    local rec = SE:Evaluate(state)
+    H.assertTrue(rec.reason:find("WLD") ~= nil, "reason should mention comp ID")
+    H.assertTrue(rec.reason:find("class%-guessed") ~= nil, "reason should mention class-guessed badge")
+end)

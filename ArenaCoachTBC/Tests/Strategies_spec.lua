@@ -175,6 +175,93 @@ H.it(g, "bracket=3 RMP comp matches when ROGUE+MAGE+PRIEST present", function()
 end)
 
 -- =================================================================
+-- Comp-match confidence (M7 #56)
+-- =================================================================
+
+H.it(g, "Identify returns (comp, confidence=1.0) for spec-keyed match", function()
+    local enemies = {
+        a = { class = "ROGUE", roleGuess = "MELEE",  alive = true },
+        b = { class = "MAGE",  roleGuess = "CASTER", alive = true, specGuess = "FROST" },
+        c = { class = "PRIEST", specGuess = "DISCIPLINE", roleGuess = "HEALER", alive = true },
+    }
+    local comp, conf = ST:Identify({"ROGUE","MAGE","PRIEST"}, enemies, 3)
+    H.assertEq(comp.id, "RMP_DISC_3V3")
+    H.assertEq(conf, 1.0)
+end)
+
+H.it(g, "Identify returns (comp, confidence=0.0) for class-list-only callers", function()
+    -- The legacy signature has no enemies map -> no spec data channel -> 0.0.
+    local comp, conf = ST:Identify({"ROGUE","MAGE","PRIEST"}, nil, 3)
+    H.assertEq(comp.id, "RMP_3V3")
+    H.assertEq(conf, 0.0)
+end)
+
+H.it(g, "Identify confidence reflects known/total spec ratio for class-only match", function()
+    -- All 3 enemies in the RMP core have specGuess known -> 3/3 = 1.0.
+    local enemies = {
+        a = { class = "ROGUE", roleGuess = "MELEE",  alive = true, specGuess = "COMBAT" },
+        b = { class = "MAGE",  roleGuess = "CASTER", alive = true, specGuess = "FIRE" },
+        c = { class = "PRIEST", roleGuess = "HEALER", alive = true, specGuess = "HOLY" },
+    }
+    local comp, conf = ST:Identify({"ROGUE","MAGE","PRIEST"}, enemies, 3)
+    -- Holy priest doesn't trigger SMR or RMP_DISC -> class-only RMP_3V3
+    -- catches. Conf = 3/3 = 1.0 (all core enemies have known specs).
+    H.assertEq(comp.id, "RMP_3V3")
+    H.assertEq(conf, 1.0)
+end)
+
+H.it(g, "Identify confidence is fractional when only some specs are known", function()
+    local enemies = {
+        a = { class = "ROGUE", roleGuess = "MELEE",  alive = true },  -- spec unknown
+        b = { class = "MAGE",  roleGuess = "CASTER", alive = true, specGuess = "FIRE" },
+        c = { class = "PRIEST", roleGuess = "HEALER", alive = true },  -- spec unknown
+    }
+    local comp, conf = ST:Identify({"ROGUE","MAGE","PRIEST"}, enemies, 3)
+    H.assertEq(comp.id, "RMP_3V3")
+    -- 1 of 3 core classes (MAGE) has a known spec
+    H.assertTrue(math.abs(conf - (1 / 3)) < 1e-9, "expected ~0.333, got " .. tostring(conf))
+end)
+
+H.it(g, "Identify confidence is 1.0 for dynamic TRIPLE_DPS comp", function()
+    local enemies = {
+        a = { class = "WARRIOR", roleGuess = "MELEE",  alive = true },
+        b = { class = "ROGUE",   roleGuess = "MELEE",  alive = true },
+        c = { class = "MAGE",    roleGuess = "CASTER", alive = true },
+    }
+    local comp, conf = ST:Identify({"WARRIOR","ROGUE","MAGE"}, enemies)
+    H.assertEq(comp.id, "TRIPLE_DPS")
+    H.assertEq(conf, 1.0)
+end)
+
+H.it(g, "Identify confidence is 1.0 for dynamic DOUBLE_HEALER comp", function()
+    local enemies = {
+        a = { class = "PRIEST", alive = true },
+        b = { class = "DRUID",  alive = true },
+        c = { class = "WARRIOR", alive = true },
+    }
+    local comp, conf = ST:Identify({"PRIEST","DRUID","WARRIOR"}, enemies)
+    H.assertEq(comp.id, "DOUBLE_HEALER")
+    H.assertEq(conf, 1.0)
+end)
+
+H.it(g, "Identify returns (nil, 0.0) for empty class list", function()
+    local comp, conf = ST:Identify({})
+    H.assertNil(comp)
+    H.assertEq(conf, 0.0)
+end)
+
+H.it(g, "Identify returns (nil, 0.0) when no comp matches at the requested bracket", function()
+    local saved = ST.comps
+    ST.comps = {
+        { id = "ONLY_2V2", core = { MAGE = true, PRIEST = true }, bracket = 2 },
+    }
+    local comp, conf = ST:Identify({"MAGE","PRIEST"}, nil, 5)
+    H.assertNil(comp)
+    H.assertEq(conf, 0.0)
+    ST.comps = saved
+end)
+
+-- =================================================================
 -- Spec-keyed comp matching (M7 #55)
 -- =================================================================
 

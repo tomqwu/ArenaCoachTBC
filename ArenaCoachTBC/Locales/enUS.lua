@@ -82,6 +82,10 @@ ns.locales.enUS = {
     UI_FRIENDLY_CDS      = "Friendly cooldowns",
     UI_ENEMY_CDS         = "Enemy cooldowns",
 
+    -- Comp-match confidence badges
+    COMP_BADGE_SPEC_CONFIRMED = "spec-confirmed",
+    COMP_BADGE_CLASS_GUESSED  = "class-guessed",
+
     -- Debug
     DEBUG_PREFIX         = "[ACC]",
     DEBUG_ENABLED        = "debug enabled",

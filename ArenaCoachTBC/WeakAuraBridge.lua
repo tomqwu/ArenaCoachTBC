@@ -38,10 +38,12 @@ function API.IsBurstAllowed()    return WAB._last and WAB._last.burstAllowed or 
 function API.GetBurstBlocker()   return WAB._last and WAB._last.burstBlockedBy end
 
 -- ----- Comp identification -----
-function API.GetEnemyComp()      return WAB._last and WAB._last.comp end
-function API.GetEnemyCompLabel() return WAB._last and WAB._last.compLabel end
-function API.GetOwnComp()        return WAB._last and WAB._last.ownArchetype end
-function API.GetOwnCompLabel()   return WAB._last and WAB._last.ownArchetypeLabel end
+function API.GetEnemyComp()        return WAB._last and WAB._last.comp end
+function API.GetEnemyCompLabel()   return WAB._last and WAB._last.compLabel end
+function API.GetCompConfidence()   return WAB._last and WAB._last.compConfidence or 0.0 end
+function API.GetCompSpecConfirmed() return (WAB._last and WAB._last.compSpecConfirmed) == true end
+function API.GetOwnComp()          return WAB._last and WAB._last.ownArchetype end
+function API.GetOwnCompLabel()     return WAB._last and WAB._last.ownArchetypeLabel end
 function API.GetCapabilities()
     return WAB._last and WAB._last.ownCapabilities or {}
 end

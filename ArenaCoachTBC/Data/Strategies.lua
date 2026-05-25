@@ -504,8 +504,18 @@ end
 -- required specs are confirmed via observed e.specGuess. Without an enemies
 -- map, or while specs remain unknown, spec-keyed comps never match and the
 -- engine falls back to the class-only sibling.
+--
+-- Returns (comp, confidence) where confidence is in [0..1]:
+--   * 1.0 for a spec-keyed match (every required spec confirmed by construction).
+--   * 1.0 for dynamic role-count comps (TRIPLE_DPS, DOUBLE_HEALER) — role counts
+--     are unambiguous, not spec-derived.
+--   * For a class-only match, confidence = (count of alive core-class enemies
+--     whose specGuess is known) / (count of core classes the comp requires).
+--   * 0.0 when called via the legacy class-list-only signature (no enemies map),
+--     because spec data only flows via the enemies map.
+--   * 0.0 when no comp matches (comp is nil).
 function ST:Identify(enemyClassList, enemies, bracket)
-    if not enemyClassList or #enemyClassList == 0 then return nil end
+    if not enemyClassList or #enemyClassList == 0 then return nil, 0.0 end
 
     local Classes = ns.Classes
     local presence = {}
@@ -563,15 +573,37 @@ function ST:Identify(enemyClassList, enemies, bracket)
     -- Dynamic role-count comps win when they fire because the role mix
     -- changes the entire game plan (no-healer = defensive, double-healer =
     -- mana drain), regardless of which specific dps classes are on the field.
+    -- Confidence is 1.0 — role counts are unambiguous, not spec-derived.
     if healers == 0 then
         for _, comp in ipairs(self.comps) do
-            if comp.dynamic == "TRIPLE_DPS" and bracketMatches(comp) then return comp end
+            if comp.dynamic == "TRIPLE_DPS" and bracketMatches(comp) then return comp, 1.0 end
         end
     end
     if healers >= 2 then
         for _, comp in ipairs(self.comps) do
-            if comp.dynamic == "DOUBLE_HEALER" and bracketMatches(comp) then return comp end
+            if comp.dynamic == "DOUBLE_HEALER" and bracketMatches(comp) then return comp, 1.0 end
         end
+    end
+
+    -- Compute the confidence score for a matched comp.
+    --   Spec-keyed match: 1.0 by construction.
+    --   Class-only match: ratio of core-class enemies with known specGuess.
+    --   Without an enemies map: 0.0 (no spec data channel).
+    local function confidenceFor(comp)
+        if comp.specs then return 1.0 end
+        if not enemies then return 0.0 end
+        local total, known = 0, 0
+        for cls, _ in pairs(comp.core) do
+            total = total + 1
+            for _, e in pairs(enemies) do
+                if e.class == cls and e.alive ~= false and e.specGuess ~= nil then
+                    known = known + 1
+                    break
+                end
+            end
+        end
+        if total == 0 then return 0.0 end
+        return known / total
     end
 
     -- Static signature match (need all `core` classes present).
@@ -587,15 +619,17 @@ function ST:Identify(enemyClassList, enemies, bracket)
                     coreCount = coreCount + 1
                     if not presence[cls] then ok = false; break end
                 end
-                if ok and coreCount > 0 and specsMatch(comp) then return comp end
+                if ok and coreCount > 0 and specsMatch(comp) then
+                    return comp, confidenceFor(comp)
+                end
             end
         end
-        return nil
+        return nil, 0.0
     end
 
     if bracket then
-        local m = tryMatch(function(c) return c.bracket == bracket end)
-        if m then return m end
+        local m, conf = tryMatch(function(c) return c.bracket == bracket end)
+        if m then return m, conf end
     end
     return tryMatch(function(c) return c.bracket == nil end)
 end

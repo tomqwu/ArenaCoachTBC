@@ -20,6 +20,8 @@ local sampleRec = {
     priority = "HIGH",
     comp = "RMP",
     compLabel = "Rogue / Mage / Priest",
+    compConfidence = 0.67,
+    compSpecConfirmed = false,
     ownArchetype = "MELEE_CLEAVE",
     ownArchetypeLabel = "Melee cleave",
     ownCapabilities = { hasMortalStrike = true, hasBloodlust = true, hasCleanse = false },
@@ -78,6 +80,22 @@ H.it(g, "comp identification getters", function()
     H.assertEq(API.GetOwnCompLabel(), "Melee cleave")
 end)
 
+H.it(g, "GetCompConfidence + GetCompSpecConfirmed expose comp match confidence", function()
+    WAB:Publish(sampleRec, sampleState)
+    H.assertEq(API.GetCompConfidence(), 0.67)
+    H.assertFalse(API.GetCompSpecConfirmed())
+end)
+
+H.it(g, "GetCompSpecConfirmed reflects true when spec-keyed comp matched", function()
+    local rec = {}
+    for k, v in pairs(sampleRec) do rec[k] = v end
+    rec.compSpecConfirmed = true
+    rec.compConfidence = 1.0
+    WAB:Publish(rec, sampleState)
+    H.assertTrue(API.GetCompSpecConfirmed())
+    H.assertEq(API.GetCompConfidence(), 1.0)
+end)
+
 H.it(g, "HasCapability returns true/false correctly", function()
     WAB:Publish(sampleRec, sampleState)
     H.assertTrue(API.HasCapability("hasMortalStrike"))
@@ -122,6 +140,8 @@ H.it(g, "no-state safety: getters return empty/nil when nothing published", func
     H.assertNil(API.GetSecondaryTargetClass())
     H.assertNil(API.GetEnemyComp())
     H.assertNil(API.GetOwnComp())
+    H.assertEq(API.GetCompConfidence(), 0.0)
+    H.assertFalse(API.GetCompSpecConfirmed())
     H.assertEq(next(API.GetCapabilities()), nil)
     H.assertEq(next(API.GetEnemies()), nil)
     H.assertEq(next(API.GetFriendlies()), nil)

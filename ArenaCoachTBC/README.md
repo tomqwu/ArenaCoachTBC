@@ -168,6 +168,8 @@ the global `_G.ArenaCoachTBC`. **The complete API:**
 | `GetBurstBlocker()`               | "no_ms" / "target_immune" / nil         |
 | `GetEnemyComp()`                  | "RMP" / "WLD" / ...                     |
 | `GetEnemyCompLabel()`             | friendly label                          |
+| `GetCompConfidence()`             | 0 .. 1 comp match confidence            |
+| `GetCompSpecConfirmed()`          | true if a spec-keyed comp matched       |
 | `GetOwnComp()`                    | "MELEE_CLEAVE" / "DRAIN" / ...          |
 | `GetOwnCompLabel()`               | friendly label                          |
 | `GetCapabilities()`               | full capability table                   |
