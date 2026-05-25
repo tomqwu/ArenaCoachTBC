@@ -29,6 +29,15 @@ function mockMethods:GetPoint()           return "CENTER", nil, "CENTER", 0, 0 e
 function mockMethods:GetChecked()         return self._checked end
 function mockMethods:SetChecked(v)        self._checked = v and true or false end
 function mockMethods:GetName()            return self._name end
+-- v2.1.3: track FontString-style text so UI tests can assert on
+-- rendered output (`f.bigText._text`).
+function mockMethods:SetText(text)        self._text = tostring(text or "") end
+function mockMethods:GetText()            return self._text end
+function mockMethods:SetTextColor()       end
+function mockMethods:SetJustifyH()        end
+function mockMethods:SetJustifyV()        end
+function mockMethods:SetWidth()           end
+function mockMethods:SetFont()            end
 
 local makeMockFrame  -- forward decl
 

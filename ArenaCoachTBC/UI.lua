@@ -249,14 +249,27 @@ function UI:Apply(recommendation)
                 or ""
 
     f.bigText:SetTextColor(color[1], color[2], color[3])
-    if target and target ~= "" then
+    -- v2.1.3: DEFEND and RESET are not target-attached modes. Showing
+    -- "DEFEND: SomeEnemy" reads as "defend against SomeEnemy" which is
+    -- the opposite of the intent (defensive abilities on YOUR team).
+    -- Only OPEN / KILL / SWAP get the "<mode>: <name>" form.
+    local showTarget = (mode == "OPEN" or mode == "KILL" or mode == "SWAP")
+    if showTarget and target and target ~= "" then
         f.bigText:SetText(string.format("%s: %s", label, target))
     else
         f.bigText:SetText(label)
     end
 
     local subParts = {}
-    if recommendation.reason then table.insert(subParts, recommendation.reason) end
+    -- v2.1.3: prefer the localized reasonKey when set (DEFEND / RESET
+    -- modes have stable reason codes). Falls back to the English
+    -- debug `reason` string for KILL / SWAP / OPEN where the reason
+    -- carries variable score-contributor data.
+    if recommendation.reasonKey then
+        table.insert(subParts, L(recommendation.reasonKey))
+    elseif recommendation.reason then
+        table.insert(subParts, recommendation.reason)
+    end
     if recommendation.callouts and #recommendation.callouts > 0 then
         local labels = {}
         for _, key in ipairs(recommendation.callouts) do

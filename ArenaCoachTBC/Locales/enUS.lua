@@ -36,6 +36,15 @@ ns.locales.enUS = {
     TEST_DEMO_END   = "|cffc8a86b[ACC]|r demo complete. /acc test print for the chat-only smoke version.",
     TEST_DEMO_NO_UI = "|cffc8a86b[ACC]|r demo needs a live UI (in-game only).",
 
+    -- v2.1.3: localised reason text for DEFEND / RESET modes
+    REASON_DEFEND_TRAINED      = "defensive - healer trained",
+    REASON_DEFEND_LOW_HEALER   = "defensive - healer low HP",
+    REASON_DEFEND_ENEMY_LUST   = "defensive - enemy Bloodlust active",
+    REASON_DEFEND_MULTI_BURST  = "defensive - multiple enemy bursts",
+    REASON_DEFEND_HEALER_CC    = "defensive - our healer is CCd",
+    REASON_DEFEND_TRIPLE_DPS   = "defensive - triple DPS (no opener)",
+    REASON_RESET               = "reset - no clear target",
+
     -- M14 (v2.1): BG-mode callouts
     CALL_FLAG_CARRIER_LOW    = "Flag carrier low HP - push",
     CALL_INCOMING_PLAYERS    = "Incoming enemy players",

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.3] - 2026-05-25
+
+### Fixed
+- **DEFEND / RESET modes no longer show a target name.** Reported via a WSG screenshot: the frame displayed *"DEFEND: lhealyoupeel"* (in Chinese: *"守: lhealyoupeel"*). Reading that as "defend against lhealyoupeel" is the opposite of the intent — DEFEND is about *your* team's defensive cooldowns, not a target to attack. `UI:Apply` now restricts the `"<mode>: <name>"` form to OPEN / KILL / SWAP only; DEFEND and RESET render mode alone.
+- **DEFEND reason text now follows the WoW client locale.** Same screenshot showed *"defensive: trained"* in English next to Chinese callouts. Engine now emits `rec.reasonKey` (e.g. `REASON_DEFEND_TRAINED`) for the six known DEFEND reasons + the RESET case; UI prefers `reasonKey` through `L()` over the raw debug `reason` string. Chinese client now sees *"防御 - 治疗被集火"*. KILL / SWAP / OPEN reasons stay as the raw English contributor-list text (they carry variable per-evaluation data, not a stable key).
+- 7 new locale keys (109 per locale, parity green): `REASON_DEFEND_TRAINED`, `REASON_DEFEND_LOW_HEALER`, `REASON_DEFEND_ENEMY_LUST`, `REASON_DEFEND_MULTI_BURST`, `REASON_DEFEND_HEALER_CC`, `REASON_DEFEND_TRIPLE_DPS`, `REASON_RESET`.
+- 8 new tests (3 in `UI_spec` for the target-suppression cases + reasonKey rendering, 4 in `StrategyEngine_extra_spec` for the `reasonKey` field on DEFEND / RESET / KILL).
+- Mock harness `mockMethods:SetText/GetText` added so UI specs can assert on rendered text.
+
 ## [2.1.2] - 2026-05-25
 
 ### Fixed
