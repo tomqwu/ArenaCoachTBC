@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.5] - 2026-05-25
+
+### Fixed
+- **Major frame-rate drop in cities on PvP-flagged characters.** User report: addon caused lag in main city. Root cause: `onNameplateChange` re-ran `Evaluate()` whenever the player was PvP-flagged (`world_idle` context) and any nameplate appeared / disappeared — which in Stormwind is hundreds of events per second. Engine had nothing to recommend (no hostile contact), so the work was pure waste. Gate now only triggers Evaluate when `pvpContext == "bg"` or `"world"` (an actual fight). `world_idle` (flagged + no enemies) no longer drives evaluation.
+- **Frame stayed visible with stale rec outside PvP.** Previously after `/acc test` or after leaving an arena, the recommendation frame would linger center-screen showing the last computed rec. Now `UI:Apply` checks `Core.state.pvpContext` and hides the frame + edge glow + nameplate paint when the context is explicitly `"none"` (no PvP relevance) or `"world_idle"`. The `/acc test` demo bypasses this via a per-beat `_forceShow` flag so the walk-through still renders end-to-end.
+
+### Added
+- **`/acc off` / `/acc on` master switch** (aliases: `/acc disable` / `/acc enable`). Sets `db.enabled` and immediately hides every visual layer. Persists across `/reload` and login sessions. Same `enabled` flag the engine already short-circuits on, so no Evaluate work happens while off.
+
 ## [2.2.4] - 2026-05-25
 
 ### Fixed

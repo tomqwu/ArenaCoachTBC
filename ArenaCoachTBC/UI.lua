@@ -176,6 +176,24 @@ end
 function UI:Apply(recommendation)
     local f = self.frame; if not f or not recommendation then return end
 
+    -- v2.2.5: hide the frame + visual layers when explicitly idle
+    -- (in cities / quest hubs the engine was painting a stale rec and
+    -- the nameplate handler was thrashing on every nameplate change).
+    -- We hide only on the *explicit* idle contexts — `none` (no PvP
+    -- relevance at all) and `world_idle` (PvP-flagged but no hostile
+    -- contact). When context is nil (early-load before Core publishes
+    -- state, or headless test) we let the rec through, which keeps
+    -- tests + the bootstrap path working.
+    local ctx = ns.Core and ns.Core.state and ns.Core.state.pvpContext
+    local forceShow = recommendation._forceShow   -- set by /acc test demo
+    if (ctx == "none" or ctx == "world_idle") and not forceShow then
+        f:Hide()
+        if ns.ScreenEdgeGlow then ns.ScreenEdgeGlow:Hide() end
+        if ns.Nameplate then ns.Nameplate:ClearAll() end
+        return
+    end
+    if not f:IsShown() then f:Show() end
+
     local mode = recommendation.mode or "RESET"
     local color = modeColors[mode] or {1, 1, 1}
     local label = L(mode)

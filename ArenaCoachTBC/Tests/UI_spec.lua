@@ -17,6 +17,7 @@ _G.ArenaCoachTBCDB = {
     debug = false,
 }
 
+
 H.it(g, "CreateFrame builds a frame with icon rows", function()
     local f = UI:CreateFrame()
     H.assertNotNil(f)

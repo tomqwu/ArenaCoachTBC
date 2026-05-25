@@ -869,6 +869,19 @@ local function handleSlash(input)
         Core:RunBugReport()
     elseif cmd == "whatif" then
         Core:RunWhatIf(rest)
+    elseif cmd == "off" or cmd == "disable" then
+        -- v2.2.5: master kill switch. Sets db.enabled = false which
+        -- short-circuits Evaluate() at the top, and hides the frame +
+        -- glow + nameplate paint immediately. Persists across /reload.
+        db.enabled = false
+        if ns.UI and ns.UI.Hide then ns.UI:Hide() end
+        if ns.ScreenEdgeGlow then ns.ScreenEdgeGlow:Hide() end
+        if ns.Nameplate then ns.Nameplate:ClearAll() end
+        chatPrint("ArenaCoachTBC disabled. /acc on to re-enable.")
+    elseif cmd == "on" or cmd == "enable" then
+        db.enabled = true
+        chatPrint("ArenaCoachTBC enabled. The frame will appear when you enter a PvP context.")
+        Core:Evaluate()
     elseif cmd == "glow" then
         -- v2.2.0: toggle the mode-coloured screen-edge glow.
         db.alerts = db.alerts or {}
@@ -1469,6 +1482,10 @@ function Core:_RunTestDemoMode(beats, label)
     local total = #beats
     for i, beat in ipairs(beats) do
         local applyBeat = function()
+            -- v2.2.5: UI:Apply now hides the frame when not in PvP
+            -- context. The demo runs outside any PvP context, so we
+            -- mark each beat with _forceShow to bypass that gate.
+            if beat.rec then beat.rec._forceShow = true end
             if ns.UI and ns.UI.Apply then ns.UI:Apply(beat.rec) end
             if ns.WeakAuraBridge and ns.WeakAuraBridge.Publish then
                 ns.WeakAuraBridge:Publish(beat.rec, Core.state)
@@ -1572,7 +1589,13 @@ end
 -- gap — every nameplate change re-evaluates in the non-arena branch.
 local function onNameplateChange()
     local ctx = Core.state and Core.state.pvpContext
-    if ctx == "bg" or ctx == "world" or ctx == "world_idle" then
+    -- v2.2.5: dropped "world_idle" from this gate. In big cities on
+    -- Anniversary you stand around PvP-flagged with hundreds of
+    -- nameplates churning per second; firing Evaluate on every one
+    -- caused major frame-rate drops while doing nothing useful (no
+    -- hostile target → engine has nothing to recommend). Now we only
+    -- re-evaluate when there's actual combat context.
+    if ctx == "bg" or ctx == "world" then
         Core:Evaluate()
     end
 end
