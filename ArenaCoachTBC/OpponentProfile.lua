@@ -220,3 +220,63 @@ function OP:EstimateOrDefault(profile, key, compDefault)
     if est.n < self.MIN_SAMPLES_FOR_OPINION then return compDefault end
     return est.mean
 end
+
+-- ============================================================
+-- M14 (v2.1): Class-prior tier for BG mode
+-- ============================================================
+-- PUG'd BGs have a unique roster every match, so per-team profiles
+-- (keyed by `<sorted_classes>#<name_hash>`) never reach the opinion
+-- threshold. The class-prior tier records tendencies *across all
+-- observations of a given class*, regardless of team. After enough
+-- BG matches we learn things like "in general, priests on the
+-- opposing team trinket Fear at 80%" — useful for kill-priority +
+-- callout gating even with strangers.
+--
+-- Storage shape: db.classPriors[CLASS][tendency] = { alpha, beta, observations }
+-- Independent table — does NOT mix with arena's db.profiles team
+-- entries (those carry name-hash signatures).
+
+function OP:GetClassPrior(class, db)
+    if not class or not db then return nil end
+    db.classPriors = db.classPriors or {}
+    db.classPriors[class] = db.classPriors[class] or {}
+    local bucket = db.classPriors[class]
+    for _, t in ipairs(self.TENDENCIES) do
+        if not bucket[t] then
+            bucket[t] = { alpha = 1, beta = 1, observations = 0 }
+        end
+    end
+    return bucket
+end
+
+function OP:UpdateClass(class, key, observed, db)
+    if not class or not key or not db then return nil end
+    local bucket = self:GetClassPrior(class, db)
+    if not bucket or not bucket[key] then return nil end
+    if observed == true then
+        bucket[key].alpha = bucket[key].alpha + 1
+    elseif observed == false then
+        bucket[key].beta = bucket[key].beta + 1
+    else
+        return nil
+    end
+    bucket[key].observations = (bucket[key].observations or 0) + 1
+    return bucket[key]
+end
+
+-- Like EstimateOrDefault but consults the class-prior tier when the
+-- team profile has too few samples. Falls through to compDefault when
+-- the class prior is also unopinionated.
+function OP:EstimateWithClassPrior(profile, key, class, compDefault, db)
+    local teamEst = self:Estimate(profile, key)
+    if teamEst.n >= self.MIN_SAMPLES_FOR_OPINION then return teamEst.mean end
+    if not (class and db) then return compDefault end
+    db.classPriors = db.classPriors or {}
+    local bucket = db.classPriors[class]
+    if not bucket or not bucket[key] then return compDefault end
+    local rec = bucket[key]
+    if (rec.observations or 0) < self.MIN_SAMPLES_FOR_OPINION then return compDefault end
+    local denom = (rec.alpha or 1) + (rec.beta or 1)
+    if denom == 0 then return compDefault end
+    return (rec.alpha or 1) / denom
+end

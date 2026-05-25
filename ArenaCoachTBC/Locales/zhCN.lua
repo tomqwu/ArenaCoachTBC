@@ -34,6 +34,13 @@ ns.locales.zhCN = {
     TEST_DEMO_START = "|cffc8a86b[ACC]|r 演示开始 — 14秒 RMP 3v3 推演（模式切换、爆发提示、防御警报、对手习惯提示）。",
     TEST_DEMO_END   = "|cffc8a86b[ACC]|r 演示结束。/acc test print 可查看仅文字版本。",
     TEST_DEMO_NO_UI = "|cffc8a86b[ACC]|r 演示需要游戏内 UI（仅在客户端中可用）。",
+
+    -- M14 (v2.1): 战场模式提示
+    CALL_FLAG_CARRIER_LOW    = "夺旗者血量低 - 压上",
+    CALL_INCOMING_PLAYERS    = "敌方来袭",
+    CALL_BASE_UNDER_ATTACK   = "据点被攻 - 调度",
+    CALL_BG_DEFEND           = "回血 - 集火检测",
+    CALL_BG_RES_TIMER        = "复活倒计时中",
     HELP_BUGREPORT = "/acc bugreport       - 打印脱敏问题报告",
     BUGREPORT_HEADER = "问题报告内容：",
     HELP_HELP     = "/acc help             - 显示帮助",

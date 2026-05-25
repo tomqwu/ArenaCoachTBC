@@ -276,3 +276,71 @@ H.it(g, "Update returns nil on bad inputs (nil signature / event / db)", functio
     H.assertNil(OP:Update("X", nil, freshDB()))
     H.assertNil(OP:Update("X", { tendency = "trinketsFear", observed = true }, nil))
 end)
+
+-- =================================================================
+-- M14 (v2.1): Class-prior tier for BG mode
+-- =================================================================
+
+H.it(g, "GetClassPrior creates fresh class buckets with default Beta(1,1)", function()
+    local db = { profiles = {}, classPriors = {} }
+    local b = OP:GetClassPrior("PRIEST", db)
+    H.assertNotNil(b.trinketsFear)
+    H.assertEq(b.trinketsFear.alpha, 1)
+    H.assertEq(b.trinketsFear.beta, 1)
+    H.assertEq(b.trinketsFear.observations, 0)
+end)
+
+H.it(g, "UpdateClass bumps the class-level alpha/beta", function()
+    local db = { profiles = {}, classPriors = {} }
+    for _ = 1, 10 do OP:UpdateClass("PRIEST", "trinketsFear", true,  db) end
+    for _ = 1, 2  do OP:UpdateClass("PRIEST", "trinketsFear", false, db) end
+    local rec = db.classPriors.PRIEST.trinketsFear
+    H.assertEq(rec.alpha, 11)
+    H.assertEq(rec.beta,   3)
+    H.assertEq(rec.observations, 12)
+end)
+
+H.it(g, "UpdateClass rejects unknown tendencies + non-boolean observed", function()
+    local db = { profiles = {}, classPriors = {} }
+    H.assertNil(OP:UpdateClass("PRIEST", "imaginary",    true, db))
+    H.assertNil(OP:UpdateClass("PRIEST", "trinketsFear", "yes", db))
+end)
+
+H.it(g, "EstimateWithClassPrior falls back to class prior when team has no samples", function()
+    local db = { profiles = {}, classPriors = {} }
+    -- Train the class prior heavily on PRIEST.
+    for _ = 1, 30 do OP:UpdateClass("PRIEST", "trinketsFear", true, db) end
+    -- Team profile is empty (fresh).
+    local fresh = OP:Get("FRESH_SIG", db)
+    local v = OP:EstimateWithClassPrior(fresh, "trinketsFear", "PRIEST", 0.5, db)
+    H.assertTrue(v > 0.85,
+        "class prior with 30 trues should report >0.85; got " .. tostring(v))
+end)
+
+H.it(g, "EstimateWithClassPrior prefers team profile when it has enough samples", function()
+    local db = { profiles = {}, classPriors = {} }
+    for _ = 1, 30 do OP:UpdateClass("PRIEST", "trinketsFear", false, db) end  -- class says ~0.03
+    -- Team profile says ~0.95
+    local team = OP:Get("TEAM_SIG", db)
+    for _ = 1, 30 do OP:UpdateBinary(team, "trinketsFear", true) end
+    local v = OP:EstimateWithClassPrior(team, "trinketsFear", "PRIEST", 0.5, db)
+    H.assertTrue(v > 0.85,
+        "team profile (>=5 samples) should override class prior; got " .. tostring(v))
+end)
+
+H.it(g, "EstimateWithClassPrior returns compDefault when neither tier has enough samples", function()
+    local db = { profiles = {}, classPriors = {} }
+    local team = OP:Get("X", db)
+    OP:UpdateBinary(team, "trinketsFear", true)  -- only 1 sample
+    OP:UpdateClass("PRIEST", "trinketsFear", true, db)  -- only 1 sample
+    H.assertEq(OP:EstimateWithClassPrior(team, "trinketsFear", "PRIEST", 0.42, db), 0.42)
+end)
+
+H.it(g, "class priors do not contaminate db.profiles (arena team profiles)", function()
+    local db = { profiles = {}, classPriors = {} }
+    for _ = 1, 10 do OP:UpdateClass("MAGE", "iceBlockBelow30", true, db) end
+    -- The team profile table should be untouched.
+    local n = 0
+    for _ in pairs(db.profiles) do n = n + 1 end
+    H.assertEq(n, 0, "class priors must not write to db.profiles")
+end)

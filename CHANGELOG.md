@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — M14 (v2.1 BG mode)
+- **BG scoring boosts.** Three new `SE.weights` entries active when `state.pvpContext == "bg"`:
+  - `bg_flag_carrier = 200` — WSG flag aura (23333 Alliance / 23335 Horde) eclipses every other priority
+  - `bg_low_hp_straggler = 30` — bonus for any enemy <30% HP (BG produces lots of swap windows)
+  - `bg_healer_boost = 10` — small bump on top of `role_healer` (healer death decides BG fights)
+- **BG SWAP threshold tightened** to 30 (vs default 10) to prevent thrash in messy BG combat where LOS and target reshuffle.
+- **BG callouts.** `buildCallouts` emits when `pvpContext == "bg"`:
+  - `CALL_FLAG_CARRIER_LOW` when the kill target has a flag aura + <50% HP
+  - `CALL_BG_DEFEND` on DEFEND mode (cleaner cue than the arena-flavoured Pain Sup / BoP set)
+- **5 new locale keys**, parity green at 103 each: `CALL_FLAG_CARRIER_LOW`, `CALL_INCOMING_PLAYERS`, `CALL_BASE_UNDER_ATTACK`, `CALL_BG_DEFEND`, `CALL_BG_RES_TIMER`. (Three are wired in this PR; two are reserved for future BG-objective work in v2.2.)
+- **Class-prior tier in OpponentProfile.** PUG'd BGs reset team-signature profiles every match. New `OP:GetClassPrior(class, db)` / `OP:UpdateClass(class, key, observed, db)` track tendencies across all observations of a class regardless of team. `OP:EstimateWithClassPrior(profile, key, class, default, db)` prefers the team profile when it has ≥5 samples, falls back to the class prior, falls back to the default. Stored under `db.classPriors[CLASS][tendency]` — does NOT mix with arena's `db.profiles`.
+- 13 new tests (6 in `StrategyEngine_extra_spec`, 7 in `OpponentProfile_spec`).
+
 ### Added — M13 (v2.1 foundation)
 - **PvP context detection.** New `Core:DetectPvPContext()` returns one of `"arena" / "bg" / "world" / "world_idle" / "none"`. Reads `IsActiveBattlefieldArena()`, `GetInstanceInfo()`, `UnitIsPVP("player")`. Cached on `state.pvpContext`. Refreshed by `PLAYER_ENTERING_WORLD`, `ARENA_OPPONENT_UPDATE`, and the new `ZONE_CHANGED_NEW_AREA` subscription. Headless-permissive — when WoW APIs are absent, the cached fixture value survives.
 - **Non-arena enemy discovery.** New `Core:RefreshEnemiesNonArena()` walks `nameplate1..nameplate40`, keeps hostile players, keys by GUID (not unit ID, since nameplate units reshuffle on LOS). `Core:_NonArenaCLEUStub(guid, name)` creates a stub entry from CLEU events when the nameplate isn't visible yet. 30-second TTL prunes entries we haven't re-observed. Arena entries (keyed by `arenaN`) are left alone — `RefreshArenaEnemies` retains ownership.
