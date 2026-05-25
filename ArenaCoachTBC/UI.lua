@@ -198,9 +198,15 @@ function UI:Apply(recommendation)
     -- carries variable score-contributor data.
     if recommendation.reasonKey then
         table.insert(subParts, L(recommendation.reasonKey))
-    elseif recommendation.reason then
-        table.insert(subParts, recommendation.reason)
     end
+    -- v2.3.1: do NOT render recommendation.reason for KILL/SWAP/OPEN. The
+    -- raw field is dev-only — it carries internal score-contributor
+    -- identifiers ("PRIEST [role_healer(25), trinket_down(20), ...] |
+    -- RMP_DISC_3V3 spec-confirmed (1.00)") meant for /acc trace dump.
+    -- The mode label, target name, target stats row, callouts list, comp
+    -- badge, and chain block together already say everything the user
+    -- needs. Pre-v2.3.1 the user saw these underscore identifiers in
+    -- the frame and read them as untranslated gibberish.
     if recommendation.callouts and #recommendation.callouts > 0 then
         local labels = {}
         for _, key in ipairs(recommendation.callouts) do
@@ -212,7 +218,11 @@ function UI:Apply(recommendation)
         local badgeKey = recommendation.compSpecConfirmed
             and "COMP_BADGE_SPEC_CONFIRMED"
             or "COMP_BADGE_CLASS_GUESSED"
-        local label = recommendation.compLabel or recommendation.comp
+        -- Prefer the human-readable compLabel ("RMP (confirmed Disc Priest)")
+        -- over the raw comp id ("RMP_DISC_3V3") that pre-v2.3.1 sometimes
+        -- leaked here when the engine forgot to set compLabel.
+        local label = recommendation.compLabel
+        if not label or label == "" then label = "?" end
         table.insert(subParts, string.format("%s (%s)", label, L(badgeKey)))
     end
     -- M8 #62: render the picked chain as a localized title + numbered
@@ -241,10 +251,16 @@ function UI:Apply(recommendation)
                 if type(GetSpellInfo) == "function" then
                     spellName = GetSpellInfo(link.spellID)
                 end
-                local stepText = string.format("  %s %d. %s (%s)",
-                    L("CHAIN_STEP_PREFIX"), i,
-                    spellName or tostring(link.category or "?"),
-                    tostring(link.category or "?"))
+                -- v2.3.1: drop the redundant "(CATEGORY)" suffix when the
+                -- spell name is available. Pre-v2.3.1 every line rendered
+                -- as "Step 1. Sap (INCAPACITATE)" — the category was
+                -- already implicit in the chain title and just added
+                -- noise. When GetSpellInfo returns nil (very first call
+                -- on an unknown spell) we still fall back to the
+                -- category enum so the line is never blank.
+                local label = spellName or tostring(link.category or "?")
+                local stepText = string.format("  %s %d. %s",
+                    L("CHAIN_STEP_PREFIX"), i, label)
                 table.insert(subParts, stepText)
             end
         end

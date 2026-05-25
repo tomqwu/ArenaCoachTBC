@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.1] - 2026-05-25
+
+### Fixed
+- **Recommendation frame leaked internal score-contributor identifiers as text** ("PRIEST [role_healer(25), trinket_down(20), health_below_50(30)] | RMP_DISC_3V3 spec-confirmed (1.00)"). User report: *"there are random words like lkjasfsa_lajfda, seems like not properly translated or mapped to proper spells."* Root cause: `UI:Apply` was rendering `recommendation.reason` verbatim for KILL/SWAP/OPEN modes — but that field is dev-only, meant for `/acc trace dump`, never user-facing. The mode label + target name + target stats row (HP / kill prob / BURST READY) + callouts list + comp badge + chain block already carry everything the user needs. Now `UI:Apply` renders `reason` *only* via the localised `reasonKey` path (DEFEND / RESET) and drops the raw debug text otherwise.
+- **Chain step lines were redundantly tagged with their category** ("Step 1. Sap (INCAPACITATE)", "Step 2. Polymorph (INCAPACITATE)", "Step 3. Kidney Shot (STUN)"). The category is already implicit in the chain title; the parenthetical was visual noise. Dropped — now just "Step 1. Sap", "Step 2. Polymorph", "Step 3. Kidney Shot".
+
+### Notes
+- The `recommendation.reason` field is unchanged — `/acc trace dump`, the bug report, and any WeakAura consumer that reads `_G.ArenaCoachTBC.GetReason()` still get the full debug breakdown. This is a UI-render-only change.
+- Tests still at 608 passing, locale parity at 110/110.
+
 ## [2.3.0] - 2026-05-25
 
 **Quality release.** One real bug fix on top of v2.2.6, plus a sweep of dead code and stale docs that had piled up across the v2.1-v2.2 patch cycle.
