@@ -600,6 +600,13 @@ local function onCLEU()
         end
     end
 
+    -- M10 #69: feed the pattern recogniser. Only SPELL_CAST_SUCCESS
+    -- counts as a step trigger (auras can fire spuriously from glance
+    -- effects).
+    if ns.Patterns and subEvent == "SPELL_CAST_SUCCESS" then
+        ns.Patterns:Observe(spellID, ts)
+    end
+
     -- Immunity / major defensives book-keeping on auras
     if subEvent == "SPELL_AURA_APPLIED" or subEvent == "SPELL_AURA_REFRESH" then
         for _, e in pairs(Core.state.enemies or {}) do

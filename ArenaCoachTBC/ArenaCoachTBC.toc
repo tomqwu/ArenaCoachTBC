@@ -24,6 +24,7 @@ DRTracker.lua
 Chain.lua
 OpponentProfile.lua
 Lookahead.lua
+Patterns.lua
 StrategyEngine.lua
 UI.lua
 Options.lua

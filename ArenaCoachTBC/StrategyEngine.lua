@@ -449,6 +449,15 @@ local function buildCallouts(state, comp, primaryTarget, mode)
         end
     end
 
+    -- M10 #69: pattern-driven callouts. Patterns observe the live
+    -- CLEU stream via Core; here we just consume the matches.
+    if ns.Patterns and ns.Patterns.GetMatches then
+        local matches = ns.Patterns:GetMatches()
+        for _, m in ipairs(matches) do
+            push(m.labelKey)
+        end
+    end
+
     return out
 end
 
