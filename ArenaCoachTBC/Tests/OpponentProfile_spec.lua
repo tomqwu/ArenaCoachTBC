@@ -194,6 +194,83 @@ H.it(g, "all 4 acceptance-criteria tendencies are tracked", function()
     H.assertNotNil(p.tendencies.sapsPriest)
 end)
 
+-- =================================================================
+-- M9 #64: UpdateBinary + Estimate + EstimateOrDefault
+-- =================================================================
+
+H.it(g, "UpdateBinary bumps alpha / beta directly on a profile", function()
+    local db = freshDB()
+    local p = OP:Get("X", db)
+    OP:UpdateBinary(p, "trinketsFear", true)
+    OP:UpdateBinary(p, "trinketsFear", true)
+    OP:UpdateBinary(p, "trinketsFear", false)
+    H.assertEq(p.tendencies.trinketsFear.alpha, 3)
+    H.assertEq(p.tendencies.trinketsFear.beta, 2)
+    H.assertEq(p.tendencies.trinketsFear.observations, 3)
+end)
+
+H.it(g, "UpdateBinary returns nil for unknown tendency or bad observed", function()
+    local db = freshDB()
+    local p = OP:Get("X", db)
+    H.assertNil(OP:UpdateBinary(p, "imaginary", true))
+    H.assertNil(OP:UpdateBinary(p, "trinketsFear", "yes"))  -- non-boolean
+end)
+
+H.it(g, "Estimate on a fresh profile is mean=0.5 with widest CI and n=0", function()
+    local db = freshDB()
+    local p = OP:Get("X", db)
+    local est = OP:Estimate(p, "trinketsFear")
+    H.assertEq(est.mean, 0.5)
+    H.assertEq(est.n, 0)
+    H.assertTrue(est.low <= 0.5 and est.high >= 0.5)
+end)
+
+H.it(g, "Estimate converges toward 1 with 20 positive observations", function()
+    local db = freshDB()
+    local p = OP:Get("X", db)
+    for _ = 1, 20 do OP:UpdateBinary(p, "trinketsFear", true) end
+    local est = OP:Estimate(p, "trinketsFear")
+    -- alpha=21, beta=1 -> mean ~ 0.954
+    H.assertTrue(est.mean > 0.85,
+        "expected mean > 0.85 after 20 positive observations, got " .. est.mean)
+    H.assertEq(est.n, 20)
+end)
+
+H.it(g, "Estimate confidence interval shrinks as observations grow", function()
+    local db = freshDB()
+    local pSmall, pBig = OP:Get("S", db), OP:Get("B", db)
+    OP:UpdateBinary(pSmall, "trinketsFear", true)
+    for _ = 1, 50 do OP:UpdateBinary(pBig, "trinketsFear", true) end
+    local eS, eB = OP:Estimate(pSmall, "trinketsFear"), OP:Estimate(pBig, "trinketsFear")
+    H.assertTrue((eB.high - eB.low) < (eS.high - eS.low),
+        "CI width should shrink: small=" .. (eS.high - eS.low)
+        .. " vs big=" .. (eB.high - eB.low))
+end)
+
+H.it(g, "Estimate handles unknown tendency with broad default", function()
+    local db = freshDB()
+    local est = OP:Estimate(OP:Get("X", db), "imaginary")
+    H.assertEq(est.mean, 0.5)
+    H.assertEq(est.n, 0)
+end)
+
+H.it(g, "EstimateOrDefault returns compDefault below MIN_SAMPLES_FOR_OPINION", function()
+    local db = freshDB()
+    local p = OP:Get("X", db)
+    -- 4 observations < 5 threshold
+    for _ = 1, 4 do OP:UpdateBinary(p, "trinketsFear", true) end
+    H.assertEq(OP:EstimateOrDefault(p, "trinketsFear", 0.33), 0.33)
+end)
+
+H.it(g, "EstimateOrDefault returns posterior mean once threshold is met", function()
+    local db = freshDB()
+    local p = OP:Get("X", db)
+    for _ = 1, 5 do OP:UpdateBinary(p, "trinketsFear", true) end
+    -- alpha=6, beta=1 -> 6/7
+    local v = OP:EstimateOrDefault(p, "trinketsFear", 0.33)
+    H.assertTrue(math.abs(v - (6 / 7)) < 1e-9, "expected ~0.857, got " .. tostring(v))
+end)
+
 H.it(g, "Update returns nil on bad inputs (nil signature / event / db)", function()
     H.assertNil(OP:Update(nil, { tendency = "trinketsFear", observed = true }, freshDB()))
     H.assertNil(OP:Update("X", nil, freshDB()))
