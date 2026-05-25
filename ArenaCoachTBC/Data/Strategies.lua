@@ -19,6 +19,14 @@ local ST = ns.Strategies
 --   id          : short name
 --   label       : friendly description
 --   core        : minimal set of classes that defines this comp
+--   specs       : optional { CLASS = "SPEC" } map of *required* enemy specs.
+--                 A spec-keyed entry matches only when every required spec is
+--                 explicitly observed on an alive enemy of that class (via
+--                 e.specGuess from SpellSpecHints). Unknown or mismatched
+--                 specs disqualify the entry, so a class-only sibling
+--                 declared later catches it as a fallback. Spec-keyed entries
+--                 should therefore be declared BEFORE their class-only
+--                 counterpart so they win when specs are confirmed.
 --   bracket     : optional 2|3|5. Only matches when state.bracket equals this
 --                 value; nil means bracket-agnostic (matches anywhere).
 --                 Bracket-specific entries win over agnostic ones.
@@ -243,6 +251,15 @@ ST.comps = {
         callouts = { "CALL_TREMOR_FEAR", "CALL_GROUND_DC", "CALL_MANA_BURN_PLAN" },
     },
     {
+        id = "SHATTER_FROST_2V2", bracket = 2,
+        label = "Shatter (confirmed Frost) - Frost Mage + Disc Priest",
+        core  = { MAGE = true, PRIEST = true },
+        specs = { MAGE = "FROST", PRIEST = "DISCIPLINE" },
+        openTarget = "MAGE", swapTarget = "PRIEST",
+        threats = { MAGE = "Nova > Sheep > Frostbolt shatter" },
+        callouts = { "CALL_DISP_FROST", "CALL_GROUND_POLY", "CALL_TREMOR_FEAR" },
+    },
+    {
         id = "SHATTER_2V2", bracket = 2,
         label = "Shatter - Frost Mage + Disc Priest",
         core  = { MAGE = true, PRIEST = true },
@@ -257,6 +274,15 @@ ST.comps = {
         openTarget = "PRIEST", swapTarget = "SHAMAN",
         threats = { SHAMAN = "Windfury procs + purge our buffs" },
         callouts = { "CALL_PURGE", "CALL_TREMOR_FEAR", "CALL_MANA_BURN_PLAN" },
+    },
+    {
+        id = "HUNTER_PRIEST_BM_2V2", bracket = 2,
+        label = "BM Hunter (confirmed) + Disc Priest",
+        core  = { HUNTER = true, PRIEST = true },
+        specs = { HUNTER = "BEAST_MASTERY", PRIEST = "DISCIPLINE" },
+        openTarget = "HUNTER", swapTarget = "PRIEST",
+        threats = { HUNTER = "Pet pressure + BW window" },
+        callouts = { "CALL_FREEDOM_WAR", "CALL_AVOID_OVERCHASE", "CALL_MANA_BURN_PLAN" },
     },
     {
         id = "HUNTER_PRIEST_2V2", bracket = 2,
@@ -297,12 +323,49 @@ ST.comps = {
     -- enemy pool, swap windows narrower, single-target focus).
     -- ============================================================
     {
+        id = "SMR_3V3", bracket = 3,
+        label = "SMR (Shadow Priest / Mage / Rogue)",
+        core  = { ROGUE = true, MAGE = true, PRIEST = true },
+        specs = { PRIEST = "SHADOW" },
+        openTarget = "MAGE", swapTarget = "PRIEST",
+        threats = { PRIEST = "Mind Blast + VT pressure (no healer)", MAGE = "Sheep follow-up", ROGUE = "Cheap > Kidney" },
+        callouts = { "CALL_DISP_FROST", "CALL_TREMOR_FEAR", "CALL_PURGE" },
+    },
+    {
+        id = "RMP_DISC_3V3", bracket = 3,
+        label = "RMP (confirmed Disc Priest)",
+        core  = { ROGUE = true, MAGE = true, PRIEST = true },
+        specs = { PRIEST = "DISCIPLINE" },
+        openTarget = "PRIEST", swapTarget = "MAGE",
+        threats = { MAGE = "Sheep > Nova kill train", PRIEST = "Pain Sup save", ROGUE = "Kidney follow-up" },
+        callouts = { "CALL_GROUND_POLY", "CALL_TREMOR_FEAR", "CALL_DISP_FROST", "CALL_PURGE", "CALL_PAIN_SUP_READY" },
+    },
+    {
         id = "RMP_3V3", bracket = 3,
         label = "RMP (Rogue / Mage / Priest)",
         core  = { ROGUE = true, MAGE = true, PRIEST = true },
         openTarget = "PRIEST", swapTarget = "MAGE",
         threats = { MAGE = "Sheep > Nova kill train", PRIEST = "Pain Sup save", ROGUE = "Kidney follow-up" },
         callouts = { "CALL_GROUND_POLY", "CALL_TREMOR_FEAR", "CALL_DISP_FROST", "CALL_PURGE" },
+    },
+    {
+        id = "WLD_FERAL_3V3", bracket = 3,
+        label = "Warrior / Lock / Feral Druid (no healer)",
+        core  = { WARRIOR = true, WARLOCK = true, DRUID = true },
+        specs = { DRUID = "FERAL" },
+        defaultMode = "DEFEND",
+        openTarget = "WARLOCK", swapTarget = "DRUID",
+        threats = { DRUID = "Bleed + Cyclone peel", WARLOCK = "Fear chain into UA", WARRIOR = "MS into bleed" },
+        callouts = { "CALL_TREMOR_FEAR", "CALL_FREEDOM_WAR", "CALL_PEEL_DRUID" },
+    },
+    {
+        id = "WLD_RESTO_3V3", bracket = 3,
+        label = "WLD (confirmed Resto Druid)",
+        core  = { WARRIOR = true, WARLOCK = true, DRUID = true },
+        specs = { DRUID = "RESTORATION" },
+        openTarget = "DRUID", swapTarget = "WARLOCK",
+        threats = { WARLOCK = "Howl into UA pressure", WARRIOR = "MS into fear", DRUID = "HoT race" },
+        callouts = { "CALL_FREEDOM_WAR", "CALL_TREMOR_FEAR", "CALL_CYCLONE_OFF", "CALL_MANA_BURN_PLAN" },
     },
     {
         id = "WLD_3V3", bracket = 3,
@@ -319,6 +382,15 @@ ST.comps = {
         openTarget = "PRIEST", swapTarget = "HUNTER",
         threats = { HUNTER = "Trap juggle", DRUID = "Cyclone-into-bleed pressure" },
         callouts = { "CALL_TREMOR_FEAR", "CALL_MANA_BURN_PLAN" },
+    },
+    {
+        id = "SHATTERPLAY_SHADOW_3V3", bracket = 3,
+        label = "Shatterplay (confirmed Shadow Priest + Resto Druid)",
+        core  = { MAGE = true, PRIEST = true, DRUID = true },
+        specs = { MAGE = "FROST", PRIEST = "SHADOW", DRUID = "RESTORATION" },
+        openTarget = "DRUID", swapTarget = "PRIEST",
+        threats = { MAGE = "Shatter combo into Sheep", PRIEST = "Mind Blast + VT pressure", DRUID = "Cyclone peel" },
+        callouts = { "CALL_PURGE", "CALL_CYCLONE_OFF", "CALL_GROUND_POLY", "CALL_DISP_FROST", "CALL_MANA_BURN_PLAN" },
     },
     {
         id = "SHATTERPLAY_3V3", bracket = 3,
@@ -423,10 +495,15 @@ end
 -- Identify the enemy comp.
 --   enemyClassList : array of CLASS strings (legacy callers)
 --   enemies        : optional map of unit -> enemy table (preferred; lets us
---                    consume e.roleGuess from spec inference)
+--                    consume e.roleGuess + e.specGuess from spec inference)
 --   bracket        : optional 2/3/5. When set, comps with a different `bracket`
 --                    field are skipped. Comps with no bracket field are
 --                    bracket-agnostic and always considered.
+--
+-- Spec-keyed comps (comp.specs = { CLASS = "SPEC" }) match only when the
+-- required specs are confirmed via observed e.specGuess. Without an enemies
+-- map, or while specs remain unknown, spec-keyed comps never match and the
+-- engine falls back to the class-only sibling.
 function ST:Identify(enemyClassList, enemies, bracket)
     if not enemyClassList or #enemyClassList == 0 then return nil end
 
@@ -438,6 +515,26 @@ function ST:Identify(enemyClassList, enemies, bracket)
         if comp.bracket == nil then return true end
         if bracket == nil then return true end  -- caller didn't filter
         return comp.bracket == bracket
+    end
+
+    -- A spec-keyed comp matches only when every required spec is *explicitly
+    -- observed* on an alive enemy of that class. Unknown or mismatched
+    -- specGuess disqualifies the spec-keyed entry so a class-only sibling
+    -- declared later in the catalog catches the fallback.
+    local function specsMatch(comp)
+        if not comp.specs then return true end
+        if not enemies then return false end  -- spec data only flows via enemies map
+        for cls, requiredSpec in pairs(comp.specs) do
+            local confirmed = false
+            for _, e in pairs(enemies) do
+                if e.class == cls and e.alive ~= false and e.specGuess == requiredSpec then
+                    confirmed = true
+                    break
+                end
+            end
+            if not confirmed then return false end
+        end
+        return true
     end
 
     -- Prefer the enemies table when available so roleGuess overrides win.
@@ -490,7 +587,7 @@ function ST:Identify(enemyClassList, enemies, bracket)
                     coreCount = coreCount + 1
                     if not presence[cls] then ok = false; break end
                 end
-                if ok and coreCount > 0 then return comp end
+                if ok and coreCount > 0 and specsMatch(comp) then return comp end
             end
         end
         return nil

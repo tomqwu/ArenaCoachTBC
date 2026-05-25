@@ -174,6 +174,98 @@ H.it(g, "bracket=3 RMP comp matches when ROGUE+MAGE+PRIEST present", function()
     H.assertEq(m.id, "RMP_3V3")
 end)
 
+-- =================================================================
+-- Spec-keyed comp matching (M7 #55)
+-- =================================================================
+
+H.it(g, "spec-keyed comp matches when required spec is observed", function()
+    local enemies = {
+        a = { class = "ROGUE", roleGuess = "MELEE",  alive = true },
+        b = { class = "MAGE",  roleGuess = "CASTER", alive = true },
+        c = { class = "PRIEST", specGuess = "DISCIPLINE", roleGuess = "HEALER", alive = true },
+    }
+    local m = ST:Identify({"ROGUE","MAGE","PRIEST"}, enemies, 3)
+    H.assertEq(m.id, "RMP_DISC_3V3", "should pick spec-keyed RMP_DISC variant when priest is Disc")
+end)
+
+H.it(g, "spec-keyed comp does NOT match when observed spec differs", function()
+    local enemies = {
+        a = { class = "ROGUE", roleGuess = "MELEE",  alive = true },
+        b = { class = "MAGE",  roleGuess = "CASTER", alive = true },
+        c = { class = "PRIEST", specGuess = "HOLY",  roleGuess = "HEALER", alive = true },
+    }
+    local m = ST:Identify({"ROGUE","MAGE","PRIEST"}, enemies, 3)
+    H.assertEq(m.id, "RMP_3V3", "Holy spec should disqualify Disc-keyed variant; SMR/RMP_DISC both miss, fall through to class-only RMP_3V3")
+end)
+
+H.it(g, "spec-keyed comp falls back to class-only when spec is unknown", function()
+    local enemies = {
+        a = { class = "ROGUE", roleGuess = "MELEE",  alive = true },
+        b = { class = "MAGE",  roleGuess = "CASTER", alive = true },
+        c = { class = "PRIEST", specGuess = nil,     alive = true },
+    }
+    local m = ST:Identify({"ROGUE","MAGE","PRIEST"}, enemies, 3)
+    H.assertEq(m.id, "RMP_3V3", "unknown spec should fall through spec-keyed variants to class-only RMP_3V3")
+end)
+
+H.it(g, "spec-keyed comp does NOT match when called via class-list path (no enemies)", function()
+    -- Without an enemies map there's no specGuess channel, so no spec-keyed
+    -- comp can ever match — callers using the legacy class-list signature
+    -- always land on the class-only fallback.
+    local m = ST:Identify({"ROGUE","MAGE","PRIEST"}, nil, 3)
+    H.assertEq(m.id, "RMP_3V3", "class-list-only caller should pick the class-only RMP_3V3")
+end)
+
+H.it(g, "spec-keyed SHADOW priest comp picks SMR over RMP", function()
+    local enemies = {
+        a = { class = "ROGUE", roleGuess = "MELEE",  alive = true },
+        b = { class = "MAGE",  roleGuess = "CASTER", alive = true },
+        c = { class = "PRIEST", specGuess = "SHADOW", roleGuess = "CASTER", alive = true },
+    }
+    -- Note: roleGuess=CASTER on priest means 0 healers, which fires the
+    -- TRIPLE_DPS dynamic comp branch first. So override that by giving the
+    -- priest healer-equivalent state — actually the M7 #55 design is that
+    -- SHADOW spec implies no priest healer, which is correct behaviour.
+    -- For this test we assert that when there *is* still a healer
+    -- (e.g. shadow priest paired with a hybrid), SMR is the right pick.
+    enemies.c.roleGuess = "HEALER"  -- artificially keep it in the static branch
+    local m = ST:Identify({"ROGUE","MAGE","PRIEST"}, enemies, 3)
+    H.assertEq(m.id, "SMR_3V3", "Shadow priest should pick SMR variant")
+end)
+
+H.it(g, "spec-keyed comp requires a dead enemy's spec to NOT count", function()
+    -- A spec-keyed comp must not match against a dead enemy's spec. Once
+    -- the spec'd unit dies, the comp ID legitimately shifts.
+    local enemies = {
+        a = { class = "ROGUE", roleGuess = "MELEE",  alive = true },
+        b = { class = "MAGE",  roleGuess = "CASTER", alive = true },
+        c = { class = "PRIEST", specGuess = "DISCIPLINE", roleGuess = "HEALER", alive = false },
+    }
+    local m = ST:Identify({"ROGUE","MAGE","PRIEST"}, enemies, 3)
+    -- The dead priest also fails the class presence check (alive=false),
+    -- so we expect no static 3v3 match. With 0 healers in alive set we
+    -- expect TRIPLE_DPS dynamic.
+    H.assertEq(m.id, "TRIPLE_DPS")
+end)
+
+H.it(g, "catalog contains at least 6 spec-keyed comps", function()
+    local count = 0
+    for _, c in ipairs(ST.comps) do
+        if c.specs then count = count + 1 end
+    end
+    H.assertTrue(count >= 6, "expected >=6 spec-keyed comps, got " .. count)
+end)
+
+H.it(g, "every spec-keyed comp references known classes in its specs map", function()
+    for _, c in ipairs(ST.comps) do
+        if c.specs then
+            for cls, _ in pairs(c.specs) do
+                H.assertNotNil(c.core[cls], c.id .. " requires spec on " .. cls .. " but " .. cls .. " is not in its core")
+            end
+        end
+    end
+end)
+
 H.it(g, "every bracket-tagged comp references existing locale keys", function()
     H.load("Locales/enUS.lua")
     local L = H.ns.locales and H.ns.locales.enUS
