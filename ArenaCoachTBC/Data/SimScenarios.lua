@@ -38,6 +38,27 @@ SIM:Register("tsg-mirror", {
     },
 })
 
+-- M8 #62: chain-vs-chain decision scenario. Sets up an RMP team and
+-- replays a sequence that progressively narrows which of RMP's two
+-- canonical chains (sap_into_kidney vs fear_into_burst) is highest-EV.
+-- The first cast applies FEAR DR (via PSYCHIC_SCREAM hitting the
+-- sim-victim sentinel), which the catalog's fear-chain would have to
+-- punch through next. By t=8 the priest has trinketed and the chain
+-- selector reconsiders. Useful for inspecting /acc trace dump and
+-- comparing the engine's pick across ticks.
+SIM:Register("chain-vs-chain", {
+    label   = "Chain selector: RMP fear chain vs sap chain",
+    enemies = { "ROGUE", "MAGE", "PRIEST" },
+    events  = {
+        { t = 0,  type = "cast", by = 3, spell = S.PSYCHIC_SCREAM, label = "Enemy priest opens with scream (bumps FEAR DR)" },
+        { t = 2,  type = "cast", by = 1, spell = S.SAP,            label = "Enemy rogue saps focus (INCAP DR bump)" },
+        { t = 5,  type = "cast", by = 2, spell = S.POLYMORPH,      label = "Enemy mage sheeps (INCAP DR continues)" },
+        { t = 8,  type = "trinket", unit = 3,                       label = "Priest trinkets, FEAR window opens again" },
+        { t = 10, type = "cast", by = 1, spell = S.KIDNEY_SHOT,    label = "Enemy rogue kidneys (STUN DR bump)" },
+        { t = 13, type = "health", unit = 3, pct = 40,              label = "Priest at 40% from incidental damage" },
+    },
+})
+
 SIM:Register("drain", {
     label   = "Drainteam 2v2 (Affliction / Disc Priest)",
     enemies = { "WARLOCK", "PRIEST" },

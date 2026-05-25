@@ -159,7 +159,7 @@ end)
 -- Smoke test each built-in scenario to make sure no event errors. Loop runs
 -- after the explicit tests so a failure here points at the data, not the
 -- simulator logic.
-for _, key in ipairs({"rmp", "tsg-mirror", "drain"}) do
+for _, key in ipairs({"rmp", "tsg-mirror", "drain", "chain-vs-chain"}) do
     H.it(g, "built-in scenario '" .. key .. "' applies every event without error", function()
         resetState()
         local ok, err = SIM:Run(key, { printEvents = false })

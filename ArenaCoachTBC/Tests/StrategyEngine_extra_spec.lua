@@ -351,6 +351,9 @@ H.it(g, "Evaluate emits a chain field for a comp that has chains", function()
     H.assertNotNil(rec.chain, "expected rec.chain for WLD which has chains")
     H.assertEq(rec.chain.id, "wld_fear_into_cyclone")
     H.assertTrue(rec.chain.expectedProb > 0)
+    -- M8 #62: labelKey is propagated for UI rendering
+    H.assertEq(rec.chain.labelKey, "CHAIN_WLD_FEAR_INTO_CYCLONE")
+    H.assertEq(rec.chain.steps, 2)
 end)
 
 H.it(g, "Evaluate omits rec.chain when the comp has no chains", function()
