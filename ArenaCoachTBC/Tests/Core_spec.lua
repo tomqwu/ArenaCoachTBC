@@ -994,3 +994,171 @@ H.it(g, "/acc whatif skip <i> prints divergence summary", function()
     end
     H.assertTrue(found, "expected divergence output: " .. table.concat(captured, "|"))
 end)
+
+-- =================================================================
+-- M13 (v2.1): PvP context detection + non-arena enemy discovery
+-- =================================================================
+
+local function clearWoWApis()
+    -- Used by tests that want to drop into the headless / fixture branch.
+    _G.IsActiveBattlefieldArena = nil
+    _G.GetInstanceInfo          = nil
+    _G.UnitIsPVP                = nil
+end
+
+H.it(g, "DetectPvPContext returns 'arena' when IsActiveBattlefieldArena true", function()
+    clearWoWApis()
+    _G.IsActiveBattlefieldArena = function() return true end
+    Core.state = Core.state or {}
+    Core.state.pvpContext = nil
+    H.assertEq(Core:DetectPvPContext(), "arena")
+    H.assertEq(Core.state.pvpContext, "arena")
+end)
+
+H.it(g, "DetectPvPContext returns 'bg' when GetInstanceInfo returns pvp", function()
+    clearWoWApis()
+    _G.IsActiveBattlefieldArena = function() return false end
+    _G.GetInstanceInfo          = function() return "Warsong Gulch", "pvp" end
+    Core.state.pvpContext = nil
+    H.assertEq(Core:DetectPvPContext(), "bg")
+end)
+
+H.it(g, "DetectPvPContext returns 'arena' when GetInstanceInfo returns arena (no battlefield API)", function()
+    clearWoWApis()
+    _G.GetInstanceInfo = function() return "Nagrand Arena", "arena" end
+    Core.state.pvpContext = nil
+    H.assertEq(Core:DetectPvPContext(), "arena")
+end)
+
+H.it(g, "DetectPvPContext returns 'world' when PvP-flagged + recent hostile contact", function()
+    clearWoWApis()
+    _G.IsActiveBattlefieldArena = function() return false end
+    _G.GetInstanceInfo          = function() return nil, nil end
+    _G.UnitIsPVP                = function(u) return u == "player" end
+    H._gameTime = 1000
+    Core.state.pvpContext = nil
+    Core._lastWorldHostileTs = 990  -- 10s ago
+    H.assertEq(Core:DetectPvPContext(), "world")
+end)
+
+H.it(g, "DetectPvPContext returns 'world_idle' when PvP-flagged but no recent hostile", function()
+    clearWoWApis()
+    _G.IsActiveBattlefieldArena = function() return false end
+    _G.GetInstanceInfo          = function() return nil, nil end
+    _G.UnitIsPVP                = function(u) return u == "player" end
+    H._gameTime = 1000
+    Core.state.pvpContext = nil
+    Core._lastWorldHostileTs = 900  -- >30s ago
+    H.assertEq(Core:DetectPvPContext(), "world_idle")
+end)
+
+H.it(g, "DetectPvPContext returns 'none' when nothing PvP", function()
+    clearWoWApis()
+    _G.IsActiveBattlefieldArena = function() return false end
+    _G.GetInstanceInfo          = function() return "Stormwind", "none" end
+    _G.UnitIsPVP                = function() return false end
+    Core.state.pvpContext = nil
+    H.assertEq(Core:DetectPvPContext(), "none")
+end)
+
+H.it(g, "DetectPvPContext is permissive headless (preserves fixture)", function()
+    clearWoWApis()
+    Core.state.pvpContext = "arena"  -- test fixture
+    H.assertEq(Core:DetectPvPContext(), "arena", "headless must not trample fixture")
+end)
+
+H.it(g, "RefreshEnemiesNonArena populates from nameplate scan", function()
+    Core.state = Core.state or {}
+    Core.state.enemies = {}
+    -- Stub UnitExists + UnitIsEnemy + UnitIsPlayer + UnitGUID + UnitName + UnitClass
+    local stubGuid = "guid-baddie"
+    _G.UnitExists  = function(u) return u == "nameplate1" end
+    _G.UnitIsEnemy = function(_, u) return u == "nameplate1" end
+    _G.UnitIsPlayer = function(u) return u == "nameplate1" end
+    _G.UnitGUID    = function(u) return u == "nameplate1" and stubGuid or nil end
+    _G.UnitName    = function(u) return u == "nameplate1" and "Baddie" or nil end
+    _G.UnitClass   = function(u) return u == "nameplate1" and "Rogue", "ROGUE" or nil, nil end
+    _G.UnitHealth  = function(u) return u == "nameplate1" and 8000 or 0 end
+    _G.UnitHealthMax = function(u) return u == "nameplate1" and 10000 or 0 end
+    _G.UnitPower   = function() return 0 end
+    _G.UnitPowerMax = function() return 0 end
+    _G.UnitIsDeadOrGhost = function() return false end
+    H._gameTime = 1000
+    Core:RefreshEnemiesNonArena()
+    H.assertNotNil(Core.state.enemies[stubGuid],
+        "nameplate1 GUID should be keyed in enemies map")
+    H.assertEq(Core.state.enemies[stubGuid].name, "Baddie")
+    H.assertEq(Core.state.enemies[stubGuid].class, "ROGUE")
+end)
+
+H.it(g, "RefreshEnemiesNonArena skips friendly nameplates", function()
+    Core.state.enemies = {}
+    _G.UnitExists   = function(u) return u == "nameplate1" end
+    _G.UnitIsEnemy  = function() return false end  -- friendly
+    _G.UnitIsPlayer = function() return true end
+    Core:RefreshEnemiesNonArena()
+    local count = 0
+    for k, _ in pairs(Core.state.enemies) do count = count + 1 end
+    H.assertEq(count, 0, "friendly nameplates must not enter enemies map")
+end)
+
+H.it(g, "_NonArenaCLEUStub creates entry from CLEU when no nameplate yet", function()
+    Core.state.enemies = {}
+    H._gameTime = 1000
+    Core:_NonArenaCLEUStub("guid-stub", "Sneaky")
+    H.assertNotNil(Core.state.enemies["guid-stub"])
+    H.assertEq(Core.state.enemies["guid-stub"].name, "Sneaky")
+    H.assertEq(Core.state.enemies["guid-stub"]._lastSeen, 1000)
+end)
+
+H.it(g, "_NonArenaCLEUStub does not overwrite an existing entry", function()
+    Core.state.enemies = { ["guid-known"] = { name = "Real", class = "PRIEST" } }
+    Core:_NonArenaCLEUStub("guid-known", "DontOverwrite")
+    H.assertEq(Core.state.enemies["guid-known"].name, "Real",
+        "must not overwrite existing enemy with stub")
+end)
+
+H.it(g, "RefreshEnemiesNonArena TTL-prunes stale entries (>30s)", function()
+    Core.state.enemies = {
+        ["guid-stale"] = { guid = "guid-stale", name = "Old", class = "ROGUE",
+                           alive = true, importantBuffs = {}, _lastSeen = 100 },
+    }
+    _G.UnitExists = function() return false end  -- no nameplates visible
+    H._gameTime = 200  -- 100s elapsed > 30s TTL
+    Core:RefreshEnemiesNonArena()
+    H.assertNil(Core.state.enemies["guid-stale"], "stale entry should be pruned")
+end)
+
+H.it(g, "RefreshEnemiesNonArena TTL keeps entries within window", function()
+    Core.state.enemies = {
+        ["guid-fresh"] = { guid = "guid-fresh", name = "New", class = "MAGE",
+                           alive = true, importantBuffs = {}, _lastSeen = 180 },
+    }
+    _G.UnitExists = function() return false end
+    H._gameTime = 200  -- 20s elapsed < 30s TTL
+    Core:RefreshEnemiesNonArena()
+    H.assertNotNil(Core.state.enemies["guid-fresh"], "fresh entry must survive prune")
+end)
+
+H.it(g, "RefreshEnemiesNonArena does NOT prune arena-keyed entries", function()
+    -- Defensive: arena enemies are keyed by unit ID like "arena1", not GUID.
+    -- The non-arena TTL prune must skip those so RefreshArenaEnemies retains ownership.
+    Core.state.enemies = {
+        arena1 = { unit = "arena1", guid = "g1", alive = true, _lastSeen = 0 },
+    }
+    _G.UnitExists = function() return false end
+    H._gameTime = 10000
+    Core:RefreshEnemiesNonArena()
+    H.assertNotNil(Core.state.enemies.arena1, "arena entries must not be pruned by non-arena TTL")
+end)
+
+H.it(g, "UpdateRating early-returns when pvpContext != 'arena'", function()
+    -- Stub GetPersonalRatedInfo so the function COULD return a rating, but
+    -- pvpContext gate should prevent the call.
+    _G.GetPersonalRatedInfo = function() return 2400 end
+    Core.state.bracket = 2
+    Core.state.pvpContext = "bg"
+    H.assertNil(Core:UpdateRating(), "non-arena context must return nil")
+    Core.state.pvpContext = "arena"
+    H.assertEq(Core:UpdateRating(), 2400, "arena context should pass through")
+end)

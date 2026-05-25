@@ -307,15 +307,24 @@ function UI:Apply(recommendation)
     end
     f.subText:SetText(table.concat(subParts, "\n"))
 
-    -- v2.0.2: PvP-context gate. The aggressive alerts (screen flash,
-    -- voice cue) should only fire in actual arena. In battlegrounds,
-    -- world PvP, duels, and outside-PvP the engine still evaluates
-    -- (and the frame can still show recommendations if the user opted
-    -- in via /acc toggle), but the intrusive feedback is suppressed.
-    -- IsActiveBattlefieldArena returns true iff inside a rated/skirmish
-    -- arena instance. Missing API → headless test → permissive.
-    local inArena = (type(IsActiveBattlefieldArena) ~= "function")
-                    or IsActiveBattlefieldArena()
+    -- v2.0.2 / v2.1: PvP-context gate. The aggressive alerts (screen
+    -- flash, voice cue) should only fire in actual arena. Outside
+    -- arena (BG, world PvP, idle) the engine may still emit DEFEND-
+    -- like recommendations (legitimate in BG when a healer is being
+    -- focused), but the intrusive feedback should not.
+    --
+    -- v2.1: prefer the unified Core.state.pvpContext when available;
+    -- fall back to IsActiveBattlefieldArena for the early-load path
+    -- before Core has populated state. Missing both APIs → headless
+    -- test → permissive (true).
+    local ctx = ns.Core and ns.Core.state and ns.Core.state.pvpContext
+    local inArena
+    if ctx then
+        inArena = (ctx == "arena")
+    else
+        inArena = (type(IsActiveBattlefieldArena) ~= "function")
+                  or IsActiveBattlefieldArena()
+    end
 
     -- Screen flash for URGENT (defensive) — arena only
     if inArena and recommendation.priority == "URGENT" and ArenaCoachTBCDB
