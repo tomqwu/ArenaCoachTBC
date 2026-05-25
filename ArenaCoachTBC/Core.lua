@@ -33,6 +33,11 @@ local DEFAULTS = {
         requireWindfuryNearby = true,
         peelTriggerWindow = 5,    -- seconds of sliding window for "trained" detection
         peelTriggerDamage = 3,    -- damage events in window to force DEFEND
+        -- M11 #71: rating-aware aggression. "auto" reads
+        -- GetPersonalRatedInfo() and tunes aggression by bracket
+        -- rating; "greedy" / "balanced" / "safe" override; a number
+        -- pins a specific rating for testing.
+        ratingAggression = "auto",
     },
     trace = {
         enabled  = false,
@@ -531,6 +536,10 @@ function Core:Evaluate()
         end
     end
 
+    -- M11 #71: resolve the rating-aware aggression and attach to state
+    -- so the engine can read state.aggression directly.
+    self.state.aggression = self:CurrentAggression(self.state)
+
     local rec = ns.StrategyEngine and ns.StrategyEngine:Evaluate(self.state) or nil
     if not rec then return end
     self.state.lastPrimaryGUID = rec.primaryTarget
@@ -833,6 +842,45 @@ function Core:RunWhatIf(rest)
         return
     end
     chatPrint("/acc whatif: unknown subcommand '" .. arg .. "', try /acc whatif help")
+end
+
+-- M11 #71: query the WoW rating API for the current bracket. Returns
+-- nil when not in a rated bracket or when the API isn't available
+-- (headless tests). Stores the result on Core.state.rating.
+function Core:UpdateRating()
+    if type(GetPersonalRatedInfo) ~= "function" then return nil end
+    local bracket = self.state and self.state.bracket
+    local idx
+    if bracket == 2 then idx = 1
+    elseif bracket == 3 then idx = 2
+    elseif bracket == 5 then idx = 3
+    end
+    if not idx then return nil end
+    local ok, rating = pcall(GetPersonalRatedInfo, idx)
+    if ok and type(rating) == "number" then
+        self.state.rating = rating
+        return rating
+    end
+    return nil
+end
+
+-- Resolve the active aggression label for the current state. Honours
+-- the ratingAggression knob: "auto" derives from state.rating
+-- (<1800 = greedy, 1800-2200 = balanced, >2200 = safe); explicit
+-- "greedy"/"balanced"/"safe" override; a number is treated as a rating
+-- override for testing. Falls back to config.strategy.aggression.
+function Core:CurrentAggression(state)
+    state = state or self.state or {}
+    local cfg = (state.config and state.config.strategy)
+        or (_G.ArenaCoachTBCDB and _G.ArenaCoachTBCDB.strategy)
+        or {}
+    local ra = cfg.ratingAggression
+    if ra == "greedy" or ra == "balanced" or ra == "safe" then return ra end
+    local rating = (type(ra) == "number") and ra or state.rating
+    if not rating then return cfg.aggression or "balanced" end
+    if rating < 1800 then return "greedy"
+    elseif rating > 2200 then return "safe"
+    else return "balanced" end
 end
 
 function Core:RunBugReport()

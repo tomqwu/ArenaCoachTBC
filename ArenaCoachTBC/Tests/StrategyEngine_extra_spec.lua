@@ -506,6 +506,78 @@ H.it(g, "Evaluate exposes opponentSignature from state", function()
     H.assertEq(rec.opponentSignature, "TEST_SIG#1234")
 end)
 
+-- =================================================================
+-- M11 #71: rating-aware aggression
+-- =================================================================
+
+H.it(g, "shouldDefend HP threshold shifts with aggression: safe defends earlier", function()
+    local state = SE:BuildTestState({"WARRIOR","MAGE","PRIEST","DRUID","PALADIN"})
+    state.combatPhase = "ACTIVE"
+    state.aggression = "safe"
+    -- Find a friendly healer and put them at 45% HP.
+    for _, f in pairs(state.friendlies) do
+        if f.class == "DRUID" or f.class == "PRIEST" then
+            f.healthPct = 45
+        end
+    end
+    local rec = SE:Evaluate(state)
+    -- Safe threshold is 50; 45 < 50 -> DEFEND.
+    H.assertEq(rec.mode, "DEFEND", "safe should defend at 45 HP (threshold 50)")
+end)
+
+H.it(g, "shouldDefend HP threshold shifts with aggression: greedy holds at the same HP", function()
+    local state = SE:BuildTestState({"WARRIOR","MAGE","PRIEST","DRUID","PALADIN"})
+    state.combatPhase = "ACTIVE"
+    state.aggression = "greedy"
+    for _, f in pairs(state.friendlies) do
+        if f.class == "DRUID" or f.class == "PRIEST" then
+            f.healthPct = 35
+        end
+    end
+    local rec = SE:Evaluate(state)
+    -- Greedy threshold is 30; 35 > 30 -> don't DEFEND on HP alone.
+    H.assertTrue(rec.mode ~= "DEFEND" or (rec.reason and not rec.reason:find("low_healer")),
+        "greedy should not defend at 35 HP (threshold 30); reason=" .. tostring(rec.reason))
+end)
+
+H.it(g, "Evaluate exposes state.aggression on the rec", function()
+    local state = SE:BuildTestState({"WARRIOR","MAGE","PRIEST"})
+    state.combatPhase = "ACTIVE"
+    state.aggression = "safe"
+    state.rating = 2400
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.aggression, "safe")
+    H.assertEq(rec.rating, 2400)
+end)
+
+H.it(g, "Same state at low vs high rating produces different swap threshold behaviour", function()
+    -- Build a state where the swap target is marginally better than
+    -- the current target by ~10 score points. Greedy swaps; safe stays.
+    local function buildSwapTest(aggression)
+        local state = SE:BuildTestState({"PRIEST","MAGE"})
+        state.combatPhase = "ACTIVE"
+        state.aggression  = aggression
+        local priest, mage
+        for _, e in pairs(state.enemies) do
+            if e.class == "PRIEST" then priest = e
+            elseif e.class == "MAGE"   then mage   = e end
+        end
+        mage.hasTrinket = false  -- nudge mage up in scoring
+        state.lastPrimaryGUID = priest.guid
+        return state, mage
+    end
+    local stateGreedy, mage1 = buildSwapTest("greedy")
+    local recGreedy = SE:Evaluate(stateGreedy)
+    H.assertEq(recGreedy.primaryTargetClass, "MAGE")
+    H.assertEq(recGreedy.mode, "SWAP", "greedy should swap at low threshold")
+
+    local stateSafe, mage2 = buildSwapTest("safe")
+    local recSafe = SE:Evaluate(stateSafe)
+    -- Safe (threshold=20) doesn't swap unless the gap is >20 points.
+    H.assertEq(recSafe.primaryTargetClass, "MAGE")  -- score-wise mage still wins
+    H.assertEq(recSafe.mode, "KILL", "safe should hold on the swap when gap is small")
+end)
+
 H.it(g, "Evaluate's reason text includes the comp tag and confidence", function()
     local state = SE:BuildTestState({"WARLOCK","DRUID","WARRIOR"})
     state.combatPhase = "PRE"
