@@ -839,6 +839,43 @@ H.it(g, "/acc record bogus prints usage", function()
 end)
 
 -- =================================================================
+-- M11 #71: rating-aware aggression
+-- =================================================================
+
+H.it(g, "CurrentAggression returns explicit string when set", function()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    H.assertEq(Core:CurrentAggression({ config = { strategy = { ratingAggression = "greedy" } } }), "greedy")
+end)
+
+H.it(g, "CurrentAggression resolves auto from state.rating", function()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    local cfg = { config = { strategy = { ratingAggression = "auto" } } }
+    H.assertEq(Core:CurrentAggression({ rating = 1500, config = cfg.config }), "greedy")
+    H.assertEq(Core:CurrentAggression({ rating = 2000, config = cfg.config }), "balanced")
+    H.assertEq(Core:CurrentAggression({ rating = 2400, config = cfg.config }), "safe")
+end)
+
+H.it(g, "CurrentAggression falls back to config.aggression when no rating", function()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    H.assertEq(Core:CurrentAggression({
+        config = { strategy = { ratingAggression = "auto", aggression = "balanced" } } }), "balanced")
+end)
+
+H.it(g, "CurrentAggression treats numeric ratingAggression as a rating override", function()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    H.assertEq(Core:CurrentAggression({
+        config = { strategy = { ratingAggression = 2500 } } }), "safe")
+end)
+
+H.it(g, "UpdateRating returns nil without the WoW API", function()
+    -- GetPersonalRatedInfo isn't defined in headless tests
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    Core.state = Core.state or { bracket = 5 }
+    Core.state.bracket = 5
+    H.assertNil(Core:UpdateRating())
+end)
+
+-- =================================================================
 -- M10 #68: /acc whatif counterfactual replay
 -- =================================================================
 

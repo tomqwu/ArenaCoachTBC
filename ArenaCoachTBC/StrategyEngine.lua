@@ -302,7 +302,13 @@ end
 -- ============================================================
 local function shouldDefend(state)
     local lowest = lowestHealer(state.friendlies)
-    if lowest and (lowest.healthPct or 100) < 40 then return true, "low_healer" end
+    -- M11 #71: defensive HP threshold shifts with aggression.
+    -- Greedy: 30 (only defend on real emergencies). Safe: 50 (defend earlier).
+    local hpThreshold = 40
+    local agg = state.aggression or (state.config and state.config.strategy and state.config.strategy.aggression)
+    if agg == "greedy" then hpThreshold = 30
+    elseif agg == "safe" then hpThreshold = 50 end
+    if lowest and (lowest.healthPct or 100) < hpThreshold then return true, "low_healer" end
     if ourHealerCCd(state) then return true, "healer_cc" end
 
     local obs = state.observations or {}
@@ -416,8 +422,15 @@ local function buildCallouts(state, comp, primaryTarget, mode)
             push("CALL_EARTHSHOCK_HEAL")
         end
         if primaryTarget and isHealer(primaryTarget)
-           and primaryTarget.manaPct and primaryTarget.manaPct < 25 then
-            push("CALL_LOW_MANA_PUSH")
+           and primaryTarget.manaPct then
+            -- M11 #71: low-mana push threshold shifts with aggression.
+            -- Greedy pushes at higher mana (we'll burst earlier); safe
+            -- waits longer.
+            local manaT = 25
+            local agg = state.aggression or cfg.aggression
+            if agg == "greedy" then manaT = 30
+            elseif agg == "safe" then manaT = 20 end
+            if primaryTarget.manaPct < manaT then push("CALL_LOW_MANA_PUSH") end
         end
     elseif mode == "OPEN" then
         if cfg.preferHealerOpen then push("CALL_HOJ_KILL") end
@@ -484,8 +497,11 @@ local function decideMode(state, topTarget, secondTarget, comp)
             return "KILL"
         end
         local threshold = 10
-        if cfg.aggression == "safe" then threshold = 20
-        elseif cfg.aggression == "greedy" then threshold = 0 end
+        -- M11 #71: state.aggression (resolved by Core, possibly from
+        -- rating) wins over the static config.aggression.
+        local agg = state.aggression or cfg.aggression
+        if agg == "safe" then threshold = 20
+        elseif agg == "greedy" then threshold = 0 end
         -- only call SWAP if the swap target is significantly more attractive
         if not secondTarget or (topTarget._score - secondTarget._score) > threshold then
             return "SWAP"
@@ -674,6 +690,8 @@ function SE:Evaluate(state)
         chain           = pickedChain,
         profileContrib  = state._profileContrib,
         opponentSignature = state.opponentSignature,
+        aggression      = state.aggression,
+        rating          = state.rating,
         ownArchetype    = ownArchetype and ownArchetype.id or nil,
         ownArchetypeLabel = ownArchetype and ownArchetype.label or nil,
         ownCapabilities = ownCaps,
