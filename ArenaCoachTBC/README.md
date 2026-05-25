@@ -85,6 +85,15 @@ gives different advice to different own teams:
 }
 ```
 
+Entries can also carry an optional `specs = { CLASS = "SPEC" }` map. A
+spec-keyed comp matches only when every required spec is explicitly
+observed via spec inference (`enemy.specGuess`); unknown or mismatched
+specs disqualify the spec-keyed entry and the engine falls through to
+the class-only sibling. This lets the catalog separate e.g.
+`RMP_DISC_3V3` (disc priest, kill-the-priest plan) from `SMR_3V3`
+(shadow priest, no-healer pressure) once the priest's spec has been
+observed in combat.
+
 ### Scoring engine
 
 `StrategyEngine:Evaluate(state)` scores every alive enemy with a weighted
