@@ -79,14 +79,28 @@ local function now()
     return os.time()
 end
 
+-- M16 (v2.1): per-source progress key.
+-- Pre-v2.1 progress was keyed by pattern id alone, so in a 10-player
+-- BG with multiple priests casting PSYCHIC_SCREAM the first cast
+-- advanced state, the second reset/false-completed, etc. v2.1 keys by
+-- "<def.id>|<sourceGUID>" so each caster's progress is tracked
+-- independently. The legacy 2-arg signature `P:Observe(spellID, ts)`
+-- remains supported (sourceGUID defaults to a sentinel) for callers
+-- that haven't been updated.
+local function progKey(defId, sourceGUID)
+    return defId .. "|" .. (sourceGUID or "_anon")
+end
+
 -- Observe a single cast event. Call from Core's CLEU dispatch on
--- SPELL_CAST_SUCCESS / SPELL_AURA_APPLIED.
-function P:Observe(spellID, ts)
+-- SPELL_CAST_SUCCESS. sourceGUID identifies the caster so multiple
+-- enemies casting the same spell don't collide in progress state.
+function P:Observe(spellID, ts, sourceGUID)
     if not spellID then return end
     ts = ts or now()
     for _, def in ipairs(self.defs) do
         if def.steps then
-            local prog = self._progress[def.id] or { stepIdx = 0, lastTs = 0 }
+            local key = progKey(def.id, sourceGUID)
+            local prog = self._progress[key] or { stepIdx = 0, lastTs = 0 }
             -- Expire stale half-matches before evaluating the next step.
             if (ts - prog.lastTs) > self.STATE_TTL_SECONDS then
                 prog.stepIdx = 0
@@ -98,24 +112,37 @@ function P:Observe(spellID, ts)
                     prog.lastTs  = ts
                 end
             end
-            self._progress[def.id] = prog
+            self._progress[key] = prog
         end
     end
 end
 
--- Match probability for a pattern: completed-steps / total-steps.
--- A fully-matched pattern returns 1.0.
-function P:Probability(patternID)
-    local prog = self._progress[patternID]
-    if not prog then return 0.0 end
-    for _, def in ipairs(self.defs) do
-        if def.id == patternID then
-            local total = #def.steps
-            if total == 0 then return 0.0 end
-            return prog.stepIdx / total
+-- Match probability for a pattern. Returns the MAX across all sources
+-- (any caster's completed chain counts as a match). Legacy: when called
+-- without sourceGUID, falls back to the highest progress across all
+-- tracked sources for this pattern.
+function P:Probability(patternID, sourceGUID)
+    local def
+    for _, d in ipairs(self.defs) do
+        if d.id == patternID then def = d; break end
+    end
+    if not def or not def.steps or #def.steps == 0 then return 0.0 end
+    local total = #def.steps
+
+    if sourceGUID then
+        local prog = self._progress[progKey(patternID, sourceGUID)]
+        if not prog then return 0.0 end
+        return prog.stepIdx / total
+    end
+    -- No source specified — pick the highest progress across any caster.
+    local best = 0
+    local prefix = patternID .. "|"
+    for k, prog in pairs(self._progress) do
+        if k:sub(1, #prefix) == prefix and prog.stepIdx > best then
+            best = prog.stepIdx
         end
     end
-    return 0.0
+    return best / total
 end
 
 -- Returns array of { id, labelKey, prob } for patterns whose

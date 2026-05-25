@@ -38,6 +38,7 @@ local specs = {
     "Lookahead_spec.lua",
     "Patterns_spec.lua",
     "RatingAwareE2E_spec.lua",
+    "BGModeE2E_spec.lua",
     "Benchmark_spec.lua",
     "Calibration_spec.lua",
     "Sounds_spec.lua",

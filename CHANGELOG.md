@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-05-25
+
+**Wild PvP** — battlegrounds + world PvP + duels. The addon used to be effectively disabled outside arena because enemy discovery was hardcoded to `arena1..arena5` unit IDs and bracket-aware scoring assumed 2/3/5 teams. v2.1 extends the engine to BG (WSG / AB / AV / EotS) and open-world PvP without breaking the arena flows that already work.
+
+User-facing pitch: open the addon in a Warsong Gulch queue and you'll see a recommendation frame with sensible kill targets (the flag carrier at low HP dominates), low-HP straggler swaps, and BG-flavoured callouts. Toggle nameplates and enemies appear / disappear as they come into LOS. Duels light up the frame with your opponent. None of this required new modules — same engine, just made context-aware.
+
+12 new locale keys (103 → 115). 50+ new tests (538 → 586+). CI 99% coverage gate still green.
+
+### Added — M16 (v2.1 quality + ship)
+- **End-to-end BG simulation.** `Tests/BGModeE2E_spec.lua` synthesises a 10-player BG roster and verifies: flag-carrier dominates kill priority, low-HP straggler swap, `CALL_FLAG_CARRIER_LOW` + `CALL_BG_DEFEND` emission, no comp identification, no SWAP thrash on small score gaps, perf within budget (10 enemies × Evaluate stays under 30ms CI), arena-only callouts don't fire spuriously. 8 cases.
+- **Per-source pattern progress (bug fix).** `Patterns:Observe(spellID, ts, sourceGUID)` now keys progress by `<patternId>|<sourceGUID>` so two enemy priests casting Psychic Scream don't collide / false-complete each other's chains. Legacy 2-arg signature `(spellID, ts)` still works (sourceGUID defaults to a sentinel). `Probability` accepts an optional `sourceGUID` for per-caster lookup; without it, returns MAX progress across tracked sources. 4 new tests.
+- Version bump: 2.0.2 → **2.1.0** (minor — new feature surface).
+
 ### Added — M15 (v2.1 world PvP + duels)
 - **World PvP engine branch.** When `state.pvpContext == "world"`:
   - `decideMode` skips OPEN (no arena planning phase) and skips SWAP (single-target focus, no team coordination)
