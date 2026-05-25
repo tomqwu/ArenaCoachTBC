@@ -1,15 +1,25 @@
 # WeakAura templates for ArenaCoachTBC
 
 ArenaCoachTBC publishes its current recommendation through the global
-`_G.ArenaCoachTBC` API (the `WeakAuraBridge` module). WeakAuras can consume
-that surface directly using a Custom trigger. Below are ready-to-paste
-templates for the most common displays.
+`_G.ArenaCoachTBC` API (the `WeakAuraBridge` module). WeakAuras consume
+that surface directly. **Two paths**, pick whichever fits your workflow:
 
-> **About the binary export string.** A real WA `!WA:2!...` import string
-> can only be generated inside WeakAuras itself (it uses LibSerialize +
-> LibDeflate + base64 with WA-specific framing). What follows is the
-> *trigger code* you paste into a manually-created WA — the lookup logic is
-> the same as if an export string installed it.
+## Path 1 · Paste-ready import strings (recommended)
+
+Open **[`weakaura-imports.md`](weakaura-imports.md)** for 5 generated
+`!WA:2!...` strings. Open WeakAuras, click **Import**, paste, done.
+Strings are produced by `tools/export_weakauras.mjs` (node-weakauras-parser
++ LibSerialize + LibDeflate) so you can regenerate them after editing
+the source templates:
+
+```bash
+cd tools && npm install        # one time
+node export_weakauras.mjs      # writes docs/weakaura-imports.md
+```
+
+## Path 2 · Trigger-code snippets (DIY)
+
+What follows is the *trigger code* you paste into a manually-created WA — the same lookup logic the auto-generated strings install. Use this when you want to combine a template with your own custom display, or when you'd rather hand-build the WA in the UI.
 
 ## Installation (one-time)
 
