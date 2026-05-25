@@ -37,6 +37,14 @@ local ST = ns.Strategies
 --   defensiveTriggers : optional list of trigger names that force DEFEND
 --   ownVariants : optional { ownArchetype -> overrides } so a single enemy
 --                 entry can give different advice to different own teams.
+--   chains      : optional list of canonical CC setups this comp tends to
+--                 run, used by the M8 chain planner. Each entry is
+--                 { id, label, links = { {spellID,category,byClass,targetRole}, ... } }.
+--                 byClass references a class in `core`; targetRole is one
+--                 of "primary" / "off-healer" / "any" and is resolved
+--                 against the live state at evaluation time.
+local S = ns.Spells
+
 ST.comps = {
     -- ============================================================
     -- "RMP" family (rogue + mage + priest), the canonical TBC comp.
@@ -63,6 +71,21 @@ ST.comps = {
             DRAIN        = { openTarget = nil,     swapTarget = "PRIEST", note = "drain mage mana, force defensives" },
             JUNGLE       = { openTarget = "MAGE",  swapTarget = "PRIEST", note = "scatter+fear chain on mage" },
         },
+        chains = {
+            { id = "rmp_sap_into_kidney",
+              label = "Sap off-healer, kidney the kill target",
+              links = {
+                  { spellID = S.SAP,          category = "INCAPACITATE", byClass = "ROGUE", targetRole = "off-healer" },
+                  { spellID = S.POLYMORPH,    category = "INCAPACITATE", byClass = "MAGE",  targetRole = "off-healer-2" },
+                  { spellID = S.KIDNEY_SHOT,  category = "STUN",         byClass = "ROGUE", targetRole = "primary" },
+              } },
+            { id = "rmp_fear_into_burst",
+              label = "Psychic scream lockdown into mage burst",
+              links = {
+                  { spellID = S.PSYCHIC_SCREAM, category = "FEAR",         byClass = "PRIEST", targetRole = "any" },
+                  { spellID = S.POLYMORPH,      category = "INCAPACITATE", byClass = "MAGE",   targetRole = "off-healer" },
+              } },
+        },
     },
     -- WMS = Warrior / Mage / Shaman ("Battlecleave")
     {
@@ -72,6 +95,14 @@ ST.comps = {
         openTarget = "MAGE",
         swapTarget = "SHAMAN",
         callouts = { "CALL_PURGE", "CALL_TREMOR_FEAR", "CALL_FREEDOM_WAR" },
+        chains = {
+            { id = "wms_sheep_into_train",
+              label = "Sheep healer, MS train the kill target",
+              links = {
+                  { spellID = S.POLYMORPH,        category = "INCAPACITATE", byClass = "MAGE",    targetRole = "off-healer" },
+                  { spellID = S.INTIMIDATING_SHOUT, category = "FEAR",        byClass = "WARRIOR", targetRole = "any" },
+              } },
+        },
     },
     -- Warlock/Druid/X
     {
@@ -94,6 +125,14 @@ ST.comps = {
             MELEE_CLEAVE = { openTarget = "WARLOCK", swapTarget = "DRUID" },
             DRAIN        = { openTarget = nil, note = "outlast, mana burn druid" },
         },
+        chains = {
+            { id = "wld_fear_into_cyclone",
+              label = "Lock fear chain into druid cyclone peel",
+              links = {
+                  { spellID = S.HOWL_OF_TERROR, category = "FEAR",    byClass = "WARLOCK", targetRole = "any" },
+                  { spellID = S.CYCLONE,        category = "CYCLONE", byClass = "DRUID",   targetRole = "off-healer" },
+              } },
+        },
     },
     -- Warlock / Shaman cleave
     {
@@ -112,6 +151,14 @@ ST.comps = {
         openTarget = "PALADIN",
         swapTarget = "WARLOCK",
         callouts = { "CALL_PURGE", "CALL_MANA_BURN_PLAN" },
+        chains = {
+            { id = "wlp_fear_into_hoj",
+              label = "Fear chain into Hammer of Justice on the paladin",
+              links = {
+                  { spellID = S.FEAR_LOCK,         category = "FEAR", byClass = "WARLOCK", targetRole = "any" },
+                  { spellID = S.HAMMER_OF_JUSTICE, category = "STUN", byClass = "PALADIN", targetRole = "primary" },
+              } },
+        },
     },
     -- ============================================================
     -- Hunter comps
@@ -131,6 +178,14 @@ ST.comps = {
             "CALL_CLEANSE_ROOTS",
             "CALL_AVOID_OVERCHASE",
         },
+        chains = {
+            { id = "jungle_trap_into_cyclone",
+              label = "Trap healer, cyclone off-target",
+              links = {
+                  { spellID = S.FREEZING_TRAP, category = "INCAPACITATE", byClass = "HUNTER", targetRole = "off-healer" },
+                  { spellID = S.CYCLONE,       category = "CYCLONE",      byClass = "DRUID",  targetRole = "primary" },
+              } },
+        },
     },
     {
         id    = "BEAST_CLEAVE",
@@ -139,6 +194,15 @@ ST.comps = {
         openTarget = "HUNTER",
         swapTarget = "WARRIOR",
         callouts = { "CALL_FREEDOM_WAR", "CALL_AVOID_OVERCHASE" },
+        chains = {
+            { id = "beast_trap_into_intercept",
+              label = "Trap kill target, warrior intercepts on land",
+              links = {
+                  { spellID = S.FREEZING_TRAP, category = "INCAPACITATE", byClass = "HUNTER",  targetRole = "primary" },
+                  { spellID = S.SCATTER_SHOT,  category = "DISORIENT",    byClass = "HUNTER",  targetRole = "off-healer" },
+                  { spellID = S.INTERCEPT,     category = "STUN",         byClass = "WARRIOR", targetRole = "primary" },
+              } },
+        },
     },
     -- ============================================================
     -- Paladin / Warrior / X "TSG"
@@ -150,6 +214,14 @@ ST.comps = {
         openTarget = "PALADIN",
         swapTarget = "WARRIOR",
         callouts = { "CALL_PURGE", "CALL_HOJ_KILL" },
+        chains = {
+            { id = "tsg_hoj_into_intercept",
+              label = "HoJ on the priority target, intercept follow-up",
+              links = {
+                  { spellID = S.HAMMER_OF_JUSTICE, category = "STUN", byClass = "PALADIN", targetRole = "primary" },
+                  { spellID = S.INTERCEPT,         category = "STUN", byClass = "WARRIOR", targetRole = "primary" },
+              } },
+        },
     },
     -- ============================================================
     -- Rogue + Druid "RLS"-style (Rogue/Lock-or-Mage/Shaman) approximations
@@ -191,6 +263,15 @@ ST.comps = {
         openTarget = "WARLOCK",
         swapTarget = "MAGE",
         callouts = { "CALL_GROUND_POLY", "CALL_PURGE", "CALL_TREMOR_FEAR" },
+        chains = {
+            { id = "triple_caster_overlap",
+              label = "Stacked fear+sheep CC chain on the kill target",
+              links = {
+                  { spellID = S.FEAR_LOCK,       category = "FEAR",         byClass = "WARLOCK", targetRole = "primary" },
+                  { spellID = S.POLYMORPH,       category = "INCAPACITATE", byClass = "MAGE",    targetRole = "off-healer" },
+                  { spellID = S.PSYCHIC_SCREAM,  category = "FEAR",         byClass = "PRIEST",  targetRole = "any" },
+              } },
+        },
     },
     -- ============================================================
     -- Dynamic comps (resolved on healer-count, not class set)
@@ -233,6 +314,15 @@ ST.comps = {
         openTarget = "PRIEST", swapTarget = "ROGUE",
         threats = { ROGUE = "Cheap > Kidney burst window" },
         callouts = { "CALL_TREMOR_FEAR", "CALL_MANA_BURN_PLAN" },
+        chains = {
+            { id = "rp_kidney_into_blind",
+              label = "Kidney burst into blind reset",
+              links = {
+                  { spellID = S.KIDNEY_SHOT,    category = "STUN",      byClass = "ROGUE",  targetRole = "primary" },
+                  { spellID = S.BLIND,          category = "DISORIENT", byClass = "ROGUE",  targetRole = "off-healer" },
+                  { spellID = S.PSYCHIC_SCREAM, category = "FEAR",      byClass = "PRIEST", targetRole = "any" },
+              } },
+        },
     },
     {
         id = "RD_2V2", bracket = 2,
@@ -241,6 +331,14 @@ ST.comps = {
         openTarget = "DRUID", swapTarget = "ROGUE",
         threats = { DRUID = "HoTs + cyclone" },
         callouts = { "CALL_CYCLONE_OFF", "CALL_PURGE" },
+        chains = {
+            { id = "rd_kidney_into_cyclone",
+              label = "Rogue stun + druid cyclone lockdown",
+              links = {
+                  { spellID = S.KIDNEY_SHOT, category = "STUN",    byClass = "ROGUE", targetRole = "primary" },
+                  { spellID = S.CYCLONE,     category = "CYCLONE", byClass = "DRUID", targetRole = "off-healer" },
+              } },
+        },
     },
     {
         id = "DRAIN_2V2", bracket = 2,
@@ -266,6 +364,15 @@ ST.comps = {
         openTarget = "MAGE", swapTarget = "PRIEST",
         threats = { MAGE = "Nova > Sheep > Frostbolt shatter" },
         callouts = { "CALL_DISP_FROST", "CALL_GROUND_POLY", "CALL_TREMOR_FEAR" },
+        chains = {
+            { id = "shatter_nova_into_sheep",
+              label = "Frost nova root into sheep on off-target",
+              links = {
+                  { spellID = S.FROST_NOVA,     category = "ROOT",         byClass = "MAGE",   targetRole = "primary" },
+                  { spellID = S.POLYMORPH,      category = "INCAPACITATE", byClass = "MAGE",   targetRole = "off-healer" },
+                  { spellID = S.PSYCHIC_SCREAM, category = "FEAR",         byClass = "PRIEST", targetRole = "any" },
+              } },
+        },
     },
     {
         id = "ENH_PRIEST_2V2", bracket = 2,
