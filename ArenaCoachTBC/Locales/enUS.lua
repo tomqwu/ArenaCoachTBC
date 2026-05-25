@@ -102,6 +102,11 @@ ns.locales.enUS = {
     CHAIN_STEP_PREFIX             = "Step",
     CHAIN_PICKED_PREFIX           = "Chain",
 
+    -- M9 #65: profile-driven callouts
+    CALL_FAKE_KICK_2          = "They kick the first heal - fake your second",
+    CALL_SAVE_TREMOR_HOJ      = "They trinket Fear - save Tremor for HoJ",
+    CALL_BURST_BLOCK_INCOMING = "Ice Block expected - hold burst",
+
     -- Debug
     DEBUG_PREFIX         = "[ACC]",
     DEBUG_ENABLED        = "debug enabled",

@@ -392,6 +392,103 @@ H.it(g, "Evaluate prefers the higher-prob chain when DR pre-bumps one", function
     H.ns.DRTracker:Clear()
 end)
 
+-- =================================================================
+-- Profile-driven callouts (M9 #65)
+-- =================================================================
+
+local function seedProfile(state, tendency, alpha, beta)
+    H.load("OpponentProfile.lua")
+    local OP = H.ns.OpponentProfile
+    state.opponentProfile = {
+        tendencies = {
+            trinketsFear      = { alpha = 1, beta = 1, observations = 0 },
+            iceBlockBelow30   = { alpha = 1, beta = 1, observations = 0 },
+            kicksFirstHeal    = { alpha = 1, beta = 1, observations = 0 },
+            sapsPriest        = { alpha = 1, beta = 1, observations = 0 },
+        },
+    }
+    -- Inject observation count by bumping alpha/beta the agreed-upon
+    -- number of times so OP:Estimate sees the right n.
+    local rec = state.opponentProfile.tendencies[tendency]
+    rec.alpha = alpha
+    rec.beta  = beta
+    rec.observations = (alpha - 1) + (beta - 1)
+end
+
+H.it(g, "Evaluate pushes CALL_FAKE_KICK_2 when kicksFirstHeal >= 0.7 with enough samples", function()
+    local state = SE:BuildTestState({"WARLOCK","DRUID","WARRIOR"})
+    state.combatPhase = "ACTIVE"
+    seedProfile(state, "kicksFirstHeal", 8, 2)  -- alpha=8, beta=2 -> 0.8, n=8
+    local rec = SE:Evaluate(state)
+    local found = false
+    for _, c in ipairs(rec.callouts or {}) do
+        if c == "CALL_FAKE_KICK_2" then found = true; break end
+    end
+    H.assertTrue(found, "expected CALL_FAKE_KICK_2 in callouts")
+    H.assertTrue(rec.profileContrib:find("kicksFirstHeal") ~= nil,
+        "profileContrib should mention kicksFirstHeal")
+end)
+
+H.it(g, "Evaluate pushes CALL_SAVE_TREMOR_HOJ when trinketsFear >= 0.7 with enough samples", function()
+    local state = SE:BuildTestState({"WARLOCK","DRUID","WARRIOR"})
+    state.combatPhase = "ACTIVE"
+    seedProfile(state, "trinketsFear", 10, 3)  -- 10/13 ~ 0.77
+    local rec = SE:Evaluate(state)
+    local found = false
+    for _, c in ipairs(rec.callouts or {}) do
+        if c == "CALL_SAVE_TREMOR_HOJ" then found = true; break end
+    end
+    H.assertTrue(found, "expected CALL_SAVE_TREMOR_HOJ in callouts")
+end)
+
+H.it(g, "Evaluate pushes CALL_BURST_BLOCK_INCOMING when iceBlockBelow30 >= 0.7", function()
+    local state = SE:BuildTestState({"WARLOCK","DRUID","WARRIOR"})
+    state.combatPhase = "ACTIVE"
+    seedProfile(state, "iceBlockBelow30", 9, 2)  -- ~ 0.82
+    local rec = SE:Evaluate(state)
+    local found = false
+    for _, c in ipairs(rec.callouts or {}) do
+        if c == "CALL_BURST_BLOCK_INCOMING" then found = true; break end
+    end
+    H.assertTrue(found)
+end)
+
+H.it(g, "Evaluate suppresses profile callouts when samples < threshold", function()
+    -- Only 3 observations (< MIN_SAMPLES_FOR_OPINION = 5). Even with
+    -- 3-of-3 positive, EstimateOrDefault returns the fallback 0.5,
+    -- which is below the 0.7 callout gate.
+    local state = SE:BuildTestState({"WARLOCK","DRUID","WARRIOR"})
+    state.combatPhase = "ACTIVE"
+    seedProfile(state, "kicksFirstHeal", 4, 1)  -- n = 3, mean = 0.8 but gated by n
+    local rec = SE:Evaluate(state)
+    for _, c in ipairs(rec.callouts or {}) do
+        H.assertTrue(c ~= "CALL_FAKE_KICK_2",
+            "should not push CALL_FAKE_KICK_2 with n=3 (below threshold)")
+    end
+end)
+
+H.it(g, "Evaluate does not push profile callouts when no profile is on state", function()
+    local state = SE:BuildTestState({"WARLOCK","DRUID","WARRIOR"})
+    state.combatPhase = "ACTIVE"
+    state.opponentProfile = nil
+    local rec = SE:Evaluate(state)
+    for _, c in ipairs(rec.callouts or {}) do
+        H.assertTrue(c ~= "CALL_FAKE_KICK_2"
+            and c ~= "CALL_SAVE_TREMOR_HOJ"
+            and c ~= "CALL_BURST_BLOCK_INCOMING",
+            "no-profile state should not emit profile callouts")
+    end
+    H.assertNil(rec.profileContrib)
+end)
+
+H.it(g, "Evaluate exposes opponentSignature from state", function()
+    local state = SE:BuildTestState({"WARLOCK","DRUID","WARRIOR"})
+    state.combatPhase = "ACTIVE"
+    state.opponentSignature = "TEST_SIG#1234"
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.opponentSignature, "TEST_SIG#1234")
+end)
+
 H.it(g, "Evaluate's reason text includes the comp tag and confidence", function()
     local state = SE:BuildTestState({"WARLOCK","DRUID","WARRIOR"})
     state.combatPhase = "PRE"

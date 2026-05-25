@@ -424,6 +424,31 @@ local function buildCallouts(state, comp, primaryTarget, mode)
         push("CALL_TREMOR_FEAR")
     end
 
+    -- M9 #65: profile-driven callouts. When state.opponentProfile is
+    -- present and a tendency's posterior mean is high enough (with
+    -- enough samples — EstimateOrDefault handles the threshold), emit
+    -- the matching "this team does X, plan around it" callout. The
+    -- per-decision contribution is also recorded as a comma-joined
+    -- string for trace logging.
+    local OP = ns.OpponentProfile
+    local profile = state.opponentProfile
+    if OP and profile then
+        local contrib = {}
+        local function checkTendency(key, threshold, callKey)
+            local v = OP:EstimateOrDefault(profile, key, 0.5)
+            if v >= threshold then
+                push(callKey)
+                table.insert(contrib, string.format("%s=%.2f", key, v))
+            end
+        end
+        checkTendency("kicksFirstHeal",  0.7, "CALL_FAKE_KICK_2")
+        checkTendency("trinketsFear",    0.7, "CALL_SAVE_TREMOR_HOJ")
+        checkTendency("iceBlockBelow30", 0.7, "CALL_BURST_BLOCK_INCOMING")
+        if #contrib > 0 then
+            state._profileContrib = table.concat(contrib, ",")
+        end
+    end
+
     return out
 end
 
@@ -614,6 +639,8 @@ function SE:Evaluate(state)
         compConfidence  = compConfidence,
         compSpecConfirmed = (comp ~= nil) and (comp.specs ~= nil) or false,
         chain           = pickedChain,
+        profileContrib  = state._profileContrib,
+        opponentSignature = state.opponentSignature,
         ownArchetype    = ownArchetype and ownArchetype.id or nil,
         ownArchetypeLabel = ownArchetype and ownArchetype.label or nil,
         ownCapabilities = ownCaps,
