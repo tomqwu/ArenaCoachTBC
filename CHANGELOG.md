@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.3] - 2026-05-25
+
+### Fixed
+- **WeakAura import dialog never showed the Import button.** Decoded a known-working Wago WA (`v1TwWSgUh` — a user-uploaded copy of our Mode badge) side-by-side with our generated string. Three schema gaps emerged:
+  - `d.version` was `1` — modern WA expects `3`. Version 1 is so old that newer WA builds silently drop the import without surfacing the dialog (no Import button shown).
+  - `d.semver` was undefined — required for version-3 imports as a user-visible release tag.
+  - `d.internalVersion` (fixed in v2.2.2) was already set to 90, so that part was correct.
+
+  Set `version: 3` and `semver: '2.2.3'` in the exporter `COMMON` block. All 5 templates regenerated in `docs/weakaura-imports.md` and the inline copies in `README.md`. Now matches the schema of the proven-working Wago WA byte-for-byte (modulo the per-aura `uid`).
+
 ## [2.2.2] - 2026-05-25
 
 ### Fixed

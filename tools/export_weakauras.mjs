@@ -58,7 +58,16 @@ const COMMON = {
   // "this aura was created with a very old version of WeakAuras" warning
   // we hit in v2.2.1 with internalVersion undefined.
   internalVersion: 90,
-  version: 1,
+  // `version` is the data-format epoch (separate from internalVersion).
+  // v3 is what modern WeakAuras emits — v2.2.2 had v1, which the import
+  // dialog silently rejected (the user reported "no Import button shows
+  // up after pasting"). Verified via Wago round-trip: a working Wago WA
+  // for this same template uses version=3.
+  version: 3,
+  // `semver` accompanies version=3 imports as a user-visible release
+  // tag on the aura. Wago auto-sets this when publishing; we set it to
+  // match the addon's release for traceability.
+  semver: '2.2.3',
   wagoID: '',
   xOffset: 0,
   yOffset: 0,
