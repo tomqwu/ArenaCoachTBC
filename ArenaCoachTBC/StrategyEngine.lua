@@ -609,14 +609,38 @@ function SE:Evaluate(state)
             local topK = cfg.chainK or 3
             local scored = ns.Chain:ScoreAll(concrete, { topK = topK })
             if scored[1] and scored[1].prob > 0 then
-                local picked = scored[1].chain
+                -- M10 #67: lookahead. Pass through Lookahead:Score to
+                -- re-rank by expected value (chain prob × opponent
+                -- response weights from the profile). Falls back to
+                -- the greedy chain pick when Lookahead is absent or
+                -- disabled.
+                local pickedScored = scored[1]
+                local pickedExpected = nil
+                local LA = ns.Lookahead
+                if LA and (cfg.lookaheadEnabled ~= false) then
+                    local laOut = LA:Score(scored, {
+                        topActions   = cfg.lookaheadTopActions   or LA.DEFAULT_TOP_ACTIONS,
+                        topResponses = cfg.lookaheadTopResponses or LA.DEFAULT_TOP_RESPONSES,
+                        profile      = state.opponentProfile,
+                    })
+                    if laOut[1] then
+                        -- Map back from lookahead result to the
+                        -- matching scored entry so we keep prob too.
+                        for _, s in ipairs(scored) do
+                            if s.chain == laOut[1].chain then pickedScored = s; break end
+                        end
+                        pickedExpected = laOut[1].expectedValue
+                    end
+                end
+                local picked = pickedScored.chain
                 pickedChain = {
-                    id           = picked.id,
-                    label        = picked.label,
-                    labelKey     = picked.labelKey,
-                    steps        = #picked.links,
-                    links        = picked.links,  -- exposed for UI step rendering
-                    expectedProb = scored[1].prob,
+                    id            = picked.id,
+                    label         = picked.label,
+                    labelKey      = picked.labelKey,
+                    steps         = #picked.links,
+                    links         = picked.links,
+                    expectedProb  = pickedScored.prob,
+                    expectedValue = pickedExpected,  -- nil when LA disabled / absent
                 }
             end
         end
