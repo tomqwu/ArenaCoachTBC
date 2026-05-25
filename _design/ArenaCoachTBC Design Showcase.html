@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ArenaCoachTBC · Design Showcase</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Serif:ital,wght@0,300;0,400;0,500;1,400&family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    /* Tactical HUD palette */
+    --bg-deep: #14110D;
+    --bg-base: #1A1612;
+    --surface-1: #221C16;
+    --surface-2: #2A241E;
+    --surface-3: #3A3128;
+    --hairline: rgba(245, 240, 232, 0.08);
+    --hairline-strong: rgba(245, 240, 232, 0.16);
+    --ink-1: #F5F0E8;
+    --ink-2: #C7BCA9;
+    --ink-3: #9C8F7E;
+    --ink-4: #6E6557;
+    --gold: #C8A86B;
+    --gold-dim: #8B7548;
+    /* Mode colors — pulled from UI.lua > modeColors (rgb * 255) */
+    --mode-open:   #FFFF66;
+    --mode-kill:   #FF4D4D;
+    --mode-swap:   #FF9900;
+    --mode-defend: #66B2FF;
+    --mode-reset:  #B3B3B3;
+    /* Class colors (in-game canonical) */
+    --c-warrior: #C79C6E;
+    --c-paladin: #F58CBA;
+    --c-hunter:  #ABD473;
+    --c-rogue:   #FFF569;
+    --c-priest:  #FFFFFF;
+    --c-shaman:  #0070DE;
+    --c-mage:    #69CCF0;
+    --c-warlock: #9482C9;
+    --c-druid:   #FF7D0A;
+    --health: #2E7D32;
+    --health-low: #C62828;
+    --mana: #1565C0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg-base); color: var(--ink-1); font-family: 'IBM Plex Sans', sans-serif; font-weight: 300; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  a { color: var(--gold); text-decoration: none; }
+
+  /* Layout primitives */
+  .scene { min-height: 100vh; padding: 96px 64px; position: relative; border-bottom: 1px solid var(--hairline); }
+  .scene + .scene { padding-top: 120px; }
+  .scene-meta { position: absolute; top: 32px; left: 64px; right: 64px; display: flex; justify-content: space-between; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--ink-4); }
+  .scene-num { color: var(--gold-dim); font-weight: 500; }
+  .scene-grid { display: grid; gap: 48px; max-width: 1400px; margin: 0 auto; }
+  .scene-title { font-family: 'IBM Plex Serif', serif; font-size: 42px; font-weight: 300; letter-spacing: -0.01em; color: var(--ink-1); margin-bottom: 8px; }
+  .scene-subtitle { font-size: 14px; letter-spacing: 0.04em; color: var(--ink-3); max-width: 640px; line-height: 1.6; margin-bottom: 56px; }
+  .caption { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.06em; color: var(--ink-4); text-transform: uppercase; }
+  .assumption-tag { display: inline-block; padding: 2px 8px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); border: 1px solid var(--gold-dim); border-radius: 2px; }
+
+  /* ====== Scene 1 · HERO ====== */
+  .hero { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; min-height: 100vh; padding: 64px; background: radial-gradient(ellipse at center, #1f1813 0%, var(--bg-deep) 70%); position: relative; overflow: hidden; }
+  .hero::before { content: ''; position: absolute; inset: 64px; border: 1px solid var(--gold-dim); opacity: 0.3; pointer-events: none; }
+  .hero::after { content: ''; position: absolute; inset: 0; background:
+    radial-gradient(circle at 20% 30%, rgba(200, 168, 107, 0.06), transparent 40%),
+    radial-gradient(circle at 80% 70%, rgba(255, 77, 77, 0.04), transparent 40%);
+    pointer-events: none;
+  }
+  .hero-corner { position: absolute; width: 32px; height: 32px; border: 1px solid var(--gold); }
+  .hero-corner-tl { top: 56px; left: 56px; border-right: 0; border-bottom: 0; }
+  .hero-corner-tr { top: 56px; right: 56px; border-left: 0; border-bottom: 0; }
+  .hero-corner-bl { bottom: 56px; left: 56px; border-right: 0; border-top: 0; }
+  .hero-corner-br { bottom: 56px; right: 56px; border-left: 0; border-top: 0; }
+  .hero-eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.4em; text-transform: uppercase; color: var(--gold); margin-bottom: 32px; }
+  .hero-title { font-family: 'Cinzel', serif; font-size: 84px; font-weight: 500; letter-spacing: 0.04em; line-height: 1; color: var(--ink-1); margin-bottom: 16px; }
+  .hero-version { font-family: 'IBM Plex Mono', monospace; font-size: 14px; letter-spacing: 0.3em; color: var(--gold-dim); margin-bottom: 56px; }
+  .hero-tagline { font-family: 'IBM Plex Serif', serif; font-style: italic; font-size: 22px; font-weight: 300; color: var(--ink-2); max-width: 580px; line-height: 1.5; margin-bottom: 64px; }
+  .hero-pillars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 48px; max-width: 800px; }
+  .hero-pillar { text-align: left; padding-left: 16px; border-left: 1px solid var(--gold-dim); }
+  .hero-pillar-h { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--gold); margin-bottom: 8px; }
+  .hero-pillar-b { font-size: 13px; color: var(--ink-3); line-height: 1.5; }
+  .hero-numbers { position: absolute; bottom: 96px; left: 50%; transform: translateX(-50%); display: flex; gap: 64px; }
+  .hero-num { text-align: center; }
+  .hero-num-v { font-family: 'IBM Plex Serif', serif; font-size: 36px; color: var(--gold); font-weight: 400; }
+  .hero-num-l { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--ink-4); margin-top: 4px; }
+
+  /* ====== Generic "WoW Backdrop" — abstract arena environment ====== */
+  .arena-backdrop {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    background:
+      radial-gradient(ellipse at 50% 30%, #2a1f15 0%, #14100b 60%, #0a0807 100%),
+      linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.4) 100%);
+    border: 1px solid var(--hairline-strong);
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.5), inset 0 0 120px rgba(0,0,0,0.5);
+  }
+  .arena-backdrop::before {
+    content: ''; position: absolute; inset: 0;
+    background:
+      linear-gradient(160deg, rgba(255,180,80,0.04) 0%, transparent 30%),
+      radial-gradient(circle at 70% 80%, rgba(200,80,40,0.05), transparent 50%);
+    pointer-events: none;
+  }
+  /* Floor/dust suggestion */
+  .arena-floor {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 35%;
+    background:
+      linear-gradient(180deg, transparent 0%, rgba(80, 50, 30, 0.15) 40%, rgba(40,25,15,0.4) 100%);
+  }
+  /* Faint pillar silhouettes */
+  .arena-pillar {
+    position: absolute;
+    bottom: 0;
+    width: 80px;
+    background: linear-gradient(180deg, rgba(20,15,10,0.6) 0%, rgba(10,8,5,0.85) 100%);
+    opacity: 0.7;
+  }
+  .arena-pillar.l { left: 6%; height: 60%; }
+  .arena-pillar.r { right: 6%; height: 65%; }
+  .arena-pillar.c { left: 50%; transform: translateX(-50%); width: 60px; height: 35%; opacity: 0.4; }
+
+  /* Mock party / enemy frames */
+  .frame-stack { position: absolute; display: flex; flex-direction: column; gap: 4px; }
+  .frame-stack.party { top: 16px; left: 16px; }
+  .frame-stack.enemies { top: 16px; right: 16px; align-items: flex-end; }
+  .unit-frame {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(15,10,8,0.85);
+    border: 1px solid rgba(0,0,0,0.6);
+    padding: 2px;
+    width: 168px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 10px;
+  }
+  .frame-stack.enemies .unit-frame { flex-direction: row-reverse; }
+  .unit-portrait {
+    width: 24px; height: 24px; flex-shrink: 0;
+    background: linear-gradient(135deg, #3a2d20, #1a130d);
+    border: 1px solid #000;
+    display: grid; place-items: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 8px; font-weight: 500;
+    color: var(--ink-2);
+  }
+  .unit-bars { flex: 1; display: flex; flex-direction: column; gap: 1px; }
+  .frame-stack.enemies .unit-bars { text-align: right; }
+  .unit-name { font-size: 9px; color: var(--ink-1); padding: 0 4px; line-height: 1.1; }
+  .bar { height: 7px; position: relative; background: #1a1a1a; border: 1px solid #000; overflow: hidden; }
+  .bar-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--health); }
+  .bar-fill.mana { background: var(--mana); }
+  .bar-fill.low { background: var(--health-low); }
+  .bar-text { position: absolute; right: 4px; top: -1px; font-size: 7px; color: var(--ink-1); text-shadow: 1px 1px 0 #000; line-height: 1.4; font-family: 'IBM Plex Mono', monospace; }
+  .frame-stack.enemies .bar-text { left: 4px; right: auto; }
+
+  /* Bottom action bar mock */
+  .action-bar { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 3px; }
+  .ab-slot {
+    width: 28px; height: 28px;
+    background: linear-gradient(180deg, #2a2218, #15110b);
+    border: 1px solid #000;
+    box-shadow: inset 0 0 0 1px #3a2f22;
+    position: relative;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    display: grid; place-items: center;
+    color: var(--gold-dim);
+  }
+  .ab-slot.lit { background: linear-gradient(180deg, #4a3a26, #2a2014); color: var(--gold); box-shadow: inset 0 0 0 1px #6a5028, 0 0 8px rgba(200,168,107,0.3); }
+
+  /* ====== ACC OVERLAY (the addon frame) — faithful to UI.lua structure ====== */
+  /* This is the "hero element" — drawn precisely. */
+  .acc-frame {
+    position: absolute;
+    width: 360px;
+    background: linear-gradient(180deg, rgba(28, 22, 18, 0.96), rgba(20, 16, 12, 0.96));
+    border: 1px solid var(--gold-dim);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.7), inset 0 1px 0 rgba(200,168,107,0.15);
+    padding: 8px 12px 12px;
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+  .acc-title { font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.25em; text-align: center; color: var(--gold); padding: 2px 0 6px; border-bottom: 1px solid var(--hairline); margin-bottom: 8px; text-transform: uppercase; }
+  .acc-big { font-family: 'Cinzel', serif; font-size: 32px; font-weight: 500; text-align: center; letter-spacing: 0.04em; line-height: 1.1; padding: 4px 0; }
+  .acc-big.kill   { color: var(--mode-kill);   text-shadow: 0 0 16px rgba(255,77,77,0.4); }
+  .acc-big.swap   { color: var(--mode-swap);   text-shadow: 0 0 16px rgba(255,153,0,0.4); }
+  .acc-big.defend { color: var(--mode-defend); text-shadow: 0 0 16px rgba(102,178,255,0.4); }
+  .acc-big.open   { color: var(--mode-open);   text-shadow: 0 0 16px rgba(255,255,102,0.3); }
+  .acc-big.reset  { color: var(--mode-reset); }
+  .acc-reason { font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; text-align: center; color: var(--ink-3); padding: 6px 0 4px; line-height: 1.4; word-spacing: 0; }
+  .acc-callouts { font-size: 11px; text-align: center; color: var(--ink-2); padding: 4px 0; line-height: 1.5; border-top: 1px solid var(--hairline); margin-top: 4px; padding-top: 8px; }
+  .acc-callouts .sep { color: var(--ink-4); margin: 0 6px; }
+  .acc-comp-badge { font-size: 11px; text-align: center; padding: 6px 0 2px; color: var(--ink-2); }
+  .acc-comp-badge .badge {
+    font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--gold-dim);
+    padding: 1px 6px; border: 1px solid var(--gold-dim);
+    margin-left: 6px;
+  }
+  .acc-comp-badge .badge.confirmed { color: var(--mode-open); border-color: var(--mode-open); }
+  /* Icon rows */
+  .acc-row { display: flex; gap: 2px; padding-top: 8px; margin-top: 8px; border-top: 1px solid var(--hairline); justify-content: center; flex-wrap: wrap; }
+  .acc-row + .acc-row { margin-top: 4px; padding-top: 4px; border-top: 0; }
+  .acc-icon {
+    width: 24px; height: 24px;
+    background: linear-gradient(180deg, #2a2218, #15110b);
+    border: 1px solid #1a1a1a;
+    box-shadow: inset 0 0 0 1px #3a2f22;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 8px; font-weight: 500;
+    color: var(--ink-3);
+    display: grid; place-items: center;
+    line-height: 1;
+    text-align: center;
+    padding: 1px;
+    opacity: 0.4;
+  }
+  .acc-icon.lit { opacity: 1; box-shadow: inset 0 0 0 1px #6a5028, 0 0 6px rgba(200,168,107,0.4); color: var(--gold); }
+  .acc-icon.alert { opacity: 1; box-shadow: inset 0 0 0 1px var(--mode-kill), 0 0 6px rgba(255,77,77,0.5); color: var(--mode-kill); }
+  /* Chain block */
+  .acc-chain { padding-top: 8px; margin-top: 6px; border-top: 1px solid var(--hairline); }
+  .acc-chain-title { font-size: 11px; color: var(--ink-1); padding: 0 2px 2px; }
+  .acc-chain-title .pct { float: right; font-family: 'IBM Plex Mono', monospace; color: var(--gold); }
+  .acc-chain-step { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--ink-3); padding: 1px 4px 1px 18px; position: relative; line-height: 1.4; }
+  .acc-chain-step::before { content: ''; position: absolute; left: 8px; top: 6px; width: 4px; height: 4px; background: var(--gold-dim); border-radius: 50%; }
+  .acc-chain-step .spell { color: var(--ink-2); }
+  .acc-chain-step .cat { color: var(--ink-4); margin-left: 6px; font-size: 9px; }
+
+  /* Burst gate ready badge */
+  .burst-ready {
+    display: inline-block; padding: 2px 10px; margin-top: 6px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+    letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--mode-kill); border: 1px solid var(--mode-kill);
+    background: rgba(255,77,77,0.08);
+    text-shadow: 0 0 8px rgba(255,77,77,0.5);
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+  /* ====== Anatomy callouts ====== */
+  .anatomy-wrap { position: relative; max-width: 1100px; margin: 0 auto; padding: 40px 0; }
+  .anatomy-frame { position: relative; width: 420px; margin: 0 auto; }
+  .anatomy-callout {
+    position: absolute;
+    width: 240px;
+    font-size: 12px;
+    color: var(--ink-2);
+    line-height: 1.5;
+  }
+  .anatomy-callout .ac-h {
+    font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+    letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--gold); margin-bottom: 4px;
+  }
+  .anatomy-line {
+    position: absolute;
+    height: 1px;
+    background: var(--gold-dim);
+    transform-origin: 0 0;
+  }
+  .anatomy-line::after {
+    content: ''; position: absolute; right: 0; top: -3px;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 8px rgba(200,168,107,0.6);
+  }
+
+  /* ====== Settings panel ====== */
+  .opts {
+    background: linear-gradient(180deg, var(--surface-1), var(--bg-deep));
+    border: 1px solid var(--gold-dim);
+    box-shadow: 0 16px 64px rgba(0,0,0,0.6);
+    max-width: 720px; margin: 0 auto;
+  }
+  .opts-titlebar {
+    background: linear-gradient(180deg, #2a2218, #15110b);
+    border-bottom: 1px solid var(--hairline);
+    padding: 10px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-family: 'Cinzel', serif; font-size: 13px; letter-spacing: 0.15em;
+    color: var(--gold); text-transform: uppercase;
+  }
+  .opts-close { font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: var(--ink-3); cursor: default; }
+  .opts-body { display: grid; grid-template-columns: 180px 1fr; min-height: 480px; }
+  .opts-nav { background: rgba(0,0,0,0.25); border-right: 1px solid var(--hairline); padding: 8px 0; }
+  .opts-nav-item {
+    padding: 8px 16px; font-size: 12px; color: var(--ink-3);
+    border-left: 2px solid transparent;
+    cursor: default;
+  }
+  .opts-nav-item.active { color: var(--ink-1); border-left-color: var(--gold); background: rgba(200,168,107,0.06); }
+  .opts-content { padding: 24px; }
+  .opts-section { margin-bottom: 28px; }
+  .opts-section-h { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold-dim); padding-bottom: 6px; border-bottom: 1px solid var(--hairline); margin-bottom: 14px; }
+  .opts-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; font-size: 13px; color: var(--ink-2); }
+  .opts-row + .opts-row { border-top: 1px solid var(--hairline); }
+  .opts-row .lbl { display: flex; flex-direction: column; gap: 2px; }
+  .opts-row .lbl .desc { font-size: 11px; color: var(--ink-4); }
+  /* mock control widgets */
+  .ctrl-toggle { width: 36px; height: 18px; background: var(--surface-3); border-radius: 9px; position: relative; }
+  .ctrl-toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: var(--ink-4); border-radius: 50%; }
+  .ctrl-toggle.on { background: rgba(200,168,107,0.3); }
+  .ctrl-toggle.on::after { left: 20px; background: var(--gold); }
+  .ctrl-dropdown { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--gold); padding: 4px 24px 4px 10px; border: 1px solid var(--hairline-strong); background: rgba(0,0,0,0.3); position: relative; }
+  .ctrl-dropdown::after { content: '▾'; position: absolute; right: 8px; top: 4px; color: var(--ink-4); }
+  .ctrl-slider { width: 140px; height: 4px; background: var(--surface-3); border-radius: 2px; position: relative; }
+  .ctrl-slider-fill { position: absolute; top: 0; bottom: 0; left: 0; background: var(--gold); border-radius: 2px; }
+  .ctrl-slider-knob { position: absolute; top: -6px; width: 12px; height: 12px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 2px var(--bg-deep); }
+
+  /* ====== Chain anatomy close-up ====== */
+  .chain-closeup { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; max-width: 1200px; margin: 0 auto; }
+  .chain-card {
+    background: linear-gradient(180deg, var(--surface-1), var(--bg-deep));
+    border: 1px solid var(--gold-dim);
+    padding: 24px;
+  }
+  .chain-card-title { font-family: 'IBM Plex Serif', serif; font-size: 18px; color: var(--ink-1); margin-bottom: 4px; }
+  .chain-card-meta { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--ink-4); margin-bottom: 24px; letter-spacing: 0.1em; }
+  .chain-prob {
+    display: flex; align-items: baseline; gap: 12px;
+    padding: 16px 0;
+    border-top: 1px solid var(--hairline);
+    border-bottom: 1px solid var(--hairline);
+    margin-bottom: 20px;
+  }
+  .chain-prob-v { font-family: 'IBM Plex Serif', serif; font-size: 48px; font-weight: 300; color: var(--gold); line-height: 1; }
+  .chain-prob-l { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-4); }
+  .chain-step-big {
+    display: grid;
+    grid-template-columns: 36px 1fr 80px;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--hairline);
+    font-size: 13px;
+  }
+  .chain-step-big:last-child { border-bottom: 0; }
+  .chain-step-num { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--gold); letter-spacing: 0.1em; }
+  .chain-step-spell { color: var(--ink-1); }
+  .chain-step-spell .who { font-size: 11px; color: var(--ink-4); display: block; margin-top: 1px; font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.08em; text-transform: uppercase; }
+  .chain-step-cat { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.15em; color: var(--ink-3); text-align: right; }
+  .chain-step-cat .dr { display: block; color: var(--gold-dim); font-size: 9px; margin-top: 1px; }
+
+  .chain-explanation { padding-left: 12px; border-left: 2px solid var(--gold-dim); }
+  .chain-explanation p { color: var(--ink-2); font-size: 14px; line-height: 1.7; margin-bottom: 14px; }
+  .chain-explanation p:last-child { margin-bottom: 0; }
+  .chain-explanation code { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--gold); background: rgba(0,0,0,0.3); padding: 1px 6px; }
+
+  /* ====== Compact vs Full comparison ====== */
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; max-width: 1100px; margin: 0 auto; }
+  .compare-cell { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+  .compare-label { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold-dim); }
+  .compare-note { font-size: 12px; color: var(--ink-3); text-align: center; max-width: 320px; line-height: 1.5; }
+
+  /* ====== WeakAura scene ====== */
+  .wa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; max-width: 1200px; margin: 0 auto; align-items: start; }
+  .wa-code {
+    background: #0e0b08;
+    border: 1px solid var(--hairline-strong);
+    padding: 20px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    line-height: 1.7;
+    color: var(--ink-2);
+    overflow-x: auto;
+  }
+  .wa-code .kw { color: #C594C5; }
+  .wa-code .fn { color: var(--gold); }
+  .wa-code .str { color: #A3C9A8; }
+  .wa-code .com { color: var(--ink-4); font-style: italic; }
+  .wa-code-title {
+    font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+    letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold-dim);
+    padding-bottom: 10px; margin-bottom: 12px;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .wa-aura-demo {
+    position: relative;
+    background: radial-gradient(ellipse at center, #1a1410 0%, #0a0807 80%);
+    border: 1px solid var(--hairline);
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+  }
+  /* Big floating WA on screen */
+  .wa-floater {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    text-align: center;
+  }
+  .wa-mode {
+    font-family: 'Cinzel', serif; font-size: 64px;
+    color: var(--mode-kill); text-shadow: 0 0 24px rgba(255,77,77,0.6);
+    letter-spacing: 0.08em;
+    line-height: 1;
+  }
+  .wa-target {
+    font-family: 'IBM Plex Sans', sans-serif; font-size: 24px;
+    color: var(--ink-1); margin-top: 4px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+  }
+  .wa-burst {
+    margin-top: 24px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 14px;
+    letter-spacing: 0.3em; color: var(--mode-kill);
+    text-shadow: 0 0 16px rgba(255,77,77,0.7);
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  .wa-tag { position: absolute; top: 16px; left: 16px; }
+
+  /* ====== Footer ====== */
+  .footer {
+    padding: 64px;
+    background: var(--bg-deep);
+    text-align: center;
+    color: var(--ink-4);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    border-top: 1px solid var(--hairline);
+  }
+  .footer-marks { margin-bottom: 16px; }
+  .footer-marks span { color: var(--gold-dim); margin: 0 12px; }
+
+  /* Assumption tag floating in scenes */
+  .scene-assumptions {
+    margin-top: 40px;
+    padding-top: 24px;
+    border-top: 1px dashed var(--hairline);
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    max-width: 1100px;
+    margin-left: auto;
+    margin-right: auto;
+    font-size: 11px;
+    color: var(--ink-4);
+    line-height: 1.6;
+  }
+  .scene-assumptions strong { color: var(--gold-dim); font-weight: 500; }
+</style>
+</head>
+<body>
+
+<!-- ====================================================================== -->
+<!-- SCENE 1 · HERO                                                          -->
+<!-- ====================================================================== -->
+<section class="scene hero">
+  <span class="hero-corner hero-corner-tl"></span>
+  <span class="hero-corner hero-corner-tr"></span>
+  <span class="hero-corner hero-corner-bl"></span>
+  <span class="hero-corner hero-corner-br"></span>
+
+  <div class="hero-eyebrow">ArenaCoachTBC · Design Showcase · 2026</div>
+  <h1 class="hero-title">Arena Coach</h1>
+  <div class="hero-version">v 2 · 0 · 0</div>
+  <p class="hero-tagline">
+    A coach for TBC Anniversary arena that watches the fight,
+    plans the chain, and learns your opponents — match by match.
+  </p>
+  <div class="hero-pillars">
+    <div class="hero-pillar">
+      <div class="hero-pillar-h">Capability</div>
+      <div class="hero-pillar-b">Spec-aware comp matching, multi-link CC chain planning, opponent profiles, lookahead expectimax, rating-aware burst gating.</div>
+    </div>
+    <div class="hero-pillar">
+      <div class="hero-pillar-h">Restraint</div>
+      <div class="hero-pillar-b">Advice only. The addon never casts, targets, clicks protected buttons, or modifies secure macros. Just visual and audio cues.</div>
+    </div>
+    <div class="hero-pillar">
+      <div class="hero-pillar-h">Auditable</div>
+      <div class="hero-pillar-b">Every recommendation traces the signals that contributed. Every probability emit is calibrated against synthetic ground truth.</div>
+    </div>
+  </div>
+  <div class="hero-numbers">
+    <div class="hero-num"><div class="hero-num-v">533</div><div class="hero-num-l">tests</div></div>
+    <div class="hero-num"><div class="hero-num-v">81%</div><div class="hero-num-l">benchmark</div></div>
+    <div class="hero-num"><div class="hero-num-v">0.10</div><div class="hero-num-l">calib err</div></div>
+    <div class="hero-num"><div class="hero-num-v">5</div><div class="hero-num-l">pure modules</div></div>
+  </div>
+</section>
+
+<!-- ====================================================================== -->
+<!-- SCENE 2 · ANATOMY                                                       -->
+<!-- ====================================================================== -->
+<section class="scene">
+  <div class="scene-meta"><span>scene <span class="scene-num">02</span> / 09</span><span>anatomy</span></div>
+  <div class="scene-grid">
+    <div style="text-align: center;">
+      <h2 class="scene-title">Anatomy of the recommendation frame</h2>
+      <p class="scene-subtitle" style="margin-left: auto; margin-right: auto;">Every element is data-driven by the engine. Nothing is decorative. The frame is movable; the layout is fixed.</p>
+    </div>
+
+    <div class="anatomy-wrap">
+      <div class="anatomy-frame">
+        <div class="acc-frame" style="position: static; margin: 0 auto;">
+          <div class="acc-title">Arena Coach</div>
+          <div class="acc-big kill">KILL: Holyman</div>
+          <div class="acc-reason">PRIEST [role_healer(25), trinket_down(20), health_below_50(30)] | RMP_DISC_3V3 spec-confirmed (1.00)</div>
+          <div class="acc-callouts">HoJ kill target<span class="sep">·</span>Ground Polymorph<span class="sep">·</span>Tremor for fear</div>
+          <div class="acc-comp-badge">RMP (confirmed Disc Priest) <span class="badge confirmed">spec-confirmed</span></div>
+          <div class="acc-chain">
+            <div class="acc-chain-title">Chain: Sap off-healer, kidney the target <span class="pct">54%</span></div>
+            <div class="acc-chain-step">Step 1. <span class="spell">Sap</span> <span class="cat">INCAPACITATE</span></div>
+            <div class="acc-chain-step">Step 2. <span class="spell">Polymorph</span> <span class="cat">INCAPACITATE</span></div>
+            <div class="acc-chain-step">Step 3. <span class="spell">Kidney Shot</span> <span class="cat">STUN</span></div>
+          </div>
+          <div class="acc-row">
+            <div class="acc-icon lit" title="Mortal Strike">MS</div>
+            <div class="acc-icon lit" title="Bloodlust">BL</div>
+            <div class="acc-icon" title="HoJ on cooldown">HoJ</div>
+            <div class="acc-icon" title="Freedom">Fr</div>
+            <div class="acc-icon" title="Tremor">Tr</div>
+            <div class="acc-icon lit" title="Mana Burn">MB</div>
+            <div class="acc-icon" title="Pain Sup">PS</div>
+            <div class="acc-icon" title="BoP">BoP</div>
+          </div>
+          <div class="acc-row">
+            <div class="acc-icon alert" title="PvP trinket up">Tr</div>
+            <div class="acc-icon" title="Ice Block">IB</div>
+            <div class="acc-icon" title="Divine Shield">DS</div>
+            <div class="acc-icon" title="Pain Sup">PS</div>
+            <div class="acc-icon" title="NS">NS</div>
+            <div class="acc-icon" title="Death Coil">DC</div>
+            <div class="acc-icon" title="Counterspell">CS</div>
+          </div>
+        </div>
+
+        <!-- Anatomy labels — using percentages relative to anatomy-frame -->
+        <div class="anatomy-callout" style="top: 6%; left: -300px;">
+          <div class="ac-h">① Title bar</div>
+          Localized; stays consistent for visual recognition between arenas.
+        </div>
+        <div class="anatomy-callout" style="top: 17%; right: -300px;">
+          <div class="ac-h">② Mode + target</div>
+          The hero line. Color encodes mode: KILL red, SWAP orange, DEFEND blue, OPEN yellow, RESET grey. Name pulled live from the unit frame.
+        </div>
+        <div class="anatomy-callout" style="top: 33%; left: -300px;">
+          <div class="ac-h">③ Reason (debug text)</div>
+          Top 3 score contributors + comp tag + confidence. Shown by default; hidden in compact mode.
+        </div>
+        <div class="anatomy-callout" style="top: 43%; right: -300px;">
+          <div class="ac-h">④ Callouts (locale-keyed)</div>
+          Comp-driven + mode-driven + profile-driven, deduped, DR-gated. The actual user-facing strings.
+        </div>
+        <div class="anatomy-callout" style="top: 53%; left: -300px;">
+          <div class="ac-h">⑤ Comp badge</div>
+          <code style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--gold);">spec-confirmed</code> when a spec-keyed variant matched; <code style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--gold);">class-guessed</code> while spec data is still unknown.
+        </div>
+        <div class="anatomy-callout" style="top: 65%; right: -300px;">
+          <div class="ac-h">⑥ Chain block</div>
+          Top-scoring CC chain from the comp's catalog, ranked by expected value across opponent responses. Each step shown with its DR category.
+        </div>
+        <div class="anatomy-callout" style="top: 82%; left: -300px;">
+          <div class="ac-h">⑦ Friendly cooldown row</div>
+          Lit when the friendly's ability is ready. Reminders only — never bound to actions.
+        </div>
+        <div class="anatomy-callout" style="top: 90%; right: -300px;">
+          <div class="ac-h">⑧ Enemy cooldown row</div>
+          Observed via combat log. PvP trinket pulses red when up.
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="scene-assumptions">
+    <span class="assumption-tag">assumption</span>
+    <span><strong>Anatomy labels</strong> are drawn around the live frame as overlay annotations — in-game the frame stands alone. Spell name icons here use 2-3 letter shorthand (MS/BL/HoJ/Tr/IB/DS/PS) because the in-client real icons are Blizzard textures we don't ship; the addon uses <code style="font-family:'IBM Plex Mono',monospace;color:var(--gold);">GetSpellTexture(spellID)</code> to render the real icons at runtime.</span>
+  </div>
+</section>
+
+<!-- ====================================================================== -->
+<!-- SCENE 3 · KILL MODE (in arena)                                          -->
+<!-- ====================================================================== -->
+<section class="scene">
+  <div class="scene-meta"><span>scene <span class="scene-num">03</span> / 09</span><span>active · kill mode</span></div>
+  <div class="scene-grid">
+    <div>
+      <h2 class="scene-title">KILL mode · the priest must die</h2>
+      <p class="scene-subtitle">A 3v3 against RMP. Their priest has been observed casting Pain Suppression earlier in the match, so the engine identifies <code style="font-family:'IBM Plex Mono',monospace;color:var(--gold);">RMP_DISC_3V3</code> (spec-confirmed). With the priest at 38%, KillProb crosses the burst-gate threshold, BURST_NOW fires. Chain: kidney → poly → kidney follow-up.</p>
+    </div>
+    <div class="arena-backdrop">
+      <div class="arena-pillar l"></div>
+      <div class="arena-pillar c"></div>
+      <div class="arena-pillar r"></div>
+      <div class="arena-floor"></div>
+
+      <!-- Player party -->
+      <div class="frame-stack party">
+        <!-- You -->
+        <div class="unit-frame">
+          <div class="unit-portrait" style="color: var(--c-warrior);">WAR</div>
+          <div class="unit-bars">
+            <div class="unit-name" style="color: var(--c-warrior);">You</div>
+            <div class="bar"><div class="bar-fill" style="width: 88%;"></div><div class="bar-text">88%</div></div>
+            <div class="bar"><div class="bar-fill mana" style="width: 64%;"></div></div>
+          </div>
+        </div>
+        <div class="unit-frame">
+          <div class="unit-portrait" style="color: var(--c-shaman);">SHA</div>
+          <div class="unit-bars">
+            <div class="unit-name" style="color: var(--c-shaman);">Lightninglux</div>
+            <div class="bar"><div class="bar-fill" style="width: 91%;"></div><div class="bar-text">91%</div></div>
+            <div class="bar"><div class="bar-fill mana" style="width: 72%;"></div></div>
+          </div>
+        </div>
+        <div class="unit-frame">
+          <div class="unit-portrait" style="color: var(--c-druid);">DRU</div>
+          <div class="unit-bars">
+            <div class="unit-name" style="color: var(--c-druid);">Mythicbark</div>
+            <div class="bar"><div class="bar-fill" style="width: 76%;"></div><div class="bar-text">76%</div></div>
+            <div class="bar"><div class="bar-fill mana" style="width: 58%;"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Enemy arena -->
+      <div class="frame-stack enemies">
+        <div class="unit-frame">
+          <div class="unit-portrait" style="color: var(--c-rogue);">ROG</div>
+          <div class="unit-bars">
+            <div class="unit-name" style="color: var(--c-rogue);">Backalleyba</div>
+            <div class="bar"><div class="bar-fill" style="width: 92%;"></div><div class="bar-text">92%</div></div>
+            <div class="bar"><div class="bar-fill mana" style="width: 78%;"></div></div>
+          </div>
+        </div>
+        <div class="unit-frame">
+          <div class="unit-portrait" style="color: var(--c-mage);">MAG</div>
+          <div class="unit-bars">
+            <div class="unit-name" style="color: var(--c-mage);">Frostbiter</div>
+            <div class="bar"><div class="bar-fill" style="width: 81%;"></div><div class="bar-text">81%</div></div>
+            <div class="bar"><div class="bar-fill mana" style="width: 84%;"></div></div>
+          </div>
+        </div>
+        <!-- The kill target — outlined / pulsing -->
+        <div class="unit-frame" style="border-color: var(--mode-kill); box-shadow: 0 0 12px rgba(255,77,77,0.6);">
+          <div class="unit-portrait" style="color: var(--c-priest);">PRI</div>
+          <div class="unit-bars">
+            <div class="unit-name" style="color: var(--c-priest);">Holyman</div>
+            <div class="bar"><div class="bar-fill low" style="width: 38%;"></div><div class="bar-text">38%</div></div>
+            <div class="bar"><div class="bar-fill mana" style="width: 41%;"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action bar mock -->
+      <div class="action-bar">
+        <div class="ab-slot lit">MS</div>
+        <div class="ab-slot lit">BT</div>
+        <div class="ab-slot">OP</div>
+        <div class="ab-slot lit">HS</div>
+        <div class="ab-slot">IC</div>
+        <div class="ab-slot lit">PUM</div>
+        <div class="ab-slot">SR</div>
+        <div class="ab-slot lit">RT</div>
+        <div class="ab-slot">DW</div>
+        <div class="ab-slot">IS</div>
+      </div>
+
+      <!-- The ACC frame -->
+      <div class="acc-frame" style="top: 30%; left: 50%; transform: translateX(-50%);">
+        <div class="acc-title">Arena Coach</div>
+        <div class="acc-big kill">KILL: Holyman</div>
+        <div class="acc-reason">PRIEST [health_below_50(30), trinket_down(20), role_healer(25)] | RMP_DISC_3V3 spec-confirmed (1.00)</div>
+        <div class="acc-callouts">HoJ kill target<span class="sep">·</span>Tremor for fear<span class="sep">·</span>Ground Poly</div>
+        <div class="acc-comp-badge">RMP (confirmed Disc Priest) <span class="badge confirmed">spec-confirmed</span></div>
+        <div class="acc-chain">
+          <div class="acc-chain-title">Chain: Sap off-healer, kidney the target <span class="pct">62%</span></div>
+          <div class="acc-chain-step">Step 1. <span class="spell">Sap</span> <span class="cat">INCAPACITATE</span></div>
+          <div class="acc-chain-step">Step 2. <span class="spell">Polymorph</span> <span class="cat">INCAPACITATE</span></div>
+          <div class="acc-chain-step">Step 3. <span class="spell">Kidney Shot</span> <span class="cat">STUN</span></div>
+        </div>
+        <div style="text-align: center;">
+          <span class="burst-ready">▶ BURST NOW</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="scene-assumptions">
+    <span class="assumption-tag">assumption</span>
+    <span><strong>Mock arena background</strong> is an abstract suggestion (warm-dark gradient, pillar silhouettes, dust floor) — not actual Blizzard art. Party / enemy frames are stylized minimum-info mocks; in-game you'd see your real party/arena unit frames. The ACC frame itself is drawn to faithful spec.</span>
+  </div>
+</section>
+
+<!-- ====================================================================== -->
+<!-- SCENE 4 · DEFEND MODE                                                   -->
+<!-- ====================================================================== -->
+<section class="scene">
+  <div class="scene-meta"><span>scene <span class="scene-num">04</span> / 09</span><span>active · defend mode</span></div>
+  <div class="scene-grid">
+    <div>
+      <h2 class="scene-title">DEFEND mode · the healer is being trained</h2>
+      <p class="scene-subtitle">Five damage events on your healer in the last 5 seconds, plus enemy Bloodlust observed. The engine flips to DEFEND with reason <code style="font-family:'IBM Plex Mono',monospace;color:var(--gold);">trained / enemy_lust</code>. Callouts switch to defensive cues (Pain Sup, BoP). Burst gate explicitly blocked — the breakdown is on the rec for inspection.</p>
+    </div>
+    <div class="arena-backdrop">
+      <div class="arena-pillar l"></div>
+      <div class="arena-pillar c"></div>
+      <div class="arena-pillar r"></div>
+      <div class="arena-floor"></div>
+
+      <!-- Defensive flash overlay -->
+      <div style="position: absolute; inset: 0; box-shadow: inset 0 0 80px rgba(102,178,255,0.15); pointer-events: none;"></div>
+
+      <div class="frame-stack party">
+        <div class="unit-frame">
+          <div class="unit-portrait" style="color: var(--c-warrior);">WAR</div>
+          <div class="unit-bars">
+            <div class="unit-name" style="color: var(--c-warrior);">You</div>
+            <div class="bar"><div class="bar-fill" style="width: 64%;"></div><div class="bar-text">64%</div></div>
+            <div class="bar"><div class="bar-fill mana" style="width: 48%;"></div></div>
+          </div>
+        </div>
+        <div class="unit-frame">
+          <div class="unit-portrait" style="color: var(--c-shaman);">SHA</div>
+          <div class="unit-bars">
+            <div class="unit-name" style="color: var(--c-shaman);">Lightninglux</div>
+            <div class="bar"><div class="bar-fill" style="width: 52%;"></div><div class="bar-text">52%</div></div>
+            <div class="bar"><div class="bar-fill mana" style="width: 38%;"></div></div>
+          </div>
+        </div>
+        <!-- Trained healer at low HP — flash border -->
+        <div class="unit-frame" style="border-color: var(--mode-defend); box-shadow: 0 0 14px rgba(102,178,255,0.7);">
+          <div class="unit-portrait" style="color: var(--c-druid);">DRU</div>
+          <div class="unit-bars">
+            <div class="unit-name" style="color: var(--c-druid);">Mythicbark</div>
+            <div class="bar"><div class="bar-fill low" style="width: 24%;"></div><div class="bar-text">24%</div></div>
+            <div class="bar"><div class="bar-fill mana" style="width: 22%;"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="frame-stack enemies">
+        <div class="unit-frame">
+          <div class="unit-portrait" style="color: var(--c-warrior);">WAR</div>
+          <div class="unit-bars">
+            <div class="unit-name" style="color: var(--c-warrior);">Rampagebeard</div>
+            <div class="bar"><div class="bar-fill" style="width: 87%;"></div><div class="bar-text">87%</div></div>
+            <div class="bar"><div class="bar-fill mana" style="width: 62%;"></div></div>
+          </div>
+        </div>
+        <div class="unit-frame">
+          <div class="unit-portrait" style="color: var(--c-rogue);">ROG</div>
+          <div class="unit-bars">
+            <div class="unit-name" style="color: var(--c-rogue);">Cheeptrick</div>
+            <div class="bar"><div class="bar-fill" style="width: 79%;"></div><div class="bar-text">79%</div></div>
+            <div class="bar"><div class="bar-fill mana" style="width: 88%;"></div></div>
+          </div>
+        </div>
+        <div class="unit-frame">
+          <div class="unit-portrait" style="color: var(--c-shaman);">SHA</div>
+          <div class="unit-bars">
+            <div class="unit-name" style="color: var(--c-shaman);">Lustlord</div>
+            <div class="bar"><div class="bar-fill" style="width: 93%;"></div><div class="bar-text">93%</div></div>
+            <div class="bar"><div class="bar-fill mana" style="width: 71%;"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="action-bar">
+        <div class="ab-slot">MS</div>
+        <div class="ab-slot lit">BT</div>
+        <div class="ab-slot">OP</div>
+        <div class="ab-slot lit">HS</div>
+        <div class="ab-slot lit">IC</div>
+        <div class="ab-slot lit">PUM</div>
+        <div class="ab-slot">SR</div>
+        <div class="ab-slot lit">RT</div>
+        <div class="ab-slot">DW</div>
+        <div class="ab-slot">IS</div>
+      </div>
+
+      <div class="acc-frame" style="top: 30%; left: 50%; transform: translateX(-50%);">
+        <div class="acc-title">Arena Coach</div>
+        <div class="acc-big defend">DEFEND</div>
+        <div class="acc-reason">defensive: trained | WMS class-guessed (0.33)</div>
+        <div class="acc-callouts">Pain Suppression ready<span class="sep">·</span>BoP ready<span class="sep">·</span>Peel for Druid</div>
+        <div class="acc-comp-badge">Battlecleave (WMS) <span class="badge">class-guessed</span></div>
+        <div class="acc-chain">
+          <div class="acc-chain-title" style="color: var(--ink-3);">Chain: Sheep healer, MS train kill target <span class="pct" style="color: var(--ink-4);">17%</span></div>
+          <div class="acc-chain-step" style="color: var(--ink-4); opacity: 0.5;">Step 1. <span class="spell" style="color: var(--ink-4);">Polymorph</span> <span class="cat">INCAPACITATE</span></div>
+          <div class="acc-chain-step" style="color: var(--ink-4); opacity: 0.5;">Step 2. <span class="spell" style="color: var(--ink-4);">Intimidating Shout</span> <span class="cat">FEAR</span></div>
+        </div>
+        <div style="text-align: center; font-family:'IBM Plex Mono',monospace; font-size: 10px; color: var(--ink-4); padding: 6px 0 0; letter-spacing: 0.1em;">burst blocked · incoming_pressure</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================================================================== -->
+<!-- SCENE 5 · CHAIN ANATOMY CLOSE-UP                                        -->
+<!-- ====================================================================== -->
+<section class="scene">
+  <div class="scene-meta"><span>scene <span class="scene-num">05</span> / 09</span><span>chain planning detail</span></div>
+  <div style="text-align:center; margin-bottom: 56px;">
+    <h2 class="scene-title">Chain planning · the engine's plan, made legible</h2>
+    <p class="scene-subtitle" style="margin-left:auto;margin-right:auto;">A chain is an ordered list of CC links. Each is gated by DR (within-chain accumulation + observed history) and caster cooldown. ExpectedProb = product of effective multipliers; the picked chain is the one that survives lookahead against the most likely opponent response.</p>
+  </div>
+
+  <div class="chain-closeup">
+    <div class="chain-card">
+      <div class="chain-card-title">Sap off-healer, kidney the target</div>
+      <div class="chain-card-meta">rmp_sap_into_kidney · 3 steps</div>
+      <div class="chain-prob">
+        <span class="chain-prob-v">0.54</span>
+        <span class="chain-prob-l">expected value<br/>after lookahead</span>
+      </div>
+      <div class="chain-step-big">
+        <div class="chain-step-num">1·</div>
+        <div class="chain-step-spell">Sap<span class="who">enemy rogue · off-healer</span></div>
+        <div class="chain-step-cat">INCAP<span class="dr">DR 1.00 ×</span></div>
+      </div>
+      <div class="chain-step-big">
+        <div class="chain-step-num">2·</div>
+        <div class="chain-step-spell">Polymorph<span class="who">enemy mage · off-healer-2</span></div>
+        <div class="chain-step-cat">INCAP<span class="dr">DR 1.00 × (diff target)</span></div>
+      </div>
+      <div class="chain-step-big">
+        <div class="chain-step-num">3·</div>
+        <div class="chain-step-spell">Kidney Shot<span class="who">enemy rogue · primary</span></div>
+        <div class="chain-step-cat">STUN<span class="dr">DR 1.00 × (fresh)</span></div>
+      </div>
+    </div>
+
+    <div class="chain-explanation">
+      <p>The chain encodes <em>the enemy comp's canonical setup</em>. By recognizing it the engine can predict the next 2–3 CC events and emit forward-looking callouts.</p>
+      <p>Each step's effective multiplier is the <strong>minimum</strong> of observed DR (from <code>DRTracker</code>) and within-chain accumulation. A third stun on the same target would walk <code>1.00 → 0.50 → 0.25</code>; a fourth would reject as <code>DR_immune</code>.</p>
+      <p>Caster availability is checked against <code>CooldownTracker</code>. A pending cooldown returns <code>cd_pending</code> and zeroes the chain's expected probability — the lookahead drops it from contention.</p>
+      <p>Final ranking comes from <code>Lookahead:Score</code> — the chain prob is weighted by the opponent's likely response (read from <code>OpponentProfile</code>): if they reliably trinket the first CC of this chain, the chain's EV drops below the alternative.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ====================================================================== -->
+<!-- SCENE 6 · OPPONENT PROFILE                                              -->
+<!-- ====================================================================== -->
+<section class="scene">
+  <div class="scene-meta"><span>scene <span class="scene-num">06</span> / 09</span><span>opponent modeling · the keystone</span></div>
+  <div class="scene-grid">
+    <div>
+      <h2 class="scene-title">Your coach learns your opponents</h2>
+      <p class="scene-subtitle">The same RMP team plays differently across matches. After observing this exact roster for ~20 openings, the engine has learned: they trinket Fear (α=21, β=2 → mean 0.91). The callout shifts from generic "Tremor for fear" to <strong style="color: var(--ink-1);">"They trinket Fear — save Tremor for HoJ"</strong>. None of this is hardcoded; nothing about the players' names persists.</p>
+    </div>
+
+    <div class="arena-backdrop">
+      <div class="arena-pillar l"></div>
+      <div class="arena-pillar c"></div>
+      <div class="arena-pillar r"></div>
+      <div class="arena-floor"></div>
+
+      <div class="frame-stack party">
+        <div class="unit-frame">
+          <div class="unit-portrait" style="color: var(--c-warrior);">WAR</div>
+          <div class="unit-bars">
+            <div class="unit-name" style="color: var(--c-warrior);">You</div>
+            <div class="bar"><div class="bar-fill" style="width: 95%;"></div><div class="bar-text">95%</div></div>
+            <div class="bar"><div class="bar-fill mana" style="width: 92%;"></div></div>
+          </div>
+        </div>
+        <div class="unit-frame">
+          <div class="unit-portrait" style="color: var(--c-shaman);">SHA</div>
+          <div class="unit-bars">
+            <div class="unit-name" style="color: var(--c-shaman);">Lightninglux</div>
+            <div class="bar"><div class="bar-fill" style="width: 100%;"></div><div class="bar-text">100%</div></div>
+            <div class="bar"><div class="bar-fill mana" style="width: 100%;"></div></div>
+          </div>
+        </div>
+        <div class="unit-frame">
+          <div class="unit-portrait" style="color: var(--c-druid);">DRU</div>
+          <div class="unit-bars">
+            <div class="unit-name" style="color: var(--c-druid);">Mythicbark</div>
+            <div class="bar"><div class="bar-fill" style="width: 100%;"></div><div class="bar-text">100%</div></div>
+            <div class="bar"><div class="bar-fill mana" style="width: 100%;"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="frame-stack enemies">
+        <div class="unit-frame">
+          <div class="unit-portrait" style="color: var(--c-rogue);">ROG</div>
+          <div class="unit-bars">
+            <div class="unit-name" style="color: var(--c-rogue);">Backalleyba</div>
+            <div class="bar"><div class="bar-fill" style="width: 100%;"></div><div class="bar-text">100%</div></div>
+            <div class="bar"><div class="bar-fill mana" style="width: 100%;"></div></div>
+          </div>
+        </div>
+        <div class="unit-frame">
+          <div class="unit-portrait" style="color: var(--c-mage);">MAG</div>
+          <div class="unit-bars">
+            <div class="unit-name" style="color: var(--c-mage);">Frostbiter</div>
+            <div class="bar"><div class="bar-fill" style="width: 100%;"></div><div class="bar-text">100%</div></div>
+            <div class="bar"><div class="bar-fill mana" style="width: 100%;"></div></div>
+          </div>
+        </div>
+        <div class="unit-frame">
+          <div class="unit-portrait" style="color: var(--c-priest);">PRI</div>
+          <div class="unit-bars">
+            <div class="unit-name" style="color: var(--c-priest);">Holyman</div>
+            <div class="bar"><div class="bar-fill" style="width: 100%;"></div><div class="bar-text">100%</div></div>
+            <div class="bar"><div class="bar-fill mana" style="width: 100%;"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="action-bar">
+        <div class="ab-slot lit">MS</div>
+        <div class="ab-slot lit">BT</div>
+        <div class="ab-slot">OP</div>
+        <div class="ab-slot lit">HS</div>
+        <div class="ab-slot lit">IC</div>
+        <div class="ab-slot lit">PUM</div>
+        <div class="ab-slot">SR</div>
+        <div class="ab-slot lit">RT</div>
+        <div class="ab-slot">DW</div>
+        <div class="ab-slot">IS</div>
+      </div>
+
+      <div class="acc-frame" style="top: 26%; left: 50%; transform: translateX(-50%);">
+        <div class="acc-title">Arena Coach</div>
+        <div class="acc-big open">OPEN: Holyman</div>
+        <div class="acc-reason">PRIEST [role_healer(25)] | RMP_DISC_3V3 spec-confirmed (1.00)</div>
+        <div class="acc-callouts" style="color: var(--mode-defend);">They trinket Fear — save Tremor for HoJ</div>
+        <div class="acc-callouts">HoJ kill target<span class="sep">·</span>Ground Polymorph</div>
+        <div class="acc-comp-badge">RMP (confirmed Disc Priest) <span class="badge confirmed">spec-confirmed</span></div>
+        <div class="acc-chain">
+          <div class="acc-chain-title">Chain: Sap off-healer, kidney the target <span class="pct">61%</span></div>
+          <div class="acc-chain-step">Step 1. <span class="spell">Sap</span> <span class="cat">INCAPACITATE</span></div>
+          <div class="acc-chain-step">Step 2. <span class="spell">Polymorph</span> <span class="cat">INCAPACITATE</span></div>
+          <div class="acc-chain-step">Step 3. <span class="spell">Kidney Shot</span> <span class="cat">STUN</span></div>
+        </div>
+        <div style="font-family:'IBM Plex Mono',monospace; font-size: 9px; color: var(--gold); padding-top: 8px; text-align: center; letter-spacing: 0.1em;">profile: trinketsFear=0.91 (n=23)</div>
+      </div>
+
+      <!-- Bayesian profile floating panel -->
+      <div style="position: absolute; bottom: 60px; left: 16px; width: 220px; background: rgba(15,11,8,0.92); border: 1px solid var(--gold-dim); padding: 10px 12px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--ink-2); line-height: 1.6;">
+        <div style="color: var(--gold); letter-spacing: 0.15em; font-size: 9px; text-transform: uppercase; padding-bottom: 6px; margin-bottom: 6px; border-bottom: 1px solid var(--hairline);">opponent profile</div>
+        <div>signature: MAGE_PRIEST_ROGUE</div>
+        <div style="color: var(--ink-4); font-size: 9px;">hash: 1834729871</div>
+        <div style="padding-top: 8px; color: var(--ink-3);">trinketsFear<span style="float: right; color: var(--mode-open);">0.91 (n=23)</span></div>
+        <div style="color: var(--ink-3);">iceBlockBelow30<span style="float: right; color: var(--ink-2);">0.68 (n=12)</span></div>
+        <div style="color: var(--ink-3);">kicksFirstHeal<span style="float: right; color: var(--ink-4);">— (n=3)</span></div>
+        <div style="color: var(--ink-3);">sapsPriest<span style="float: right; color: var(--ink-2);">0.55 (n=18)</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="scene-assumptions">
+    <span class="assumption-tag">assumption</span>
+    <span>The <strong>profile panel</strong> floating bottom-left of the arena is a design illustration of the data shape — in the live addon the profile lives in <code style="font-family:'IBM Plex Mono',monospace;color:var(--gold);">db.profiles</code> and is consulted by the engine. You'd inspect it via <code style="font-family:'IBM Plex Mono',monospace;color:var(--gold);">/acc trace dump</code> or a custom WeakAura.</span>
+  </div>
+</section>
+
+<!-- ====================================================================== -->
+<!-- SCENE 7 · SETTINGS                                                      -->
+<!-- ====================================================================== -->
+<section class="scene">
+  <div class="scene-meta"><span>scene <span class="scene-num">07</span> / 09</span><span>settings panel</span></div>
+  <div style="text-align: center; margin-bottom: 48px;">
+    <h2 class="scene-title">Settings · everything tunable, defaults safe</h2>
+    <p class="scene-subtitle" style="margin-left:auto;margin-right:auto;">Persists via SavedVariables. Backwards-compatible — DB from v1 still loads on v2. The panel is laid out by capability: Strategy / Frame / Alerts / Recording / Profiles.</p>
+  </div>
+
+  <div class="opts">
+    <div class="opts-titlebar">
+      <span>Arena Coach · Settings</span>
+      <span class="opts-close">×</span>
+    </div>
+    <div class="opts-body">
+      <div class="opts-nav">
+        <div class="opts-nav-item active">Strategy</div>
+        <div class="opts-nav-item">Frame</div>
+        <div class="opts-nav-item">Alerts</div>
+        <div class="opts-nav-item">Recording</div>
+        <div class="opts-nav-item">Profiles</div>
+        <div class="opts-nav-item">Debug</div>
+      </div>
+      <div class="opts-content">
+        <div class="opts-section">
+          <div class="opts-section-h">Aggression</div>
+          <div class="opts-row">
+            <div class="lbl">Rating-aware aggression<span class="desc">auto reads GetPersonalRatedInfo and tunes thresholds</span></div>
+            <div class="ctrl-dropdown">auto</div>
+          </div>
+          <div class="opts-row">
+            <div class="lbl">Manual override<span class="desc">greedy 0 → safe 20 SWAP threshold</span></div>
+            <div class="ctrl-dropdown">balanced</div>
+          </div>
+          <div class="opts-row">
+            <div class="lbl">Allow DPS swap calls<span class="desc">when off the catalogued open target</span></div>
+            <div class="ctrl-toggle on"></div>
+          </div>
+        </div>
+
+        <div class="opts-section">
+          <div class="opts-section-h">Burst gate</div>
+          <div class="opts-row">
+            <div class="lbl">Require MS active on target<span class="desc">won't call BURST_NOW without observed MS</span></div>
+            <div class="ctrl-toggle on"></div>
+          </div>
+          <div class="opts-row">
+            <div class="lbl">Require Windfury nearby<span class="desc">only call burst when WF is up on the kill target</span></div>
+            <div class="ctrl-toggle on"></div>
+          </div>
+          <div class="opts-row">
+            <div class="lbl">Train detection sensitivity<span class="desc">damage events × 5s window to force DEFEND</span></div>
+            <div class="ctrl-slider"><div class="ctrl-slider-fill" style="width: 30%;"></div><div class="ctrl-slider-knob" style="left: calc(30% - 6px);"></div></div>
+          </div>
+        </div>
+
+        <div class="opts-section">
+          <div class="opts-section-h">Lookahead</div>
+          <div class="opts-row">
+            <div class="lbl">Enable lookahead expectimax<span class="desc">re-rank chains by EV across opponent responses</span></div>
+            <div class="ctrl-toggle on"></div>
+          </div>
+          <div class="opts-row">
+            <div class="lbl">Top-K chains × responses<span class="desc">bounded branching · default 3×3</span></div>
+            <div class="ctrl-dropdown">3 × 3</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================================================================== -->
+<!-- SCENE 8 · WEAKAURA INTEGRATION                                          -->
+<!-- ====================================================================== -->
+<section class="scene">
+  <div class="scene-meta"><span>scene <span class="scene-num">08</span> / 09</span><span>weakaura bridge</span></div>
+  <div style="text-align: center; margin-bottom: 48px;">
+    <h2 class="scene-title">WeakAura bridge · own your display</h2>
+    <p class="scene-subtitle" style="margin-left:auto;margin-right:auto;">Five copy-paste WA templates ship in <code style="font-family:'IBM Plex Mono',monospace;color:var(--gold);">docs/weakaura-pack.md</code>. They consume the <code style="font-family:'IBM Plex Mono',monospace;color:var(--gold);">_G.ArenaCoachTBC</code> getter surface. Build your own HUD: huge centered mode + target, side-stream of callouts, mini chain ticker, opponent-profile readout — your call.</p>
+  </div>
+
+  <div class="wa-grid">
+    <div>
+      <div class="wa-code">
+        <div class="wa-code-title">Template 2 · Burst gate (Icon)</div>
+<pre style="white-space:pre-wrap;margin:0;"><span class="com">-- Trigger (Status): show icon when ready</span>
+<span class="kw">function</span>()
+    <span class="kw">if not</span> _G.ArenaCoachTBC <span class="kw">then return false end</span>
+    <span class="kw">return</span> _G.ArenaCoachTBC.<span class="fn">IsBurstAllowed</span>()
+       <span class="kw">and</span> _G.ArenaCoachTBC.<span class="fn">GetMode</span>() == <span class="str">"KILL"</span>
+<span class="kw">end</span>
+
+<span class="com">-- Custom Text</span>
+<span class="kw">function</span>()
+    <span class="kw">local</span> api = _G.ArenaCoachTBC
+    <span class="kw">if not</span> api <span class="kw">then return</span> <span class="str">""</span> <span class="kw">end</span>
+    <span class="kw">return</span> <span class="fn">string.format</span>(
+        <span class="str">"%s on %s"</span>,
+        api.<span class="fn">GetMode</span>() <span class="kw">or</span> <span class="str">""</span>,
+        api.<span class="fn">GetPrimaryTargetName</span>()
+            <span class="kw">or</span> api.<span class="fn">GetPrimaryTargetClass</span>()
+            <span class="kw">or</span> <span class="str">""</span>)
+<span class="kw">end</span></pre>
+      </div>
+
+      <div class="wa-code" style="margin-top: 24px;">
+        <div class="wa-code-title">Template 5 · Comp readout (Text)</div>
+<pre style="white-space:pre-wrap;margin:0;"><span class="kw">function</span>()
+    <span class="kw">local</span> api = _G.ArenaCoachTBC
+    <span class="kw">if not</span> api <span class="kw">then return</span> <span class="str">""</span> <span class="kw">end</span>
+    <span class="kw">local</span> comp = api.<span class="fn">GetEnemyCompLabel</span>() <span class="kw">or</span> <span class="str">"?"</span>
+    <span class="kw">local</span> conf = api.<span class="fn">GetCompSpecConfirmed</span>()
+        <span class="kw">and</span> <span class="str">"|cff66ff66spec-confirmed|r"</span>
+        <span class="kw">or</span>  <span class="str">"|cffcccc99class-guessed|r"</span>
+    <span class="kw">return</span> comp .. <span class="str">" (" </span>.. conf .. <span class="str">")"</span>
+<span class="kw">end</span></pre>
+      </div>
+    </div>
+
+    <div class="wa-aura-demo">
+      <span class="wa-tag"><span class="caption">YOUR CUSTOM WA · LIVE</span></span>
+      <div class="wa-floater">
+        <div class="wa-mode">KILL</div>
+        <div class="wa-target">Holyman</div>
+        <div class="wa-burst">▶ BURST NOW</div>
+      </div>
+      <div style="position: absolute; bottom: 16px; right: 16px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--ink-3); text-align: right; line-height: 1.5;">
+        <div style="color: var(--mode-defend);">They trinket Fear</div>
+        <div>save Tremor for HoJ</div>
+        <div style="color: var(--ink-4); margin-top: 6px;">RMP_DISC_3V3 · spec-confirmed</div>
+      </div>
+    </div>
+  </div>
+  <div class="scene-assumptions">
+    <span class="assumption-tag">assumption</span>
+    <span>The <strong>"Your custom WA"</strong> on the right is one example layout — the WA bridge surfaces ~20 getters so a community can build many display variants. Templates in <code style="font-family:'IBM Plex Mono',monospace;color:var(--gold);">docs/weakaura-pack.md</code> cover mode badge / burst gate / defensive alert / callout list / comp readout — each is a 10-line paste into <code style="font-family:'IBM Plex Mono',monospace;color:var(--gold);">/wa</code> Custom trigger.</span>
+  </div>
+</section>
+
+<!-- ====================================================================== -->
+<!-- SCENE 9 · COMPACT vs FULL                                               -->
+<!-- ====================================================================== -->
+<section class="scene">
+  <div class="scene-meta"><span>scene <span class="scene-num">09</span> / 09</span><span>compactmode comparison</span></div>
+  <div style="text-align: center; margin-bottom: 64px;">
+    <h2 class="scene-title">Compact vs Full · for streamers and minimalists</h2>
+    <p class="scene-subtitle" style="margin-left:auto;margin-right:auto;">Toggle <code style="font-family:'IBM Plex Mono',monospace;color:var(--gold);">db.frame.compactMode</code>; the friendly + enemy cooldown rows hide. The recommendation block — mode, target, callouts, comp badge, chain — stays. Useful when broadcasting or running with a busy screen.</p>
+  </div>
+
+  <div class="compare-grid">
+    <div class="compare-cell">
+      <div class="compare-label">Full mode (default)</div>
+      <div class="acc-frame" style="position: relative; transform: scale(1.1); margin: 24px 0;">
+        <div class="acc-title">Arena Coach</div>
+        <div class="acc-big swap">SWAP: Frostbiter</div>
+        <div class="acc-reason">MAGE [role_cloth_dps(15), trinket_down(20)] | RMP_3V3 class-guessed (0.67)</div>
+        <div class="acc-callouts">Ground Polymorph<span class="sep">·</span>Dispel frost</div>
+        <div class="acc-comp-badge">RMP <span class="badge">class-guessed</span></div>
+        <div class="acc-chain">
+          <div class="acc-chain-title">Chain: Scream lockdown into mage burst <span class="pct">48%</span></div>
+          <div class="acc-chain-step">Step 1. <span class="spell">Psychic Scream</span> <span class="cat">FEAR</span></div>
+          <div class="acc-chain-step">Step 2. <span class="spell">Polymorph</span> <span class="cat">INCAPACITATE</span></div>
+        </div>
+        <div class="acc-row">
+          <div class="acc-icon lit">MS</div><div class="acc-icon lit">BL</div><div class="acc-icon">HoJ</div><div class="acc-icon lit">Fr</div><div class="acc-icon">Tr</div><div class="acc-icon">MB</div><div class="acc-icon">PS</div><div class="acc-icon">BoP</div>
+        </div>
+        <div class="acc-row">
+          <div class="acc-icon alert">Tr</div><div class="acc-icon">IB</div><div class="acc-icon">DS</div><div class="acc-icon">PS</div><div class="acc-icon">NS</div><div class="acc-icon">DC</div><div class="acc-icon">CS</div>
+        </div>
+      </div>
+      <p class="compare-note">All eight cooldown reminders visible. ~170px tall.</p>
+    </div>
+
+    <div class="compare-cell">
+      <div class="compare-label">Compact mode</div>
+      <div class="acc-frame" style="position: relative; transform: scale(1.1); margin: 24px 0;">
+        <div class="acc-title">Arena Coach</div>
+        <div class="acc-big swap">SWAP: Frostbiter</div>
+        <div class="acc-reason">MAGE [role_cloth_dps(15), trinket_down(20)] | RMP_3V3 class-guessed (0.67)</div>
+        <div class="acc-callouts">Ground Polymorph<span class="sep">·</span>Dispel frost</div>
+        <div class="acc-comp-badge">RMP <span class="badge">class-guessed</span></div>
+        <div class="acc-chain">
+          <div class="acc-chain-title">Chain: Scream lockdown into mage burst <span class="pct">48%</span></div>
+          <div class="acc-chain-step">Step 1. <span class="spell">Psychic Scream</span> <span class="cat">FEAR</span></div>
+          <div class="acc-chain-step">Step 2. <span class="spell">Polymorph</span> <span class="cat">INCAPACITATE</span></div>
+        </div>
+      </div>
+      <p class="compare-note">Cooldown rows hidden. ~115px tall. Audio cue still fires (gated by <code style="font-family:'IBM Plex Mono',monospace;color:var(--gold);">db.alerts.sound</code>).</p>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="footer-marks">
+    Arena Coach <span>·</span> v 2 · 0 · 0 <span>·</span> 2026
+  </div>
+  <div>Design showcase · 9 scenes · ArenaCoachTBC for TBC Anniversary</div>
+</footer>
+
+</body>
+</html>
