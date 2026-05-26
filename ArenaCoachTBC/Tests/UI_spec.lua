@@ -54,6 +54,25 @@ H.it(g, "Apply with KILL recommendation sets big text & subtext", function()
     })
 end)
 
+H.it(g, "Apply renders DBM-style player action assignments", function()
+    UI:CreateFrame()
+    UI:Apply({
+        mode = "KILL",
+        primaryTargetName = "Holyman",
+        callouts = {},
+        priority = "HIGH",
+        playerActions = {
+            { unit = "player", name = "Warrior", actionKey = "ACTION_WARRIOR_KILL", targetName = "Holyman" },
+            { unit = "party1", name = "Shaman", actionKey = "ACTION_SHAMAN_PURGE", targetName = "Holyman" },
+        },
+    })
+    local txt = UI.frame.actionText and UI.frame.actionText._text or ""
+    H.assertTrue(txt:find("Assignments", 1, true) ~= nil, "assignment header missing: " .. txt)
+    H.assertTrue(txt:find("Warrior:", 1, true) ~= nil, "player assignment missing: " .. txt)
+    H.assertTrue(txt:find("Shaman:", 1, true) ~= nil, "party assignment missing: " .. txt)
+    H.assertTrue(txt:find("Holyman", 1, true) ~= nil, "assignment target missing: " .. txt)
+end)
+
 H.it(g, "Apply with each mode does not error", function()
     UI:CreateFrame()
     for _, mode in ipairs({"OPEN","KILL","SWAP","DEFEND","RESET"}) do

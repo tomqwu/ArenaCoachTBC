@@ -25,6 +25,12 @@ local sampleRec = {
     ownArchetype = "MELEE_CLEAVE",
     ownArchetypeLabel = "Melee cleave",
     ownCapabilities = { hasMortalStrike = true, hasBloodlust = true, hasCleanse = false },
+    playerActions = {
+        { unit = "player", name = "Warrior", class = "WARRIOR",
+          actionKey = "ACTION_WARRIOR_KILL", targetName = "Holyman", targetType = "enemy" },
+        { unit = "party1", name = "Shaman", class = "SHAMAN",
+          actionKey = "ACTION_SHAMAN_PURGE", targetName = "Holyman", targetType = "enemy" },
+    },
     burstAllowed = true,
     burstBlockedBy = nil,
 }
@@ -70,6 +76,15 @@ H.it(g, "callouts / burst getters", function()
     H.assertEq(co[1], "CALL_HOJ_KILL")
     H.assertTrue(API.IsBurstAllowed())
     H.assertNil(API.GetBurstBlocker())
+end)
+
+H.it(g, "player action getters expose DBM-style assignments", function()
+    WAB:Publish(sampleRec, sampleState)
+    local actions = API.GetPlayerActions()
+    H.assertEq(#actions, 2)
+    H.assertEq(API.GetPlayerAction().actionKey, "ACTION_WARRIOR_KILL")
+    H.assertEq(API.GetActionForUnit("party1").actionKey, "ACTION_SHAMAN_PURGE")
+    H.assertNil(API.GetActionForUnit("party4"))
 end)
 
 H.it(g, "comp identification getters", function()
@@ -228,6 +243,9 @@ H.it(g, "no-state safety: getters return empty/nil when nothing published", func
     H.assertNil(API.GetPriority())
     H.assertNil(API.GetReason())
     H.assertEq(#API.GetCallouts(), 0)
+    H.assertEq(#API.GetPlayerActions(), 0)
+    H.assertNil(API.GetPlayerAction())
+    H.assertNil(API.GetActionForUnit("party1"))
     H.assertFalse(API.IsBurstAllowed())
     H.assertNil(API.GetCombatPhase())
     H.assertNil(API.GetPrimaryTarget())
@@ -248,9 +266,9 @@ end)
 H.it(g, "GetDebugState / GetVersion", function()
     WAB:Publish(sampleRec, sampleState)
     local d = API.GetDebugState()
-    H.assertEq(d.version, "2.7.6")
+    H.assertEq(d.version, "2.8.0")
     H.assertEq(d.addon, "ArenaCoachTBC")
-    H.assertEq(API.GetVersion(), "2.7.6")
+    H.assertEq(API.GetVersion(), "2.8.0")
 end)
 
 H.it(g, "Publish handles missing WeakAuras global gracefully", function()

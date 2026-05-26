@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.0] - 2026-05-26
+
+### Added
+- **DBM-style per-player assignments.** `StrategyEngine:Evaluate` now publishes `rec.playerActions`, one compact action per living friendly, with unit/name/class/action/target fields. The built-in HUD renders the assignment block under the main recommendation so a 3v3/5v5 team can see who should MS, purge, HoJ, peel, dispel, or reset.
+- **WeakAura bridge support for assignments.** Added `GetPlayerActions()`, `GetPlayerAction()`, and `GetActionForUnit(unit)` so custom WeakAuras can render each player's assignment or only the local player's action.
+
+### Fixed
+- **Demo and locale text no longer mention DEFEND flashing.** The no-flash behavior remains intact from v2.7.5.
+
+### Notes
+- Tests 627 -> 633. Locale parity green at 135 keys per locale. Local luacov total coverage: 99.03%.
+
 ## [2.7.6] - 2026-05-26
 
 ### Fixed

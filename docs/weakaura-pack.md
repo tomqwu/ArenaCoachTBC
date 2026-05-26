@@ -175,6 +175,39 @@ end
 
 ---
 
+## Template 6 — Player assignments (Text Area)
+
+Renders the per-friendly action list that the built-in HUD shows under the
+main recommendation.
+
+**Trigger (Status):**
+```lua
+function()
+    if not _G.ArenaCoachTBC then return false end
+    local list = _G.ArenaCoachTBC.GetPlayerActions() or {}
+    return #list > 0
+end
+```
+
+**Custom Text:**
+```lua
+function()
+    if not _G.ArenaCoachTBC then return "" end
+    local list = _G.ArenaCoachTBC.GetPlayerActions() or {}
+    local L = _G.ArenaCoachTBC.L or function(k) return k end
+    local out = {}
+    for i = 1, math.min(#list, 5) do
+        local a = list[i]
+        local text = L(a.actionKey)
+        if a.targetName then text = text .. " -> " .. a.targetName end
+        table.insert(out, string.format("%s: %s", a.name or a.unit or "?", text))
+    end
+    return table.concat(out, "\n")
+end
+```
+
+---
+
 ## Notes
 
 - **Polling vs events.** The bridge is updated every time `Core:Evaluate()`

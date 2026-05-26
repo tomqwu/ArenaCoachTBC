@@ -198,6 +198,39 @@ local function isMeleeFriendly(f)
     return role == "MELEE" or role == "HYBRID"
 end
 
+local FRIENDLY_UNIT_ORDER = { "player", "party1", "party2", "party3", "party4" }
+
+local function friendlyRole(f)
+    if not f or not f.class then return nil end
+    if f.roleGuess or f.role then return f.roleGuess or f.role end
+    if isFriendlySupport(f) then return "HEALER" end
+    local Classes = ns.Classes
+    if Classes and Classes.DefaultRole then return Classes:DefaultRole(f.class) end
+    return nil
+end
+
+local function friendlyActionList(friendlies)
+    local out, seen = {}, {}
+    friendlies = friendlies or {}
+    for _, unit in ipairs(FRIENDLY_UNIT_ORDER) do
+        local f = friendlies[unit]
+        if f and f.alive ~= false then
+            table.insert(out, f)
+            seen[f] = true
+        end
+    end
+    local rest = {}
+    for _, f in pairs(friendlies) do
+        if f and f.alive ~= false and not seen[f] then table.insert(rest, f) end
+    end
+    table.sort(rest, function(a, b)
+        return tostring(a.unit or a.name or a.class or "")
+             < tostring(b.unit or b.name or b.class or "")
+    end)
+    for _, f in ipairs(rest) do table.insert(out, f) end
+    return out
+end
+
 -- Lowest HP healer-capable friendly, or nil. In solo world PvP there may
 -- be no healer-capable friendly at all, so fall back to the player/lowest
 -- friendly and still surface a defensive call when they are dying.
@@ -762,6 +795,107 @@ local function buildCallouts(state, comp, primaryTarget, mode)
     return out
 end
 
+local function offTargetForAction(state, primaryTarget, secondTarget)
+    for _, e in pairs(state.enemies or {}) do
+        if isAlive(e) and isHealer(e)
+           and (not primaryTarget or e.guid ~= primaryTarget.guid) then
+            return e
+        end
+    end
+    return secondTarget
+end
+
+local function addPlayerAction(out, f, actionKey, target, targetType, priority)
+    if not f or f.alive == false or not actionKey then return end
+    table.insert(out, {
+        unit        = f.unit,
+        guid        = f.guid,
+        name        = f.name,
+        class       = f.class,
+        spec        = f.spec,
+        role        = friendlyRole(f),
+        actionKey   = actionKey,
+        priority    = priority or "MEDIUM",
+        target      = target and target.guid or nil,
+        targetUnit  = target and target.unit or nil,
+        targetName  = target and target.name or nil,
+        targetClass = target and target.class or nil,
+        targetType  = target and (targetType or "enemy") or nil,
+    })
+end
+
+local function buildPlayerActions(state, mode, primaryTarget, secondTarget, burstAllowed)
+    local actions = {}
+    local killTarget = primaryTarget
+    local offTarget = offTargetForAction(state, primaryTarget, secondTarget)
+    local defensiveTarget = lowestDefensiveFriendly(state)
+
+    for _, f in ipairs(friendlyActionList(state.friendlies)) do
+        local class = f.class
+        local key, target, targetType = nil, killTarget, "enemy"
+        local priority = (mode == "DEFEND") and "URGENT" or "HIGH"
+
+        if mode == "RESET" then
+            key = isFriendlySupport(f) and "ACTION_HEALER_RESET" or "ACTION_DPS_RESET"
+            target = nil
+            priority = "LOW"
+        elseif mode == "DEFEND" then
+            target = defensiveTarget
+            targetType = "friendly"
+            if class == "PRIEST" then key = "ACTION_PRIEST_DEFEND"
+            elseif class == "PALADIN" then key = "ACTION_PALADIN_DEFEND"
+            elseif class == "DRUID" then key = "ACTION_DRUID_DEFEND"
+            elseif class == "SHAMAN" then key = "ACTION_SHAMAN_DEFEND"
+            else key = "ACTION_DPS_PEEL" end
+        elseif mode == "OPEN" then
+            if class == "ROGUE" then
+                key = "ACTION_ROGUE_OPEN"; target = offTarget or killTarget
+            elseif class == "MAGE" then
+                key = "ACTION_MAGE_CC"; target = offTarget or secondTarget or killTarget
+            elseif class == "WARLOCK" then
+                key = "ACTION_WARLOCK_CC"; target = offTarget or secondTarget or killTarget
+            elseif class == "HUNTER" then
+                key = "ACTION_HUNTER_TRAP"; target = offTarget or secondTarget or killTarget
+            elseif class == "PALADIN" then
+                key = "ACTION_PALADIN_HOJ"
+            elseif class == "DRUID" then
+                key = "ACTION_DRUID_CC"; target = offTarget or secondTarget or killTarget
+            else
+                key = "ACTION_OPEN_SETUP"
+            end
+        else
+            if burstAllowed and class == "SHAMAN" then
+                key = "ACTION_SHAMAN_BLOODLUST"
+            elseif class == "WARRIOR" then
+                key = "ACTION_WARRIOR_KILL"
+            elseif class == "ROGUE" then
+                key = "ACTION_ROGUE_KILL"
+            elseif class == "HUNTER" then
+                key = "ACTION_HUNTER_TRAP"; target = offTarget or secondTarget or killTarget
+            elseif class == "MAGE" then
+                key = "ACTION_MAGE_CC"; target = offTarget or secondTarget or killTarget
+            elseif class == "WARLOCK" then
+                key = "ACTION_WARLOCK_CC"; target = offTarget or secondTarget or killTarget
+            elseif class == "SHAMAN" then
+                key = "ACTION_SHAMAN_PURGE"
+            elseif class == "PALADIN" then
+                key = "ACTION_PALADIN_HOJ"
+            elseif class == "PRIEST" then
+                key = isFriendlySupport(f) and "ACTION_PRIEST_OFFENSE" or "ACTION_PRIEST_DAMAGE"
+            elseif class == "DRUID" then
+                key = isFriendlySupport(f) and "ACTION_DRUID_HEAL_CC" or "ACTION_DRUID_CC"
+                target = offTarget or secondTarget or killTarget
+            else
+                key = "ACTION_DPS_KILL"
+            end
+        end
+
+        addPlayerAction(actions, f, key, target, targetType, priority)
+    end
+
+    return actions
+end
+
 -- ============================================================
 -- Pick mode based on phase, comp, and target situation
 -- ============================================================
@@ -1022,6 +1156,7 @@ function SE:Evaluate(state)
     if finalBurstAllowed then
         table.insert(callouts, "BURST_NOW")
     end
+    local playerActions = buildPlayerActions(state, mode, topTarget, secondTarget, finalBurstAllowed)
 
     return {
         mode            = mode,
@@ -1049,6 +1184,7 @@ function SE:Evaluate(state)
         ownArchetype    = ownArchetype and ownArchetype.id or nil,
         ownArchetypeLabel = ownArchetype and ownArchetype.label or nil,
         ownCapabilities = ownCaps,
+        playerActions   = playerActions,
         burstAllowed    = finalBurstAllowed,
         burstBlockedBy  = (burstDecision and not burstDecision.allowed) and burstDecision.blockedBy or nil,
         primaryTargetHp = primaryTargetHp,   -- v2.1.6: 0..1 fraction

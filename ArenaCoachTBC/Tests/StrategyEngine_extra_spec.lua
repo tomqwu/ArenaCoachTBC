@@ -21,6 +21,12 @@ local function findEnemyByClass(state, class)
     end
 end
 
+local function findAction(actions, unit)
+    for _, a in ipairs(actions or {}) do
+        if a.unit == unit then return a end
+    end
+end
+
 -- v2.7.1: in an arena 2v4 (3 friendlies dead, 1 enemy dead from a 5v5),
 -- the engine used to recommend DEFEND because "healer being trained"
 -- fires when 4 enemies attack 2 players — but defensives can't save a
@@ -155,6 +161,59 @@ H.it(g, "Evaluate exposes ownArchetype from default friendlies", function()
     -- The default friendly comp is the WAR/ENH/RET/RDRU/DISC cleave, so
     -- MELEE_CLEAVE should fire (or DOUBLE_HEALER if both healers count).
     H.assertNotNil(rec.ownArchetype)
+end)
+
+H.it(g, "Evaluate publishes DBM-style player actions for each living friendly", function()
+    local state = SE:BuildTestState({"ROGUE","MAGE","PRIEST"})
+    state.combatPhase = "ACTIVE"
+    state.pvpContext = "arena"
+    state.friendlies.player.name = "Warrior"
+    state.friendlies.party1.name = "Shaman"
+    state.friendlies.party2.name = "Paladin"
+    state.friendlies.party3.name = "Druid"
+    state.friendlies.party4.name = "Priest"
+
+    local rec = SE:Evaluate(state)
+    H.assertEq(#rec.playerActions, 5)
+    H.assertEq(findAction(rec.playerActions, "player").actionKey, "ACTION_WARRIOR_KILL")
+    H.assertEq(findAction(rec.playerActions, "party1").actionKey, "ACTION_SHAMAN_PURGE")
+    H.assertEq(findAction(rec.playerActions, "party2").actionKey, "ACTION_PALADIN_HOJ")
+    H.assertEq(findAction(rec.playerActions, "party2").target, rec.primaryTarget)
+end)
+
+H.it(g, "Player actions use the off-target healer for druid CC assignments", function()
+    local state = SE:BuildTestState({"WARRIOR","MAGE","PRIEST"})
+    state.combatPhase = "ACTIVE"
+    state.pvpContext = "arena"
+    for _, e in pairs(state.enemies) do
+        if e.class == "MAGE" then
+            e.healthPct = 10
+            e.hasTrinket = false
+        end
+    end
+
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.primaryTargetClass, "MAGE")
+    local druid = findAction(rec.playerActions, "party3")
+    H.assertEq(druid.actionKey, "ACTION_DRUID_HEAL_CC")
+    H.assertEq(druid.targetClass, "PRIEST")
+end)
+
+H.it(g, "DEFEND player actions assign healer defensives to the trained friendly", function()
+    local state = SE:BuildTestState({"ROGUE","MAGE","PRIEST"})
+    state.combatPhase = "ACTIVE"
+    state.pvpContext = "arena"
+    state.observations = { healerUnderPressure = true }
+    state.friendlies.party3.name = "Treefriend"
+    state.friendlies.party3.healthPct = 40
+    state.friendlies.party4.healthPct = 90
+
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.mode, "DEFEND")
+    local pal = findAction(rec.playerActions, "party2")
+    H.assertEq(pal.actionKey, "ACTION_PALADIN_DEFEND")
+    H.assertEq(pal.targetName, "Treefriend")
+    H.assertEq(pal.targetType, "friendly")
 end)
 
 H.it(g, "Burst blocked when no windfury (config requires it)", function()
@@ -907,6 +966,21 @@ H.it(g, "BG mode: flag-carrier aura gives a massive (+200) priority boost", func
     H.assertTrue(sawFlagBoost, "bg_flag_carrier contribution expected")
 end)
 
+H.it(g, "BG mode: player actions target the selected battleground enemy", function()
+    local state = SE:BuildTestState({"WARRIOR","ROGUE","PRIEST"})
+    state.combatPhase = "ACTIVE"
+    state.pvpContext  = "bg"
+    for _, e in pairs(state.enemies) do
+        if e.class == "WARRIOR" then e.importantBuffs[23333] = true end
+    end
+
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.primaryTargetClass, "WARRIOR")
+    local player = findAction(rec.playerActions, "player")
+    H.assertEq(player.actionKey, "ACTION_WARRIOR_KILL")
+    H.assertEq(player.target, rec.primaryTarget)
+end)
+
 H.it(g, "BG mode: <30% HP straggler gets the bg_low_hp_straggler boost", function()
     local state = SE:BuildTestState({"WARRIOR","ROGUE","PRIEST"})
     state.combatPhase = "ACTIVE"
@@ -1075,6 +1149,11 @@ H.it(g, "World mode: solo non-healer player low HP still DEFENDs", function()
     local rec = SE:Evaluate(state)
     H.assertEq(rec.mode, "DEFEND",
         "solo world PvP must defend on low player HP even without a healer class")
+    local player = findAction(rec.playerActions, "player")
+    H.assertEq(#rec.playerActions, 1)
+    H.assertEq(player.actionKey, "ACTION_DPS_PEEL")
+    H.assertEq(player.targetUnit, "player")
+    H.assertEq(player.targetType, "friendly")
 end)
 
 H.it(g, "Support-capable Paladin/Shaman friendlies count for low-healer DEFEND", function()

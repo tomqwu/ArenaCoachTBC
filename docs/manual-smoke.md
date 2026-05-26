@@ -31,6 +31,7 @@ behaviour is what tests can't see.
 - [ ] Frame visible in arena / BG / world PvP / duel; **hidden in cities and quest hubs** (auto-hide gate, v2.2.5)
 - [ ] OPEN / KILL / SWAP / DEFEND / RESET modes each render with a distinct colour (yellow / red / orange / blue / grey)
 - [ ] Target stats row shows `HP <n>%   kill <n>%   BURST READY` when there's a primary target; hidden on DEFEND / RESET
+- [ ] Assignment block shows one compact action per living friendly (for example Warrior MS, Shaman purge, Paladin HoJ)
 - [ ] Screen-edge glow pulses (1.6 s cycle, alpha 0.18-0.42) in the mode colour; dark on RESET
 - [ ] DEFEND/URGENT does not create a full-screen red flash; use HUD colour, nameplate, optional edge glow, and sound cues instead
 - [ ] Nameplate of the kill target gets a red border; swap target gets orange (when in SWAP mode)

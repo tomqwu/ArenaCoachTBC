@@ -69,7 +69,7 @@ You don't run anything during a match. The addon auto-engages on `PLAYER_ENTERIN
 **What you'll see during a match:**
 
 1. **Pre-combat (arena gates closed)**: Mode = `OPEN` (yellow), target = the comp's default open target. Plan your opener.
-2. **Active**: Mode flips to `KILL` (red) / `SWAP` (orange) / `DEFEND` (blue). The big text shows who to attack; the stats row shows target HP% and kill probability; the callouts row shows utility cues; the chain block shows the canonical CC sequence; the comp badge shows whether the engine has confirmed enemy specs.
+2. **Active**: Mode flips to `KILL` (red) / `SWAP` (orange) / `DEFEND` (blue). The big text shows who to attack; the stats row shows target HP% and kill probability; the callouts row shows utility cues; the assignments block gives each friendly a DBM-style action; the chain block shows the canonical CC sequence; the comp badge shows whether the engine has confirmed enemy specs.
 3. **Burst window**: `BURST READY` pill in the stats row — every burst gate has passed (target vulnerable, configured MS/Windfury requirements met, melee can connect, kill probability ≥ threshold, no incoming pressure). Chain readiness is shown in the gate breakdown and only blocks burst when `strategy.requireChainForBurst` is enabled.
 4. **Defensive**: When your healer is being trained or enemy lust pops, mode flips to `DEFEND` (blue). The edge glow turns blue; callouts shift to Pain Sup / BoP / peel reminders.
 
@@ -82,7 +82,7 @@ You don't run anything during a match. The addon auto-engages on `PLAYER_ENTERIN
 | `/acc help` | Print the command list |
 | `/acc toggle` | Show / hide the recommendation frame |
 | `/acc lock` / `/acc unlock` | Freeze / release the frame for dragging |
-| `/acc test` | 14s DBM-style UI demo (mode flips, BURST_NOW, DEFEND flash) |
+| `/acc test` | 14s DBM-style UI demo (mode flips, BURST_NOW, DEFEND cue) |
 | `/acc test bg` | BG-mode walk-through (flag carrier + low-HP straggler + CALL_BG_DEFEND) |
 | `/acc test world` | World PvP walk-through (single-target focus) |
 | `/acc test print` | Legacy chat-only summary |
@@ -117,7 +117,7 @@ All settings persist in `ArenaCoachTBCDB` (SavedVariables). They're forward-comp
 | `strategy.lookaheadEnabled` | `true` | Engage the M10 expectimax over chain × opponent response. |
 | `frame.compactMode` | `false` | Hides the friendly/enemy cooldown icon rows. |
 | `alerts.sound` / `alerts.screenFlash` | `true` / `false` | Voice cue toggle; `screenFlash` is retained for SavedVariables compatibility but no longer triggers full-screen flashing. |
-| `alerts.edgeGlow` / `alerts.nameplate` | `true` / `true` | v2.2 mode-coloured edge glow + nameplate highlight. |
+| `alerts.edgeGlow` / `alerts.nameplate` | `false` / `true` | Optional mode-coloured edge glow + default-on nameplate highlight. |
 
 ---
 
@@ -127,7 +127,7 @@ Spell IDs in `Data/Spells.lua` are **universal** — a single integer that's the
 
 Same for **mouse-over tooltips on the icon rows** — they call `GameTooltip:SetSpellByID(spellID)` so the tooltip is the canonical Blizzard popup in your client's locale (icon + name + flavor text).
 
-User-facing **callout strings** (e.g. "Tremor for fear", "Burst the priest") are addon-locale-keyed: `Locales/enUS.lua` is canonical with 112 keys, `Locales/zhCN.lua` is in parity. The addon picks the locale from `GetLocale()` automatically; override with `db.language` if needed.
+User-facing **callout and assignment strings** (e.g. "Tremor for fear", "Warrior: MS target") are addon-locale-keyed: `Locales/enUS.lua` is canonical and `Locales/zhCN.lua` stays in parity. The addon picks the locale from `GetLocale()` automatically; override with `db.language` if needed.
 
 ---
 
@@ -146,6 +146,9 @@ _G.ArenaCoachTBC.GetPrimaryTargetName()
 _G.ArenaCoachTBC.IsBurstAllowed()      -- bool: burst gate passed
 _G.ArenaCoachTBC.GetBurstDecision()    -- multi-gate breakdown
 _G.ArenaCoachTBC.GetChain()            -- {id, label, expectedProb, steps, links}
+_G.ArenaCoachTBC.GetPlayerActions()    -- per-friendly DBM-style assignments
+_G.ArenaCoachTBC.GetPlayerAction()     -- assignment for unit "player"
+_G.ArenaCoachTBC.GetActionForUnit("party1")
 _G.ArenaCoachTBC.GetKillProb(guid)     -- 0..1
 _G.ArenaCoachTBC.GetCompConfidence()   -- 0..1
 _G.ArenaCoachTBC.GetCompSpecConfirmed()

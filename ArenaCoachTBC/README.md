@@ -176,6 +176,9 @@ The addon publishes its current recommendation and full state through the global
 | `GetPrimaryTargetClass()` | "PRIEST" |
 | `GetSecondaryTarget()` | swap-candidate GUID / 切换备选 GUID |
 | `GetCallouts()` | array of locale keys / 本地化键数组 |
+| `GetPlayerActions()` | DBM-style per-friendly assignments / 每个队友的分工提示 |
+| `GetPlayerAction()` | assignment for `player` / 玩家自己的分工 |
+| `GetActionForUnit("party1")` | assignment for a party unit / 指定队友的分工 |
 | `IsBurstAllowed()` | true / false |
 | `GetBurstBlocker()` | "no_ms" / "target_immune" / nil |
 | `GetEnemyComp()` | "RMP" / "WLD" / ... |
@@ -190,7 +193,7 @@ The addon publishes its current recommendation and full state through the global
 | `GetFriendlies()` | full friendlies map / 完整己方表 |
 | `GetEnemyByGUID(guid)` | one enemy / 单个敌方 |
 | `GetCombatPhase()` | "PRE" / "ACTIVE" / "POST" |
-| `GetVersion()` | "2.7.6" |
+| `GetVersion()` | "2.8.0" |
 
 ### Sample custom trigger / 自定义触发器示例
 
@@ -211,10 +214,11 @@ function()
     local r = api.GetRecommendation()
     if not r then return "" end
     return string.format(
-        "%s: %s\n%s\nComp: %s vs %s",
+        "%s: %s\n%s\nMy action: %s\nComp: %s vs %s",
         r.mode or "",
         r.primaryTargetName or r.primaryTargetClass or "",
         r.reason or "",
+        (api.GetPlayerAction() and api.L(api.GetPlayerAction().actionKey)) or "",
         r.ownArchetypeLabel or "?", r.compLabel or "?"
     )
 end

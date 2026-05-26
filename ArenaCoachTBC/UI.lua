@@ -36,7 +36,7 @@ function UI:CreateFrame()
 
     local f = CreateFrame("Frame", "ArenaCoachTBCFrame", UIParent)
     -- v2.2.1: dropped the icon rows + 60px of vertical space.
-    f:SetSize(360, 110)
+    f:SetSize(380, 180)
     f:SetPoint(fcfg.point or "CENTER", UIParent, fcfg.point or "CENTER",
                fcfg.x or 0, fcfg.y or 120)
     f:SetScale(fcfg.scale or 1.0)
@@ -98,6 +98,15 @@ function UI:CreateFrame()
     f.subText:SetJustifyH("CENTER")
     f.subText:SetWidth(340)
     f.subText:SetText("")
+
+    -- DBM-style per-player assignments. These are plain advice lines from
+    -- StrategyEngine, never clickable or protected-action buttons.
+    f.actionText = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    f.actionText:SetPoint("TOP", f.subText, "BOTTOM", 0, -8)
+    if f.actionText.SetSpacing then pcall(f.actionText.SetSpacing, f.actionText, 2) end
+    f.actionText:SetJustifyH("LEFT")
+    f.actionText:SetWidth(350)
+    f.actionText:SetText("")
 
     -- Drag handlers (respect db.locked)
     f:SetScript("OnMouseDown", function(self, button)
@@ -192,6 +201,22 @@ local function calloutIcon(key, size)
     local tex = GetSpellTexture(spellID)
     if not tex or tex == "" then return "▸" end
     return string.format("|T%s:%d:%d:0:0:64:64:5:59:5:59|t", tex, size, size)
+end
+
+local function formatPlayerActions(actions)
+    if not actions or #actions == 0 then return "" end
+    local lines = { "|cffc8a86b" .. L("UI_ACTIONS_HEADER") .. "|r" }
+    for i = 1, math.min(#actions, 5) do
+        local a = actions[i]
+        local who = a.name or a.unit or a.class or "?"
+        local text = a.text or (a.actionKey and L(a.actionKey)) or a.actionKey or "?"
+        local target = a.targetName or a.targetClass
+        if target and target ~= "" then
+            text = text .. " -> " .. target
+        end
+        table.insert(lines, string.format("%s: %s", who, text))
+    end
+    return table.concat(lines, "\n")
 end
 
 function UI:Show()
@@ -398,6 +423,9 @@ function UI:Apply(recommendation)
         end
     end
     f.subText:SetText(table.concat(subParts, "\n"))
+    if f.actionText then
+        f.actionText:SetText(formatPlayerActions(recommendation.playerActions))
+    end
 
     -- v2.0.2 / v2.1: PvP-context gate. The aggressive alerts (screen
     -- flash, voice cue) should only fire in actual arena. Outside
