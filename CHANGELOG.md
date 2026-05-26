@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.7.6] - 2026-05-26
+
+### Fixed
+- **CI parity follow-up for the real-arena test suite.** Preserved nil holes in the mocked `CombatLogGetCurrentEventInfo()` varargs so LuaJIT sees the same CLEU payload shape as Lua 5.1 and the WoW client.
+- **Coverage-aware performance gate.** The raw `StrategyEngine:Evaluate` timing budget remains 5 ms, while the luacov-instrumented CI run now uses a 15 ms ceiling so coverage hooks do not masquerade as engine latency.
+- **Slash-command coverage for live visual toggles.** Added regression coverage for `/acc highcontrast`, `/acc verbose`, `/acc on|off`, `/acc glow`, and `/acc nameplate`.
+
+### Notes
+- Tests 626 -> 627. Local luacov total coverage: 99.12%.
+
 ## [2.7.5] - 2026-05-26
 
 ### Fixed
