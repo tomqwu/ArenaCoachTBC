@@ -21,6 +21,56 @@ local function findEnemyByClass(state, class)
     end
 end
 
+-- v2.7.1: in an arena 2v4 (3 friendlies dead, 1 enemy dead from a 5v5),
+-- the engine used to recommend DEFEND because "healer being trained"
+-- fires when 4 enemies attack 2 players — but defensives can't save a
+-- 2v4, you just burn them and die. The override suppresses DEFEND and
+-- attaches CALL_OUTNUMBERED_DISENGAGE so the user knows the engine has
+-- seen the spot.
+H.it(g, "v2.7.1: arena 2v4 (outnumbered 2x) suppresses DEFEND + adds CALL_OUTNUMBERED_DISENGAGE", function()
+    local state = SE:BuildTestState({"ROGUE","MAGE","WARLOCK","PRIEST"})  -- 4 enemies
+    state.combatPhase = "ACTIVE"
+    state.pvpContext = "arena"
+    state.observations = { healerUnderPressure = true }   -- would normally force DEFEND
+    -- Mark 3 of the 5 default friendlies dead, leaving 2 alive — the
+    -- arena 5v5 attrition scenario the user reported.
+    state.friendlies.party2.alive = false   -- paladin
+    state.friendlies.party3.alive = false   -- druid (the healer)
+    state.friendlies.party4.alive = false   -- priest (off-healer)
+    -- Re-validate setup: 2 alive friendlies vs 4 alive enemies.
+    local nF, nE = 0, 0
+    for _, u in pairs(state.friendlies) do if u.alive ~= false then nF = nF + 1 end end
+    for _, u in pairs(state.enemies)    do if u.alive ~= false then nE = nE + 1 end end
+    H.assertEq(nF, 2, "test setup: 2 alive friendlies")
+    H.assertEq(nE, 4, "test setup: 4 alive enemies")
+    local rec = SE:Evaluate(state)
+    H.assertNotEq(rec.mode, "DEFEND",
+        "outnumbered 2v4 must NOT recommend DEFEND — defensives can't save a 2v4")
+    local sawCall = false
+    for _, c in ipairs(rec.callouts or {}) do
+        if c == "CALL_OUTNUMBERED_DISENGAGE" then sawCall = true; break end
+    end
+    H.assertTrue(sawCall,
+        "outnumbered state must add CALL_OUTNUMBERED_DISENGAGE so the user knows the engine saw it")
+end)
+
+H.it(g, "v2.7.1: BG 3v10 (nameplate count, not real combatants) still allows DEFEND", function()
+    local state = SE:BuildTestState({"WARRIOR","PRIEST","SHAMAN"})
+    state.combatPhase = "ACTIVE"
+    state.pvpContext = "bg"   -- BG enemy count comes from nameplate scan, not real combat
+    state.observations = { healerUnderPressure = true }
+    state.enemies = {}
+    for i = 1, 10 do
+        state.enemies["bg-e" .. i] = { unit = "bg-e" .. i, guid = "bg-e" .. i,
+                                       class = "WARRIOR", alive = true, healthPct = 100 }
+    end
+    state.enemyClassList = {}
+    for _, e in pairs(state.enemies) do table.insert(state.enemyClassList, e.class) end
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.mode, "DEFEND",
+        "BG nameplate-count >1.5x must NOT trigger the arena outnumbered override")
+end)
+
 H.it(g, "Evaluate with no enemies returns RESET", function()
     local state = SE:BuildTestState({})
     state.combatPhase = "ACTIVE"

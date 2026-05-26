@@ -176,6 +176,9 @@ UI.calloutIcons = {
     CALL_FEAR_KILL             = 10890,   -- Psychic Scream
     CALL_MANA_BURN             = 10876,   -- Mana Burn
     BURST_NOW                  = 2825,    -- Bloodlust / Heroism
+    -- v2.7.1: outnumbered warning. Aspect of the Cheetah icon (5118)
+    -- reads as "run away" — a natural disengage signal.
+    CALL_OUTNUMBERED_DISENGAGE = 5118,
 }
 
 -- v2.7.0: render an inline icon for a callout key. Falls back to the

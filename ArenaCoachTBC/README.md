@@ -187,7 +187,7 @@ The addon publishes its current recommendation and full state through the global
 | `GetFriendlies()` | full friendlies map / 完整己方表 |
 | `GetEnemyByGUID(guid)` | one enemy / 单个敌方 |
 | `GetCombatPhase()` | "PRE" / "ACTIVE" / "POST" |
-| `GetVersion()` | "2.7.0" |
+| `GetVersion()` | "2.7.1" |
 
 ### Sample custom trigger / 自定义触发器示例
 

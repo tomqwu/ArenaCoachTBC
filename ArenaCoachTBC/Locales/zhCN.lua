@@ -129,6 +129,7 @@ ns.locales.zhCN = {
     CALL_SAVE_TREMOR_HOJ      = "对方习惯换人解恐惧 - 留陷阱图腾对审判",
     CALL_BURST_BLOCK_INCOMING = "对方可能冰块 - 暂停爆发",
     BURST_NOW                 = "立即爆发",
+    CALL_OUTNUMBERED_DISENGAGE = "敌众我寡 - 脱离或集火残血",
 
     -- M10 #69: pattern recognition callouts
     CALL_PATTERN_RMP_CHEAP_BLIND     = "肾击+致盲连击 - 剥离并使用饰品",

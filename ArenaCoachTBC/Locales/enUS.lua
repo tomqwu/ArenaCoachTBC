@@ -129,6 +129,7 @@ ns.locales.enUS = {
     CALL_SAVE_TREMOR_HOJ      = "They trinket Fear - save Tremor for HoJ",
     CALL_BURST_BLOCK_INCOMING = "Ice Block expected - hold burst",
     BURST_NOW                 = "BURST NOW",
+    CALL_OUTNUMBERED_DISENGAGE = "Outnumbered - disengage or burst lowest-HP",
 
     -- M10 #69: pattern recognition callouts (recurring kill setups)
     CALL_PATTERN_RMP_CHEAP_BLIND     = "Kidney+Blind chain detected - peel and trinket",

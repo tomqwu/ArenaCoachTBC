@@ -463,7 +463,39 @@ end
 -- ============================================================
 -- Defense / phase heuristics
 -- ============================================================
+-- v2.7.1: count alive units on each side. Used by the outnumbered
+-- check below so we can suppress DEFEND when defensives can't save you.
+local function aliveCount(map)
+    if not map then return 0 end
+    local n = 0
+    for _, u in pairs(map) do
+        if u.alive ~= false then n = n + 1 end
+    end
+    return n
+end
+
 local function shouldDefend(state)
+    -- v2.7.1: outnumbered override. User report — in an arena 2v4
+    -- (5v5 attrition; 3 friendlies dead, 1 enemy dead) the engine
+    -- recommended DEFEND because "healer being trained" fires by
+    -- definition when 4 enemies attack 2 players. But defensive
+    -- cooldowns can't save a 2v4 — they get spent in one global and
+    -- everyone dies. The actionable advice is "disengage / counter-
+    -- burst the lowest-HP enemy", not "burn Pain Sup".
+    --
+    -- The override is **arena-only**. In BG/world the enemy count
+    -- comes from nameplate scans and includes hostile players who
+    -- aren't actively fighting you — so a 3v10 BG nameplate count
+    -- isn't a real "outnumbered" state. Arena's `arenaN` unit IDs
+    -- are exactly the opposing team, so the ratio is meaningful.
+    if (state.pvpContext == nil or state.pvpContext == "arena") then
+        local nFriendly = aliveCount(state.friendlies)
+        local nEnemy    = aliveCount(state.enemies)
+        if nFriendly > 0 and nEnemy >= nFriendly * 1.5 then
+            return false, "outnumbered_no_defend"
+        end
+    end
+
     local lowest = lowestHealer(state.friendlies)
     -- M11 #71: defensive HP threshold shifts with aggression.
     -- Greedy: 30 (only defend on real emergencies). Safe: 50 (defend earlier).
@@ -493,6 +525,18 @@ local function shouldDefend(state)
         end
     end
     return false
+end
+
+-- v2.7.1: helper for the decideMode caller to know whether the engine
+-- decided NOT to DEFEND because we're outnumbered. Used to attach the
+-- CALL_OUTNUMBERED callout to the KILL recommendation. Arena-only for
+-- the same reason as the override above — BG nameplate counts aren't
+-- meaningful for "outnumbered in active combat".
+local function isOutnumbered(state)
+    if state.pvpContext ~= nil and state.pvpContext ~= "arena" then return false end
+    local nFriendly = aliveCount(state.friendlies)
+    local nEnemy    = aliveCount(state.enemies)
+    return nFriendly > 0 and nEnemy >= nFriendly * 1.5
 end
 
 -- ============================================================
@@ -822,6 +866,15 @@ function SE:Evaluate(state)
     local burstOK, burstWhy = burstAllowed(state, topTarget)
     if mode == "KILL" and burstOK then
         table.insert(callouts, "BURST_NOW")
+    end
+
+    -- v2.7.1: outnumbered callout. shouldDefend() returns false in the
+    -- outnumbered case so we fall through to KILL — but we want to be
+    -- explicit that the player is in a bad spot, not just "kill this
+    -- target". Prepend the OUTNUMBERED callout so it's the top entry
+    -- and gets the prominent icon + text slot in the HUD.
+    if isOutnumbered(state) then
+        table.insert(callouts, 1, "CALL_OUTNUMBERED_DISENGAGE")
     end
 
     -- v2.1.6: surface target HP fraction + kill probability in the

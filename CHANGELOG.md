@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.7.1] - 2026-05-26
+
+### Fixed
+- **Engine recommended DEFEND in a 2v4 arena.** User report: *"we got 2v4 situation, you ask me to defend."* Root cause: `shouldDefend()` returned `true` via the "healer being trained" branch whenever multiple damage events landed on the healer in a 5-second window — which fires by definition in a 2v4 because 4 enemies attacking 2 players means multi-source damage. But defensive cooldowns can't save a 2v4: you spend them in one global and everyone dies. The actionable advice in that state is "disengage or counter-burst the lowest-HP enemy", not "burn Pain Sup".
+
+  Added an outnumbered override at the top of `shouldDefend(state)`: when `alive enemies ≥ alive friendlies × 1.5` in arena context, suppress DEFEND and let `decideMode` fall through to KILL. A new `CALL_OUTNUMBERED_DISENGAGE` callout is added at the top of the callout list (so it gets the prominent icon + text slot in the HUD), localised in both locales: *"Outnumbered — disengage or burst lowest-HP"* / *"敌众我寡 - 脱离或集火残血"*. Wired to the Aspect of the Cheetah icon (spell 5118) so the visual cue reads as "run away".
+
+### Notes
+- **Arena-only.** The override does NOT apply in BG / world context. In BG the engine's "alive enemies" comes from nameplate scans and includes everyone in range, not just active combatants — a 3v10 nameplate count isn't a real outnumbered state. Arena's `arenaN` unit IDs are exactly the opposing team, so the ratio is meaningful there.
+- 609 → 611 tests (+2 regression: arena 2v4 suppresses DEFEND + adds the callout; BG 3v10 still allows DEFEND).
+- Locale parity green: 112 keys per locale (was 111; added `CALL_OUTNUMBERED_DISENGAGE`).
+- Engine, bridge API, storage shape all unchanged. UI HUD adds the icon automatically via the v2.7.0 callout-icon map.
+
 ## [2.7.0] - 2026-05-25
 
 **Visual hierarchy pass driven by user feedback.** *"Whole-screen glow doesn't help, you should add which role does what in the HUD, can you add some ICONs?"* Two changes:

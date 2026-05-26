@@ -588,6 +588,12 @@ end)
 H.it(g, "train detection forces DEFEND when threshold exceeded", function()
     rebootForEvents()
     _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    -- v2.7.1: explicitly clear state.enemies so the v2.7.1 arena
+    -- outnumbered-override doesn't suppress DEFEND. Earlier tests in
+    -- the same Lua process (e.g. BGModeE2E's buildBG10) leave 10
+    -- enemies in Core.state; rebootForEvents only resets the event
+    -- bus, not the shared state table.
+    Core.state.enemies = {}
     H.setUnit("player", { class = "WARRIOR", guid = "guid-me", hp = 100, hpMax = 100 })
     Core:RefreshFriendlies()
     H._gameTime = 200
