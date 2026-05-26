@@ -1088,3 +1088,21 @@ H.it(g, "arena quality: WLP drain 2v2 kills paladin as the active matchup plan",
     H.assertEq(rec.mode, "KILL")
     H.assertEq(rec.primaryTargetClass, "PALADIN", "drain matchup plan should target paladin")
 end)
+
+H.it(g, "arena quality: recommendation primaryTargetHp is populated from healthPct", function()
+    local state = SE:BuildTestState({ "ROGUE", "MAGE", "PRIEST" })
+    state.combatPhase = "ACTIVE"
+    state.bracket = 3
+    state.pvpContext = "arena"
+
+    for _, enemy in pairs(state.enemies) do
+        if enemy.class == "PRIEST" then
+            enemy.healthPct = 10
+        end
+    end
+
+    local rec = SE:Evaluate(state)
+
+    H.assertEq(rec.primaryTargetClass, "PRIEST")
+    H.assertEq(rec.primaryTargetHp, 0.10, "healthPct=10 should become 0.10 for the HUD")
+end)

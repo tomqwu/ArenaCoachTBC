@@ -894,10 +894,12 @@ function SE:Evaluate(state)
     -- floats so the UI can compute integer percentages locally.
     local primaryTargetHp
     if topTarget then
-        if topTarget.hpPct then
+        if type(topTarget.hpPct) == "number" then
             primaryTargetHp = topTarget.hpPct
+        elseif type(topTarget.healthPct) == "number" then
+            primaryTargetHp = math.max(0, math.min(1, topTarget.healthPct / 100))
         elseif topTarget.hp and topTarget.hpMax and topTarget.hpMax > 0 then
-            primaryTargetHp = topTarget.hp / topTarget.hpMax
+            primaryTargetHp = math.max(0, math.min(1, topTarget.hp / topTarget.hpMax))
         end
     end
     local primaryKillProb
