@@ -385,6 +385,48 @@ H.it(g, "comp openTarget biases PRE target selection", function()
     H.assertEq(rec.primaryTargetClass, "WARLOCK")
 end)
 
+H.it(g, "arena quality: 2v2 Warrior/Paladin pre-gates opens paladin instead of fake DEFEND", function()
+    local state = SE:BuildTestState({ "WARRIOR", "PALADIN" })
+    state.combatPhase = "PRE"
+    state.bracket = 2
+    state.pvpContext = "arena"
+
+    local rec = SE:Evaluate(state)
+
+    H.assertEq(rec.mode, "OPEN", "2v2 warrior/paladin should produce opener guidance")
+    H.assertEq(rec.primaryTargetClass, "PALADIN", "paladin is the planned opener target")
+end)
+
+H.it(g, "arena quality: 2v2 Hunter/Warrior pre-gates opens hunter instead of fake DEFEND", function()
+    local state = SE:BuildTestState({ "HUNTER", "WARRIOR" })
+    state.combatPhase = "PRE"
+    state.bracket = 2
+    state.pvpContext = "arena"
+
+    local rec = SE:Evaluate(state)
+
+    H.assertEq(rec.mode, "OPEN", "2v2 hunter/warrior should produce opener guidance")
+    H.assertEq(rec.primaryTargetClass, "HUNTER", "hunter is the planned opener target")
+end)
+
+H.it(g, "arena quality: 2v2 shatter kills the low mage over generic priest bias", function()
+    local state = SE:BuildTestState({ "MAGE", "PRIEST" })
+    state.combatPhase = "ACTIVE"
+    state.bracket = 2
+    state.pvpContext = "arena"
+
+    for _, enemy in pairs(state.enemies) do
+        if enemy.class == "MAGE" then
+            enemy.healthPct = 25
+        end
+    end
+
+    local rec = SE:Evaluate(state)
+
+    H.assertEq(rec.mode, "KILL")
+    H.assertEq(rec.primaryTargetClass, "MAGE", "low mage should be the kill window")
+end)
+
 H.it(g, "aggression setting changes swap threshold", function()
     local state = SE:BuildTestState({"PRIEST","MAGE"})
     state.combatPhase = "ACTIVE"
@@ -813,6 +855,32 @@ H.it(g, "Evaluate populates rec.burstDecision when mode is KILL", function()
     end
 end)
 
+H.it(g, "arena quality: BURST_NOW is suppressed when BurstDecision blocks kill probability", function()
+    local state = SE:BuildTestState({ "ROGUE", "MAGE", "PRIEST" }, {
+        observations = { hojReady = true, windfuryActive = true },
+        config = { strategy = { callBurstOnlyWhenMSActive = false, requireWindfuryNearby = true } },
+    })
+    state.combatPhase = "ACTIVE"
+    state.bracket = 3
+    state.pvpContext = "arena"
+
+    for _, enemy in pairs(state.enemies) do
+        enemy.healthPct = 100
+        enemy.hasTrinket = true
+        enemy.importantBuffs = {}
+    end
+
+    local rec = SE:Evaluate(state)
+
+    H.assertEq(rec.mode, "KILL")
+    H.assertEq(rec.burstDecision.blockedBy, "kill_prob")
+    H.assertFalse(rec.burstAllowed, "legacy hard gates are not enough for burst-ready display")
+    H.assertEq(rec.burstBlockedBy, "kill_prob")
+    for _, callout in ipairs(rec.callouts or {}) do
+        H.assertNotEq(callout, "BURST_NOW", "BURST_NOW should not appear when BurstDecision blocks")
+    end
+end)
+
 -- =================================================================
 -- M11 #72: KillProb model
 -- =================================================================
@@ -1216,4 +1284,55 @@ H.it(g, "v2.1.3: KILL mode does NOT set reasonKey (variable contributor text)", 
     local rec = SE:Evaluate(state)
     H.assertNil(rec.reasonKey,
         "KILL has variable contributor data; reasonKey stays nil so UI uses the rec.reason text")
+end)
+
+H.it(g, "arena quality: WLP drain 2v2 kills paladin as the active matchup plan", function()
+    local state = SE:BuildTestState({ "WARLOCK", "PALADIN" })
+    state.combatPhase = "ACTIVE"
+    state.bracket = 2
+    state.pvpContext = "arena"
+
+    local rec = SE:Evaluate(state)
+
+    H.assertEq(rec.mode, "KILL")
+    H.assertEq(rec.primaryTargetClass, "PALADIN", "drain matchup plan should target paladin")
+end)
+
+H.it(g, "arena quality: recommendation primaryTargetHp is populated from healthPct", function()
+    local state = SE:BuildTestState({ "ROGUE", "MAGE", "PRIEST" })
+    state.combatPhase = "ACTIVE"
+    state.bracket = 3
+    state.pvpContext = "arena"
+
+    for _, enemy in pairs(state.enemies) do
+        if enemy.class == "PRIEST" then
+            enemy.healthPct = 10
+        end
+    end
+
+    local rec = SE:Evaluate(state)
+
+    H.assertEq(rec.primaryTargetClass, "PRIEST")
+    H.assertEq(rec.primaryTargetHp, 0.10, "healthPct=10 should become 0.10 for the HUD")
+end)
+
+H.it(g, "arena quality: recommendation primaryTargetHp clamps hpPct to a fraction", function()
+    local state = SE:BuildTestState({ "MAGE" })
+    state.combatPhase = "ACTIVE"
+    state.pvpContext = "arena"
+
+    for _, enemy in pairs(state.enemies) do
+        enemy.healthPct = nil
+        enemy.hpPct = 1.5
+    end
+
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.primaryTargetHp, 1.0, "hpPct above 1 must clamp before HUD rendering")
+
+    for _, enemy in pairs(state.enemies) do
+        enemy.hpPct = -0.25
+    end
+
+    rec = SE:Evaluate(state)
+    H.assertEq(rec.primaryTargetHp, 0.0, "hpPct below 0 must clamp before HUD rendering")
 end)

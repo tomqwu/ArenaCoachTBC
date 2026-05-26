@@ -58,6 +58,7 @@ load("Data/Strategies.lua")
 load("EventBus.lua")
 load("CooldownTracker.lua")
 load("DRTracker.lua")
+load("Chain.lua")
 load("StrategyEngine.lua")
 
 local SE = ns.StrategyEngine

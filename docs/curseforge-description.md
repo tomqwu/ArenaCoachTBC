@@ -215,13 +215,13 @@ ArenaCoachTBC currently ships:
 - English (`enUS`)
 - Simplified Chinese (`zhCN`)
 
-Both locales are parity-checked in CI. Current locale parity is **144 keys per locale**. Spell names are resolved by the WoW client through spell IDs, so they follow the language of your client where Blizzard provides localized spell data.
+Both locales are parity-checked in CI. Current locale parity is **145 keys per locale**. Spell names are resolved by the WoW client through spell IDs, so they follow the language of your client where Blizzard provides localized spell data.
 
 ## Project Quality
 
 The addon is developed as a pure Lua 5.1 project with headless tests for the strategy engine and WoW API stubs for UI/core behavior. Current local release validation:
 
-- **639 tests passing**
+- **660 tests passing**
 - **99%+ coverage**
 - Locale parity check
 - Lua syntax check

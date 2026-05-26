@@ -53,6 +53,7 @@ SE.weights = {
     off_healer_cc        =  15,
     comp_open_target     =  20,
     comp_swap_target     =  10,
+    comp_kill_target     =  35,
     -- M14 (v2.1) — BG mode boosts
     bg_flag_carrier      = 200,  -- enemy carrying the WSG flag dominates kill priority
     bg_low_hp_straggler  =  30,  -- additional boost for <30% HP targets in BG (low-HP swap practice)
@@ -78,7 +79,7 @@ SE.BG_FLAG_AURAS = { [23333] = true, [23335] = true }
 -- 3v3: swap targets matter; healer slightly less unique.
 -- 5v5: defaults are tuned for 5v5 cleave; no overrides needed.
 SE.bracketWeights = {
-    [2] = { role_healer = 40, role_cloth_dps = 18 },
+    [2] = { role_healer = 40, role_cloth_dps = 18, health_below_50 = 40 },
     [3] = { role_healer = 30 },
     [5] = {},
 }
@@ -348,6 +349,9 @@ local function scoreEnemy(enemy, state, comp)
     if comp and comp.swapTarget and phase ~= "PRE" and cfg.allowDpsSwap ~= false
        and enemy.class == comp.swapTarget then
         add(w.comp_swap_target, "comp_swap_target")
+    end
+    if comp and comp.killTarget and phase ~= "PRE" and enemy.class == comp.killTarget then
+        add(w.comp_kill_target, "comp_kill_target")
     end
 
     -- M14 (v2.1): BG-specific scoring boosts. Active only when the
@@ -1055,51 +1059,6 @@ function SE:Evaluate(state)
         reason = reason .. string.format(" | %s %s (%.2f)", comp.id, tag, compConfidence or 0.0)
     end
 
-    -- v2.7.1: outnumbered callout. shouldDefend() returns false in the
-    -- outnumbered case so we fall through to KILL — but we want to be
-    -- explicit that the player is in a bad spot, not just "kill this
-    -- target". Prepend the OUTNUMBERED callout so it's the top entry
-    -- and gets the prominent icon + text slot in the HUD.
-    if isOutnumbered(state) then
-        table.insert(callouts, 1, "CALL_OUTNUMBERED_DISENGAGE")
-    end
-
-    -- v2.1.6: surface target HP fraction + kill probability in the
-    -- recommendation so the HUD can render a "HP 62% / kill 47%" stats
-    -- line without having to reach back into state. Both are 0..1
-    -- floats so the UI can compute integer percentages locally.
-    local primaryTargetHp
-    if topTarget then
-        if topTarget.healthPct then
-            primaryTargetHp = (topTarget.healthPct or 0) / 100
-        elseif topTarget.hpPct then
-            primaryTargetHp = topTarget.hpPct
-        elseif topTarget.hp and topTarget.hpMax and topTarget.hpMax > 0 then
-            primaryTargetHp = topTarget.hp / topTarget.hpMax
-        end
-    end
-    local primaryKillProb
-    if topTarget and self.KillProb then
-        local kp = self:KillProb(topTarget, state)
-        primaryKillProb = kp and kp.prob or nil
-    end
-
-    local confidence
-    if not topTarget then
-        confidence = 0.0
-    else
-        local diff = (topTarget._score or 0) - ((secondTarget and secondTarget._score) or 0)
-        -- normalize: 0-50 spread -> 0.5-1.0
-        confidence = math.max(0.0, math.min(1.0, 0.5 + diff / 100))
-    end
-
-    local priority = "MEDIUM"
-    if mode == "DEFEND" then priority = "URGENT"
-    elseif mode == "SWAP" then priority = "HIGH"
-    elseif mode == "OPEN" then priority = "MEDIUM"
-    elseif mode == "RESET" then priority = "LOW"
-    else priority = "HIGH" end
-
     -- M8 #61: chain scoring. Pick the top-scoring chain for this comp
     -- against the current state. nil if the comp has no chains, no
     -- chain has at least one castable link, or the top chain's
@@ -1151,12 +1110,62 @@ function SE:Evaluate(state)
         end
     end
 
+    -- Burst guidance. BurstDecision is the auditable single source of
+    -- truth for target immunity, configured MS/Windfury prerequisites,
+    -- melee uptime, kill probability, chain readiness, and pressure gates.
     local burstDecision = (mode == "KILL") and self:BurstDecision(state, topTarget, pickedChain) or nil
-    local finalBurstAllowed = burstDecision and burstDecision.allowed == true or false
-    if finalBurstAllowed then
+    local burstOK = burstDecision and burstDecision.allowed == true or false
+    local burstBlockedBy = (burstDecision and not burstDecision.allowed) and burstDecision.blockedBy or nil
+    if mode == "KILL" and burstOK then
         table.insert(callouts, "BURST_NOW")
     end
-    local playerActions = buildPlayerActions(state, mode, topTarget, secondTarget, finalBurstAllowed)
+
+    -- v2.7.1: outnumbered callout. shouldDefend() returns false in the
+    -- outnumbered case so we fall through to KILL — but we want to be
+    -- explicit that the player is in a bad spot, not just "kill this
+    -- target". Prepend the OUTNUMBERED callout so it's the top entry
+    -- and gets the prominent icon + text slot in the HUD.
+    if isOutnumbered(state) then
+        table.insert(callouts, 1, "CALL_OUTNUMBERED_DISENGAGE")
+    end
+
+    -- v2.1.6: surface target HP fraction + kill probability in the
+    -- recommendation so the HUD can render a "HP 62% / kill 47%" stats
+    -- line without having to reach back into state. Both are 0..1
+    -- floats so the UI can compute integer percentages locally.
+    local primaryTargetHp
+    if topTarget then
+        if type(topTarget.hpPct) == "number" then
+            primaryTargetHp = math.max(0, math.min(1, topTarget.hpPct))
+        elseif type(topTarget.healthPct) == "number" then
+            primaryTargetHp = math.max(0, math.min(1, topTarget.healthPct / 100))
+        elseif topTarget.hp and topTarget.hpMax and topTarget.hpMax > 0 then
+            primaryTargetHp = math.max(0, math.min(1, topTarget.hp / topTarget.hpMax))
+        end
+    end
+    local primaryKillProb
+    if topTarget and self.KillProb then
+        local kp = self:KillProb(topTarget, state)
+        primaryKillProb = kp and kp.prob or nil
+    end
+
+    local confidence
+    if not topTarget then
+        confidence = 0.0
+    else
+        local diff = (topTarget._score or 0) - ((secondTarget and secondTarget._score) or 0)
+        -- normalize: 0-50 spread -> 0.5-1.0
+        confidence = math.max(0.0, math.min(1.0, 0.5 + diff / 100))
+    end
+
+    local priority = "MEDIUM"
+    if mode == "DEFEND" then priority = "URGENT"
+    elseif mode == "SWAP" then priority = "HIGH"
+    elseif mode == "OPEN" then priority = "MEDIUM"
+    elseif mode == "RESET" then priority = "LOW"
+    else priority = "HIGH" end
+
+    local playerActions = buildPlayerActions(state, mode, topTarget, secondTarget, burstOK)
 
     return {
         mode            = mode,
@@ -1185,8 +1194,8 @@ function SE:Evaluate(state)
         ownArchetypeLabel = ownArchetype and ownArchetype.label or nil,
         ownCapabilities = ownCaps,
         playerActions   = playerActions,
-        burstAllowed    = finalBurstAllowed,
-        burstBlockedBy  = (burstDecision and not burstDecision.allowed) and burstDecision.blockedBy or nil,
+        burstAllowed    = burstOK,
+        burstBlockedBy  = burstBlockedBy,
         primaryTargetHp = primaryTargetHp,   -- v2.1.6: 0..1 fraction
         killProb        = primaryKillProb,    -- v2.1.6: 0..1 fraction
         _topScore       = topTarget and topTarget._score or 0,

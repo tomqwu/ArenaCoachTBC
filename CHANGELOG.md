@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.5] - 2026-05-26
+
+### Fixed
+- **Rated-arena decision quality pass.** Corrected 2v2 pre-gate double-DPS/hybrid opener handling, strengthened low-HP 2v2 kill-window priority, added data-driven active kill targets for matchups such as WLP drain, restored target HP display from `healthPct`, formatted target-aware HUD callouts without raw `%s`, and gated `BURST_NOW` on the full `BurstDecision`.
+
+### Tests
+- Added rated-arena regression coverage for the known benchmark misses and raised the benchmark floor to 85%.
+
+### Notes
+- Merged on top of v2.8.4, preserving player assignments, stale HUD fade, arcade cues, subtle edge visuals, and distribution-copy updates.
+- Tests 660/660 passing. Locale parity green at 145 keys per locale. Local luacov total coverage: 99.32%. Rated-arena benchmark agreement: 21/21.
+
 ## [2.8.4] - 2026-05-26
 
 ### Changed

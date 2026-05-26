@@ -3,6 +3,7 @@ local H = _G.__ACC_TEST_HELPERS
 H.load("Locales/enUS.lua")
 H.load("Data/Spells.lua")
 H.load("Data/Classes.lua")
+H.load("Core.lua")
 H.load("UI.lua")
 
 local UI = H.ns.UI
@@ -171,6 +172,31 @@ H.it(g, "pre-gates OPEN plan does not fade just because the room is quiet", func
     H.assertEq(UI.frame._accAlpha, 1)
     H.ns.Core.state.pvpContext = nil
     H.ns.Core.state.combatPhase = nil
+end)
+
+H.it(g, "arena quality: formatted top callout renders with target name instead of raw percent-s", function()
+    _G.ArenaCoachTBCDB = {
+        enabled = true, locked = false, language = "auto",
+        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0, verbose = false },
+        alerts = { sound = false, screenFlash = false, edgeGlow = false, nameplate = false },
+        strategy = {}, debug = false,
+    }
+    UI:CreateFrame()
+    UI._calloutLastShown = {}
+    H.advanceTime(5)
+
+    UI:Apply({
+        mode = "KILL",
+        primaryTargetName = "Holyman",
+        primaryTargetClass = "PRIEST",
+        callouts = { "CALL_PURGE" },
+        priority = "HIGH",
+        _forceShow = true,
+    })
+
+    local text = UI.frame.subText:GetText()
+    H.assertTrue(text:find("Holyman", 1, true) ~= nil, "formatted callout should include target name")
+    H.assertTrue(text:find("%%s") == nil, "formatted callout must not leak raw %s")
 end)
 
 H.it(g, "Apply with each mode does not error", function()

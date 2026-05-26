@@ -25,7 +25,7 @@ H.it(g, "Identify finds RMP when MAGE/PRIEST/ROGUE present (1 healer)", function
     H.assertEq(c.id, "RMP")
 end)
 
-H.it(g, "Identify falls back to TRIPLE_DPS when 0 healers", function()
+H.it(g, "Identify falls back to TRIPLE_DPS when 0 healers and 3 DPS", function()
     -- Override roles via enemies map
     local enemies = {
         a = { class = "WARRIOR", roleGuess = "MELEE" },
@@ -505,8 +505,8 @@ H.it(g, "spec-keyed comp requires a dead enemy's spec to NOT count", function()
     }
     local m = ST:Identify({"ROGUE","MAGE","PRIEST"}, enemies, 3)
     -- The dead priest also fails the class presence check (alive=false),
-    -- so we expect no static 3v3 match. Two remaining DPS are not a
-    -- triple-DPS comp, so the matcher should return nil.
+    -- so we expect no static 3v3 match. With only 2 alive DPS, the
+    -- TRIPLE_DPS dynamic also must not fire.
     H.assertNil(m)
 end)
 
