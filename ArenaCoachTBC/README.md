@@ -8,6 +8,10 @@ A strategy coach addon for **TBC Classic / TBC Anniversary** arena. Watches your
 
 **自适应任意队伍组合与 PvP 场景**——通过能力推理驱动战术（致死打击？嗜血？群驱散？自由祝福？驱散？），而非职业硬编码。竞技场启用完整阵容/控制链/对手档案逻辑；战场与户外 PvP 使用铭牌与受击事件探测敌人，跳过不稳定的阵容匹配，并在玩家或可治疗队友低血量时保留防御建议。
 
+If the recommendation stops refreshing, the HUD fades out and clears stale visual cues instead of leaving old text over the fight.
+
+如果推荐停止刷新，HUD 会淡出并清理过期视觉提示，而不是把旧文字留在战斗画面上。
+
 > ⚠️ **This addon never automates gameplay.** It does not cast spells, does not target enemies for you, does not click protected buttons, and does not edit secure macros in combat. Everything it does is visual / audio / text suggestions.
 >
 > ⚠️ **此插件绝不自动化操作。** 不施法、不切换目标、不点击受保护按钮、不修改安全宏。只提供视觉、音频、文字建议。
@@ -193,7 +197,7 @@ The addon publishes its current recommendation and full state through the global
 | `GetFriendlies()` | full friendlies map / 完整己方表 |
 | `GetEnemyByGUID(guid)` | one enemy / 单个敌方 |
 | `GetCombatPhase()` | "PRE" / "ACTIVE" / "POST" |
-| `GetVersion()` | "2.8.2" |
+| `GetVersion()` | "2.8.3" |
 
 ### Sample custom trigger / 自定义触发器示例
 

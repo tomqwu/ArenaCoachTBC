@@ -33,6 +33,7 @@ behaviour is what tests can't see.
 - [ ] Arcade warning plate renders big passive cues (`!! READY !!`, `!! BURST !!`, `!! DANGER !!`, `!! PINCH !!`) inside the frame without covering the playfield
 - [ ] Target stats row shows `HP <n>%   kill <n>%   BURST READY` when there's a primary target; hidden on DEFEND / RESET
 - [ ] Assignment block shows one compact action per living friendly (for example Warrior MS, Shaman purge, Paladin HoJ)
+- [ ] If no fresh evaluation arrives for several seconds, the HUD text fades away and clears stale nameplate/edge cues
 - [ ] Optional edge cue is thin, static, low-alpha, and dark on RESET; it must not pulse or flash around the screen
 - [ ] DEFEND/URGENT does not create a full-screen red flash; use HUD colour, nameplate, arcade cue, and sound cues instead
 - [ ] Nameplate of the kill target gets a red border; swap target gets orange (when in SWAP mode)

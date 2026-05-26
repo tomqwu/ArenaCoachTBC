@@ -38,6 +38,8 @@ function mockMethods:SetJustifyH()        end
 function mockMethods:SetJustifyV()        end
 function mockMethods:SetWidth()           end
 function mockMethods:SetFont()            end
+function mockMethods:SetAlpha(v)          self._alpha = v end
+function mockMethods:GetAlpha()           return self._alpha end
 
 local makeMockFrame  -- forward decl
 

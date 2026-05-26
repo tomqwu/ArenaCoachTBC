@@ -105,6 +105,74 @@ H.it(g, "Apply renders arcade pinch cue for outnumbered BG/world warnings", func
     H.ns.Core.state.pvpContext = nil
 end)
 
+H.it(g, "stale recommendations fade out and clear visual layers", function()
+    H.load("ScreenEdgeGlow.lua")
+    H.load("Nameplate.lua")
+    local Glow = H.ns.ScreenEdgeGlow
+    local NP = H.ns.Nameplate
+    _G.ArenaCoachTBCDB = _G.ArenaCoachTBCDB or {}
+    _G.ArenaCoachTBCDB.alerts = { edgeGlow = true, nameplate = true }
+    H.ns.Core = H.ns.Core or {}
+    H.ns.Core.state = H.ns.Core.state or {}
+    H.ns.Core.state.pvpContext = "arena"
+
+    UI:CreateFrame()
+    Glow:SetMode("KILL")
+    H.setUnit("nameplate1", { guid = "guid-target", class = "PRIEST",
+                              name = "Holyman", exists = true })
+    _G.nameplate1 = _G.nameplate1 or H.makeMockFrame{ name = "nameplate1" }
+    UI:Apply({
+        mode = "KILL",
+        primaryTarget = "guid-target",
+        primaryTargetName = "Holyman",
+        callouts = {},
+        priority = "HIGH",
+    })
+    local on = UI.frame._scripts.OnUpdate
+    H.assertNotNil(on)
+    H.assertEq(UI.frame._accAlpha, 1)
+    on(UI.frame, UI.staleFadeStart + (UI.staleFadeSeconds / 2))
+    H.assertTrue(UI.frame._accAlpha < 1 and UI.frame._accAlpha > 0,
+        "stale frame should be partially faded")
+    on(UI.frame, UI.staleFadeSeconds)
+    H.assertFalse(UI.frame:IsShown(), "stale frame should hide after fading out")
+    H.assertNil(Glow:CurrentMode(), "stale fade should clear edge cue")
+    for _, ov in pairs(NP._overlays or {}) do
+        H.assertFalse(ov:IsShown(), "stale fade should clear nameplate overlays")
+    end
+    H.ns.Core.state.pvpContext = nil
+end)
+
+H.it(g, "fresh recommendations restore full opacity after stale fade", function()
+    H.ns.Core = H.ns.Core or {}
+    H.ns.Core.state = H.ns.Core.state or {}
+    H.ns.Core.state.pvpContext = "arena"
+    UI:CreateFrame()
+    UI:Apply({ mode = "KILL", primaryTargetName = "Holyman", callouts = {}, priority = "HIGH" })
+    local on = UI.frame._scripts.OnUpdate
+    on(UI.frame, UI.staleFadeStart + UI.staleFadeSeconds + 0.1)
+    H.assertFalse(UI.frame:IsShown())
+    UI:Apply({ mode = "SWAP", primaryTargetName = "Mage", callouts = {}, priority = "HIGH" })
+    H.assertTrue(UI.frame:IsShown())
+    H.assertEq(UI.frame._accAlpha, 1)
+    H.ns.Core.state.pvpContext = nil
+end)
+
+H.it(g, "pre-gates OPEN plan does not fade just because the room is quiet", function()
+    H.ns.Core = H.ns.Core or {}
+    H.ns.Core.state = H.ns.Core.state or {}
+    H.ns.Core.state.pvpContext = "arena"
+    H.ns.Core.state.combatPhase = "PRE"
+    UI:CreateFrame()
+    UI:Apply({ mode = "OPEN", primaryTargetName = "Priest", callouts = {}, priority = "MEDIUM" })
+    local on = UI.frame._scripts.OnUpdate
+    on(UI.frame, UI.staleFadeStart + UI.staleFadeSeconds + 5)
+    H.assertTrue(UI.frame:IsShown(), "stable pre-gates opener plan should remain visible")
+    H.assertEq(UI.frame._accAlpha, 1)
+    H.ns.Core.state.pvpContext = nil
+    H.ns.Core.state.combatPhase = nil
+end)
+
 H.it(g, "Apply with each mode does not error", function()
     UI:CreateFrame()
     for _, mode in ipairs({"OPEN","KILL","SWAP","DEFEND","RESET"}) do

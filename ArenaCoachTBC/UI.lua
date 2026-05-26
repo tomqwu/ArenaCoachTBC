@@ -1,7 +1,7 @@
 -- ArenaCoachTBC - UI layer
 -- One movable frame that shows the current recommendation (mode, target,
 -- HP%, kill prob, callouts). Driven event-by-event from Core; no polling.
--- v2.2.0 added two peripheral visual layers wired in here: a pulsing
+-- v2.2.0 added two peripheral visual layers wired in here: a
 -- mode-coloured thin edge cue (ScreenEdgeGlow.lua) and a coloured
 -- border on the kill / swap target's nameplate (Nameplate.lua). No
 -- protected actions are ever bound to any visible button.
@@ -12,6 +12,12 @@ ns.UI = ns.UI or {}
 
 local UI = ns.UI
 UI.frame = nil
+
+local STALE_FADE_START = 3.0
+local STALE_FADE_SECONDS = 2.0
+
+UI.staleFadeStart = STALE_FADE_START
+UI.staleFadeSeconds = STALE_FADE_SECONDS
 
 -- Resolve a localized string by key.
 local function L(key, ...)
@@ -135,6 +141,9 @@ function UI:CreateFrame()
             ArenaCoachTBCDB.frame.x = x
             ArenaCoachTBCDB.frame.y = y
         end
+    end)
+    f:SetScript("OnUpdate", function(_, dt)
+        if UI and UI._UpdateStaleFade then UI:_UpdateStaleFade(dt) end
     end)
 
     self.frame = f
@@ -281,6 +290,51 @@ local function formatPlayerActions(actions)
     return table.concat(lines, "\n")
 end
 
+function UI:_SetFrameAlpha(alpha)
+    local f = self.frame
+    if not f then return end
+    f._accAlpha = alpha
+    if f.SetAlpha then f:SetAlpha(alpha) end
+end
+
+function UI:_ShouldStaleFade(recommendation, mode)
+    local phase = ns.Core and ns.Core.state and ns.Core.state.combatPhase
+    if mode == "OPEN" and phase == "PRE" and not recommendation._forceShow then
+        return false
+    end
+    return true
+end
+
+function UI:_ResetStaleFade(active)
+    self._staleElapsed = 0
+    self._staleFadeActive = (active ~= false)
+    self:_SetFrameAlpha(1)
+end
+
+function UI:_HideStaleFrame()
+    if self.frame then
+        self:_SetFrameAlpha(0)
+        self.frame:Hide()
+    end
+    self._staleFadeActive = false
+    if ns.ScreenEdgeGlow then ns.ScreenEdgeGlow:Hide() end
+    if ns.Nameplate then ns.Nameplate:ClearAll() end
+end
+
+function UI:_UpdateStaleFade(dt)
+    if not (self.frame and self._staleFadeActive and self.frame:IsShown()) then return end
+    self._staleElapsed = (self._staleElapsed or 0) + (dt or 0)
+    local age = self._staleElapsed
+    if age <= STALE_FADE_START then return end
+
+    local t = (age - STALE_FADE_START) / STALE_FADE_SECONDS
+    if t >= 1 then
+        self:_HideStaleFrame()
+        return
+    end
+    self:_SetFrameAlpha(1 - t)
+end
+
 function UI:Show()
     if self.frame then self.frame:Show() end
 end
@@ -314,6 +368,7 @@ function UI:Apply(recommendation)
     if not f:IsShown() then f:Show() end
 
     local mode = recommendation.mode or "RESET"
+    self:_ResetStaleFade(self:_ShouldStaleFade(recommendation, mode))
     -- v2.5.0: high-contrast skin. The default modeColors palette is
     -- tuned for visual coherence (slightly desaturated, easy on the
     -- eyes); the high-contrast palette pushes every channel to the

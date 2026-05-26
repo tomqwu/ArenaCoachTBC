@@ -152,6 +152,8 @@ BG/world enemy state is intentionally opportunistic. `Core:RefreshEnemiesNonAren
 
 `UI:Apply` checks `Core.state.pvpContext` and hides the frame + thin edge cue + nameplate overlays when the context is explicitly `"none"` or `"world_idle"`. This stops the engine from drawing a stale rec on screen between fights and stops `onNameplateChange` from re-evaluating in cities (where the firehose of nameplate add/remove events was a major frame-rate hit before v2.2.5).
 
+v2.8.3 adds a stale-recommendation fade timer on the HUD frame. Each fresh `UI:Apply` resets opacity to 1.0. If no fresh recommendation refreshes the frame after 3 seconds, opacity fades over 2 seconds; at the end the frame hides and clears nameplate / edge cues. This handles the "situation out of sync" case without flashing or forcing the user to manually toggle the frame.
+
 `/acc off` and `/acc on` (aliases `/acc disable` / `/acc enable`) toggle `db.enabled`. When off, `Core:Evaluate` short-circuits at the top — no event handlers, no engine work, all visual layers hidden. Persists across `/reload`. The `/acc test` demo bypasses both gates via a per-beat `recommendation._forceShow` flag so the walk-through paints the full HUD outside arena.
 
 `UI:Apply` 检查 `Core.state.pvpContext`，当上下文为 `"none"` 或 `"world_idle"` 时隐藏所有视觉层。`/acc off` / `/acc on` 切换 `db.enabled`，全局开关。`/acc test` 演示通过 `_forceShow` 标志绕过这些门禁。

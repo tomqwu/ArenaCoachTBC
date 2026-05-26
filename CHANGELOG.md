@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.3] - 2026-05-26
+
+### Added
+- **Stale HUD fade-out.** Fresh recommendations restore the HUD to full opacity, but if the fight state stops refreshing for several seconds the central text fades away and hides instead of leaving an out-of-sync call on screen.
+
+### Fixed
+- **Stale visual layers clear with the fade.** When the HUD fades out, optional edge cues and nameplate highlights are also cleared so target-specific advice cannot linger after the situation has moved on.
+
+### Notes
+- Tests 636 -> 639. Locale parity green at 144 keys per locale. Local luacov total coverage: 99.10%.
+
 ## [2.8.2] - 2026-05-26
 
 ### Changed
