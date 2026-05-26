@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.7.2] - 2026-05-26
+
+Two stacked lifecycle bugs both rooted in stale state.
+
+### Fixed
+- **Engine recommended KILL before arena gates opened.** User report: *"it suggest to kill even before the game."* Root cause: `onArenaOpponentUpdate` set `combatPhase = "ACTIVE"` the moment any opposing player became visible to the client — which fires while you're still in the prep room before gates open. The legitimate `PRE → ACTIVE` transition is `PLAYER_REGEN_DISABLED` (combat starts); that already handles it. Removed the spurious assignment so the pre-gates window correctly stays in OPEN mode.
+- **Stale phantom enemies from the previous match leaked into the next.** User report: *"always 15% showing, sometime a player name doesn't even exist."* The 15% was the engine's baseline kill-probability fallback when no fresh data exists; the phantom name was a dead enemy from a prior arena that `state.enemies` never cleared. Now `onPlayerEnteringWorld` explicitly resets `state.enemies`, `state.enemyClassList`, `state.lastPrimaryGUID`, and `state.combatPhase = "PRE"` on every zone transition. CLEU + UnitAura subscriptions rebuild the state within one evaluation tick once combat starts, so the reload-mid-fight case recovers cleanly.
+
+### Notes
+- Tests 611 → 612 (+2 regressions: ARENA_OPPONENT_UPDATE must NOT flip combatPhase to ACTIVE; PEW must reset per-match state including phantom enemy entries). Locale parity green.
+- Engine, bridge API, storage shape unchanged. Pure lifecycle correctness fix.
+
 ## [2.7.1] - 2026-05-26
 
 ### Fixed

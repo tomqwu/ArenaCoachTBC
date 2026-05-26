@@ -359,12 +359,38 @@ H.it(g, "EventBus PLAYER_ENTERING_WORLD handler runs without error", function()
     EB:Dispatch("PLAYER_ENTERING_WORLD")
 end)
 
-H.it(g, "EventBus ARENA_OPPONENT_UPDATE handler runs", function()
+H.it(g, "v2.7.2: ARENA_OPPONENT_UPDATE no longer flips combatPhase to ACTIVE", function()
     rebootForEvents()
     _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    Core.state.combatPhase = "PRE"
     H.setUnit("arena1", { class = "PRIEST", hp = 100, hpMax = 100 })
     EB:Dispatch("ARENA_OPPONENT_UPDATE")
-    H.assertEq(Core.state.combatPhase, "ACTIVE")
+    -- Pre-v2.7.2 this flipped to ACTIVE the moment opponents became
+    -- visible — which is BEFORE the arena gates open. User report:
+    -- "it suggest to kill even before the game". PLAYER_REGEN_DISABLED
+    -- is the legitimate PRE -> ACTIVE transition.
+    H.assertEq(Core.state.combatPhase, "PRE",
+        "ARENA_OPPONENT_UPDATE must NOT transition PRE -> ACTIVE")
+end)
+
+H.it(g, "v2.7.2: PLAYER_ENTERING_WORLD resets per-match state", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    -- Seed stale state from a 'previous match' — phantom enemies + ACTIVE
+    -- phase from when the player left an arena.
+    Core.state.enemies = {
+        ["ghost1"] = { unit = "arena1", guid = "ghost1", class = "MAGE",
+                       name = "PhantomName", alive = false, healthPct = 0 },
+    }
+    Core.state.enemyClassList = { "MAGE" }
+    Core.state.lastPrimaryGUID = "ghost1"
+    Core.state.combatPhase = "POST"
+    EB:Dispatch("PLAYER_ENTERING_WORLD")
+    -- Fresh state for the next match:
+    H.assertEq(Core.state.combatPhase, "PRE", "PEW must reset combatPhase to PRE")
+    H.assertNil(Core.state.lastPrimaryGUID, "PEW must clear lastPrimaryGUID")
+    H.assertNil(next(Core.state.enemies),
+        "PEW must clear state.enemies so phantom names don't leak into the next match")
 end)
 
 H.it(g, "EventBus GROUP_ROSTER_UPDATE handler runs", function()

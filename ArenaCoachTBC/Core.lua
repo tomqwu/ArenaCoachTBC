@@ -1611,6 +1611,21 @@ end
 -- WoW event handlers
 -- ============================================================
 local function onPlayerEnteringWorld()
+    -- v2.7.2: reset per-match state on every zone transition. Pre-v2.7.2
+    -- the previous match's `state.enemies` lingered into the next one,
+    -- so the engine recommended a kill target with stale name + the
+    -- fallback 15% kill probability. User report: "always 15% showing,
+    -- sometime a player name doesn't even exist." Also pin combatPhase
+    -- back to PRE so the next match's pre-gates window is correctly OPEN.
+    --
+    -- Reload-mid-fight is the only false-positive case (state momentarily
+    -- empty), but CLEU + UnitAura subscriptions rebuild it within one
+    -- evaluation tick.
+    Core.state.enemies         = {}
+    Core.state.enemyClassList  = {}
+    Core.state.lastPrimaryGUID = nil
+    Core.state.combatPhase     = "PRE"
+
     Core:InitDB()
     Core:RefreshFriendlies()
     Core:UpdateBracket()
@@ -1621,11 +1636,15 @@ local function onPlayerEnteringWorld()
 end
 
 local function onArenaOpponentUpdate()
+    -- v2.7.2: pre-v2.7.2 this set combatPhase = "ACTIVE" as soon as any
+    -- opponent became visible to the client — which fires while you're
+    -- still in the prep room before gates open. User report: "it suggests
+    -- to kill even before the game." The actual PRE → ACTIVE transition
+    -- is `PLAYER_REGEN_DISABLED` (combat starts); that already handles
+    -- it. So leave combatPhase alone here.
     Core:RefreshArenaEnemies()
     Core:UpdateBracket()
     Core:DetectPvPContext()
-    -- Phase transitions: we go PRE -> ACTIVE on first enemy seen
-    Core.state.combatPhase = "ACTIVE"
     Core:Evaluate()
 end
 
