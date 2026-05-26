@@ -104,6 +104,15 @@ ns.locales.zhCN = {
     UI_KILL_PROB_LABEL   = "击杀率",
     UI_BURST_READY       = "可爆发",
     UI_ACTIONS_HEADER    = "分工",
+    UI_ARCADE_READY      = "准备",
+    UI_ARCADE_ATTACK     = "进攻",
+    UI_ARCADE_SWITCH     = "转火",
+    UI_ARCADE_DANGER     = "危险",
+    UI_ARCADE_RECOVER    = "恢复",
+    UI_ARCADE_BURST      = "爆发",
+    UI_ARCADE_PINCH      = "危机",
+    UI_ARCADE_HOLD       = "停手",
+    UI_ARCADE_PUSH       = "压上",
 
     -- DBM-style per-player assignment labels
     ACTION_OPEN_SETUP       = "准备起手",

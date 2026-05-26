@@ -21,6 +21,7 @@ _G.ArenaCoachTBCDB = {
 H.it(g, "CreateFrame builds a frame with icon rows", function()
     local f = UI:CreateFrame()
     H.assertNotNil(f)
+    H.assertNotNil(f.arcadeText)
     H.assertNotNil(f.friendlyIconMap)
     H.assertNotNil(f.enemyIconMap)
 end)
@@ -71,6 +72,37 @@ H.it(g, "Apply renders DBM-style player action assignments", function()
     H.assertTrue(txt:find("Warrior:", 1, true) ~= nil, "player assignment missing: " .. txt)
     H.assertTrue(txt:find("Shaman:", 1, true) ~= nil, "party assignment missing: " .. txt)
     H.assertTrue(txt:find("Holyman", 1, true) ~= nil, "assignment target missing: " .. txt)
+end)
+
+H.it(g, "Apply renders arcade warning cue for burst windows", function()
+    UI:CreateFrame()
+    UI._flash = nil
+    UI:Apply({
+        mode = "KILL",
+        primaryTargetName = "Holyman",
+        callouts = { "CALL_PURGE", "BURST_NOW" },
+        burstAllowed = true,
+        priority = "HIGH",
+    })
+    local txt = UI.frame.arcadeText and UI.frame.arcadeText._text or ""
+    H.assertTrue(txt:find("BURST", 1, true) ~= nil, "burst arcade cue missing: " .. txt)
+    H.assertNil(UI._flash, "arcade cue must not use the fullscreen flash helper")
+end)
+
+H.it(g, "Apply renders arcade pinch cue for outnumbered BG/world warnings", function()
+    H.ns.Core = H.ns.Core or {}
+    H.ns.Core.state = H.ns.Core.state or {}
+    H.ns.Core.state.pvpContext = "bg"
+    UI:CreateFrame()
+    UI:Apply({
+        mode = "KILL",
+        primaryTargetName = "Rogue",
+        callouts = { "CALL_OUTNUMBERED_DISENGAGE" },
+        priority = "HIGH",
+    })
+    local txt = UI.frame.arcadeText and UI.frame.arcadeText._text or ""
+    H.assertTrue(txt:find("PINCH", 1, true) ~= nil, "pinch arcade cue missing: " .. txt)
+    H.ns.Core.state.pvpContext = nil
 end)
 
 H.it(g, "Apply with each mode does not error", function()

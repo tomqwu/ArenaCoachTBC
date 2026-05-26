@@ -69,7 +69,7 @@ You don't run anything during a match. The addon auto-engages on `PLAYER_ENTERIN
 **What you'll see during a match:**
 
 1. **Pre-combat (arena gates closed)**: Mode = `OPEN` (yellow), target = the comp's default open target. Plan your opener.
-2. **Active**: Mode flips to `KILL` (red) / `SWAP` (orange) / `DEFEND` (blue). The big text shows who to attack; the stats row shows target HP% and kill probability; the callouts row shows utility cues; the assignments block gives each friendly a DBM-style action; the chain block shows the canonical CC sequence; the comp badge shows whether the engine has confirmed enemy specs.
+2. **Active**: Mode flips to `KILL` (red) / `SWAP` (orange) / `DEFEND` (blue). The arcade warning plate shows punchy cues like `!! BURST !!`, `!! DANGER !!`, or `!! PINCH !!`; the big text shows who to attack; the stats row shows target HP% and kill probability; the callouts row shows utility cues; the assignments block gives each friendly a DBM-style action; the chain block shows the canonical CC sequence; the comp badge shows whether the engine has confirmed enemy specs.
 3. **Burst window**: `BURST READY` pill in the stats row — every burst gate has passed (target vulnerable, configured MS/Windfury requirements met, melee can connect, kill probability ≥ threshold, no incoming pressure). Chain readiness is shown in the gate breakdown and only blocks burst when `strategy.requireChainForBurst` is enabled.
 4. **Defensive**: When your healer is being trained or enemy lust pops, mode flips to `DEFEND` (blue). The edge glow turns blue; callouts shift to Pain Sup / BoP / peel reminders.
 

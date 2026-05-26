@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.1] - 2026-05-26
+
+### Added
+- **Arcade warning plate.** The HUD now renders a large passive warning cue above the tactical line, using high-impact arcade words such as `READY`, `ATTACK`, `SWITCH`, `DANGER`, `BURST`, and `PINCH` so urgent arena/BG/world PvP states are easier to parse at a glance without returning to fullscreen flashing.
+
+### Fixed
+- **Burst and outnumbered warnings are visually louder but still non-intrusive.** `BURST_NOW` and outnumbered disengage states now promote to the arcade cue line while continuing to avoid screen flashes, protected actions, or chat automation.
+
+### Notes
+- Tests 633 -> 635. Locale parity green at 144 keys per locale. Local luacov total coverage: 99.04%.
+
 ## [2.8.0] - 2026-05-26
 
 ### Added

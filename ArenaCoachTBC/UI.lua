@@ -36,7 +36,7 @@ function UI:CreateFrame()
 
     local f = CreateFrame("Frame", "ArenaCoachTBCFrame", UIParent)
     -- v2.2.1: dropped the icon rows + 60px of vertical space.
-    f:SetSize(380, 180)
+    f:SetSize(400, 218)
     f:SetPoint(fcfg.point or "CENTER", UIParent, fcfg.point or "CENTER",
                fcfg.x or 0, fcfg.y or 120)
     f:SetScale(fcfg.scale or 1.0)
@@ -60,11 +60,24 @@ function UI:CreateFrame()
     f.title:SetPoint("TOP", f, "TOP", 0, -8)
     f.title:SetText(L("UI_TITLE"))
 
+    -- v2.8.1: Japanese-arcade-style warning plate. This is just a big,
+    -- passive text cue inside the HUD, never a fullscreen flash.
+    f.arcadeText = f:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
+    f.arcadeText:SetPoint("TOP", f.title, "BOTTOM", 0, -4)
+    if f.arcadeText.SetFont then
+        local fontPath = (f.arcadeText.GetFont and select(1, f.arcadeText:GetFont()))
+            or "Fonts\\FRIZQT__.TTF"
+        pcall(f.arcadeText.SetFont, f.arcadeText, fontPath, 28, "THICKOUTLINE")
+    end
+    f.arcadeText:SetJustifyH("CENTER")
+    f.arcadeText:SetWidth(370)
+    f.arcadeText:SetText("")
+
     -- Big recommendation line ("KILL: Warlock"). v2.1.6: enlarged from
     -- GameFontNormalHuge (~22pt) to a custom 32pt outlined font so the
     -- mode label is readable at a glance from across the screen.
     f.bigText = f:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
-    f.bigText:SetPoint("TOP", f.title, "BOTTOM", 0, -8)
+    f.bigText:SetPoint("TOP", f.arcadeText, "BOTTOM", 0, -6)
     if f.bigText.SetFont then
         local fontPath = (f.bigText.GetFont and select(1, f.bigText:GetFont()))
             or "Fonts\\FRIZQT__.TTF"
@@ -105,7 +118,7 @@ function UI:CreateFrame()
     f.actionText:SetPoint("TOP", f.subText, "BOTTOM", 0, -8)
     if f.actionText.SetSpacing then pcall(f.actionText.SetSpacing, f.actionText, 2) end
     f.actionText:SetJustifyH("LEFT")
-    f.actionText:SetWidth(350)
+    f.actionText:SetWidth(370)
     f.actionText:SetText("")
 
     -- Drag handlers (respect db.locked)
@@ -152,6 +165,55 @@ local modeColorsHighContrast = {
     DEFEND = {0.0, 0.7, 1.0},   -- saturated cyan-blue
     RESET  = {1.0, 1.0, 1.0},   -- white instead of grey
 }
+
+local arcadeCueByMode = {
+    OPEN   = "UI_ARCADE_READY",
+    KILL   = "UI_ARCADE_ATTACK",
+    SWAP   = "UI_ARCADE_SWITCH",
+    DEFEND = "UI_ARCADE_DANGER",
+    RESET  = "UI_ARCADE_RECOVER",
+}
+
+local arcadeCueByCallout = {
+    CALL_OUTNUMBERED_DISENGAGE = "UI_ARCADE_PINCH",
+    CALL_BURST_BLOCK_INCOMING  = "UI_ARCADE_HOLD",
+    CALL_FLAG_CARRIER_LOW      = "UI_ARCADE_PUSH",
+    CALL_BG_DEFEND             = "UI_ARCADE_DANGER",
+    CALL_BASE_UNDER_ATTACK     = "UI_ARCADE_DANGER",
+    CALL_PATTERN_RMP_CHEAP_BLIND = "UI_ARCADE_DANGER",
+    CALL_PATTERN_SHATTER_NOVA_SHEEP = "UI_ARCADE_DANGER",
+    CALL_PATTERN_FEAR_INTO_POLY = "UI_ARCADE_DANGER",
+    CALL_PATTERN_HUNTER_TRAP_SCATTER = "UI_ARCADE_DANGER",
+    CALL_PATTERN_HOJ_INTO_INTERCEPT = "UI_ARCADE_DANGER",
+}
+
+local function hasCallout(recommendation, key)
+    if not recommendation or not recommendation.callouts then return false end
+    for _, callout in ipairs(recommendation.callouts) do
+        if callout == key then return true end
+    end
+    return false
+end
+
+local function arcadeCueKey(recommendation, mode)
+    if recommendation and (recommendation.burstAllowed or hasCallout(recommendation, "BURST_NOW")) then
+        return "UI_ARCADE_BURST"
+    end
+    if recommendation and recommendation.callouts then
+        for _, callout in ipairs(recommendation.callouts) do
+            local key = arcadeCueByCallout[callout]
+            if key then return key end
+        end
+    end
+    if recommendation and recommendation.priority == "URGENT" then
+        return "UI_ARCADE_DANGER"
+    end
+    return arcadeCueByMode[mode] or "UI_ARCADE_READY"
+end
+
+local function arcadeCueText(recommendation, mode)
+    return string.format("!! %s !!", L(arcadeCueKey(recommendation, mode)))
+end
 
 -- v2.7.0: each callout key maps to a representative spell whose in-game
 -- icon best illustrates the action. The HUD renders the icon inline via
@@ -266,6 +328,11 @@ function UI:Apply(recommendation)
     local target = recommendation.primaryTargetName
                 or recommendation.primaryTargetClass
                 or ""
+
+    if f.arcadeText then
+        f.arcadeText:SetTextColor(color[1], color[2], color[3])
+        f.arcadeText:SetText(arcadeCueText(recommendation, mode))
+    end
 
     f.bigText:SetTextColor(color[1], color[2], color[3])
     -- v2.1.3: DEFEND and RESET are not target-attached modes. Showing

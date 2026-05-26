@@ -104,6 +104,15 @@ ns.locales.enUS = {
     UI_KILL_PROB_LABEL   = "kill",
     UI_BURST_READY       = "BURST READY",
     UI_ACTIONS_HEADER    = "Assignments",
+    UI_ARCADE_READY      = "READY",
+    UI_ARCADE_ATTACK     = "ATTACK",
+    UI_ARCADE_SWITCH     = "SWITCH",
+    UI_ARCADE_DANGER     = "DANGER",
+    UI_ARCADE_RECOVER    = "RECOVER",
+    UI_ARCADE_BURST      = "BURST",
+    UI_ARCADE_PINCH      = "PINCH",
+    UI_ARCADE_HOLD       = "HOLD",
+    UI_ARCADE_PUSH       = "PUSH",
 
     -- DBM-style per-player assignment labels
     ACTION_OPEN_SETUP       = "set up opener",
