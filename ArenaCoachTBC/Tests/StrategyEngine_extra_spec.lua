@@ -1132,3 +1132,24 @@ H.it(g, "arena quality: recommendation primaryTargetHp is populated from healthP
     H.assertEq(rec.primaryTargetClass, "PRIEST")
     H.assertEq(rec.primaryTargetHp, 0.10, "healthPct=10 should become 0.10 for the HUD")
 end)
+
+H.it(g, "arena quality: recommendation primaryTargetHp clamps hpPct to a fraction", function()
+    local state = SE:BuildTestState({ "MAGE" })
+    state.combatPhase = "ACTIVE"
+    state.pvpContext = "arena"
+
+    for _, enemy in pairs(state.enemies) do
+        enemy.healthPct = nil
+        enemy.hpPct = 1.5
+    end
+
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.primaryTargetHp, 1.0, "hpPct above 1 must clamp before HUD rendering")
+
+    for _, enemy in pairs(state.enemies) do
+        enemy.hpPct = -0.25
+    end
+
+    rec = SE:Evaluate(state)
+    H.assertEq(rec.primaryTargetHp, 0.0, "hpPct below 0 must clamp before HUD rendering")
+end)

@@ -957,7 +957,7 @@ function SE:Evaluate(state)
     local primaryTargetHp
     if topTarget then
         if type(topTarget.hpPct) == "number" then
-            primaryTargetHp = topTarget.hpPct
+            primaryTargetHp = math.max(0, math.min(1, topTarget.hpPct))
         elseif type(topTarget.healthPct) == "number" then
             primaryTargetHp = math.max(0, math.min(1, topTarget.healthPct / 100))
         elseif topTarget.hp and topTarget.hpMax and topTarget.hpMax > 0 then
