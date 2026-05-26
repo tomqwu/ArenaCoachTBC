@@ -10,7 +10,7 @@ jobs:
   lua-tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Lua 5.1 + luarocks
         run: |
@@ -22,9 +22,9 @@ jobs:
         run: |
           cd ArenaCoachTBC
           fail=0
-          for f in $(find . -name '*.lua'); do
+          while IFS= read -r -d '' f; do
             if ! luac5.1 -p "$f"; then echo "SYNTAX FAIL: $f"; fail=1; fi
-          done
+          done < <(find . -name '*.lua' -print0)
           exit $fail
 
       - name: Locale parity gate
@@ -47,7 +47,7 @@ jobs:
 
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: luacov-report
           path: |
@@ -64,7 +64,7 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true  # Don't block PRs on LuaJIT-only regressions
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install LuaJIT 2.1
         run: |
@@ -76,9 +76,9 @@ jobs:
         run: |
           cd ArenaCoachTBC
           fail=0
-          for f in $(find . -name '*.lua'); do
+          while IFS= read -r -d '' f; do
             if ! luajit -bl "$f" > /dev/null 2>&1; then echo "SYNTAX FAIL: $f"; fail=1; fi
-          done
+          done < <(find . -name '*.lua' -print0)
           exit $fail
 
       - name: Locale parity gate
