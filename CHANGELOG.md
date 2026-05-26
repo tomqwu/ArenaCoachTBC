@@ -7,6 +7,96 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.4] - 2026-05-26
+
+### Changed
+- **CurseForge project description rewritten for approval clarity.** The dashboard copy now explicitly explains the features offered, what players experience in arena/BG/world PvP/duels, safety limits, privacy behavior, slash commands, localization, and current validation numbers.
+
+### Notes
+- Docs-only distribution polish. Package version bumped so GitHub release notes and downloadable addon metadata stay aligned.
+
+## [2.8.3] - 2026-05-26
+
+### Added
+- **Stale HUD fade-out.** Fresh recommendations restore the HUD to full opacity, but if the fight state stops refreshing for several seconds the central text fades away and hides instead of leaving an out-of-sync call on screen.
+
+### Fixed
+- **Stale visual layers clear with the fade.** When the HUD fades out, optional edge cues and nameplate highlights are also cleared so target-specific advice cannot linger after the situation has moved on.
+
+### Notes
+- Tests 636 -> 639. Locale parity green at 144 keys per locale. Local luacov total coverage: 99.10%.
+
+## [2.8.2] - 2026-05-26
+
+### Changed
+- **Removed the big flashing screen-edge feel.** The optional edge visual is no longer a 96px pulsing band around the screen. Even if an older SavedVariables file has `alerts.edgeGlow = true`, it now renders as a thin 18px, low-alpha, static edge cue.
+- **HUD + docs now treat the arcade plate/nameplate as the primary visual warning.** `/acc glow on|off` remains for users who want a subtle peripheral cue, but the default and documented experience avoids big screen-border motion.
+
+### Notes
+- Added regression coverage that locks the edge cue to thin, low-alpha, and non-pulsing.
+- Tests 635 -> 636. Locale parity green at 144 keys per locale. Local luacov total coverage: 99.10%.
+
+## [2.8.1] - 2026-05-26
+
+### Added
+- **Arcade warning plate.** The HUD now renders a large passive warning cue above the tactical line, using high-impact arcade words such as `READY`, `ATTACK`, `SWITCH`, `DANGER`, `BURST`, and `PINCH` so urgent arena/BG/world PvP states are easier to parse at a glance without returning to fullscreen flashing.
+
+### Fixed
+- **Burst and outnumbered warnings are visually louder but still non-intrusive.** `BURST_NOW` and outnumbered disengage states now promote to the arcade cue line while continuing to avoid screen flashes, protected actions, or chat automation.
+
+### Notes
+- Tests 633 -> 635. Locale parity green at 144 keys per locale. Local luacov total coverage: 99.04%.
+
+## [2.8.0] - 2026-05-26
+
+### Added
+- **DBM-style per-player assignments.** `StrategyEngine:Evaluate` now publishes `rec.playerActions`, one compact action per living friendly, with unit/name/class/action/target fields. The built-in HUD renders the assignment block under the main recommendation so a 3v3/5v5 team can see who should MS, purge, HoJ, peel, dispel, or reset.
+- **WeakAura bridge support for assignments.** Added `GetPlayerActions()`, `GetPlayerAction()`, and `GetActionForUnit(unit)` so custom WeakAuras can render each player's assignment or only the local player's action.
+
+### Fixed
+- **Demo and locale text no longer mention DEFEND flashing.** The no-flash behavior remains intact from v2.7.5.
+
+### Notes
+- Tests 627 -> 633. Locale parity green at 135 keys per locale. Local luacov total coverage: 99.03%.
+
+## [2.7.6] - 2026-05-26
+
+### Fixed
+- **CI parity follow-up for the real-arena test suite.** Preserved nil holes in the mocked `CombatLogGetCurrentEventInfo()` varargs so LuaJIT sees the same CLEU payload shape as Lua 5.1 and the WoW client.
+- **Coverage-aware performance gate.** The raw `StrategyEngine:Evaluate` timing budget remains 5 ms, while the luacov-instrumented CI run now uses a 15 ms ceiling so coverage hooks do not masquerade as engine latency.
+- **Slash-command coverage for live visual toggles.** Added regression coverage for `/acc highcontrast`, `/acc verbose`, `/acc on|off`, `/acc glow`, and `/acc nameplate`.
+
+### Notes
+- Tests 626 -> 627. Local luacov total coverage: 99.12%.
+
+## [2.7.5] - 2026-05-26
+
+### Fixed
+- **Removed automatic full-screen flashing from live recommendations and `/acc test`.** `UI:Apply` no longer calls the red `_Flash()` overlay for URGENT/DEFEND, even if an older SavedVariables file still has `alerts.screenFlash = true`. The quieter cues remain: HUD colour, nameplate highlight, optional edge glow, and arena-gated sound.
+- **Healer-train damage now re-evaluates through the real CLEU path once the peel threshold is reached.** Repeated damage on a healer in arena now publishes `DEFEND` immediately instead of waiting for the next spellcast/aura event.
+
+### Added
+- **Realistic arena lifecycle regressions.** Added event-driven tests that go through `PLAYER_ENTERING_WORLD`, `ARENA_OPPONENT_UPDATE`, `PLAYER_REGEN_DISABLED`, live `arenaN` unit stubs, CLEU healer damage, `UI:Apply`, and `WeakAuraBridge` publication. These cover the gates-closed `OPEN` state, active-combat `KILL`, healer-train `DEFEND`, and the no-flash behavior in a shape much closer to an actual arena run.
+
+### Notes
+- Tests 624 → 626 (+2 real-arena lifecycle regressions). Locale parity green at 112 keys per locale. Full syntax check green.
+
+## [2.7.4] - 2026-05-26
+
+### Fixed
+- **Strategy logic pass for real PvP contexts.** `BurstDecision` is now the single source of truth for `BURST_NOW`: target immunity, configured MS, Windfury, melee uptime, kill probability, chain readiness, and incoming pressure all land in the auditable gate table. The old separate burst prerequisite path was removed so HUD callouts and bridge API cannot disagree. Chain readiness is advisory by default and can be made strict with `strategy.requireChainForBurst = true`.
+- **DEFEND now works for support-capable teams and solo world PvP.** Low Paladin/Shaman support friendlies count as defensive anchors, healer CC checks use healer/support capability instead of Priest/Druid-only checks, and solo world PvP falls back to the lowest alive friendly so a dying non-healer player can still get `DEFEND`.
+- **Non-arena enemy discovery is less noisy and less brittle.** BG/world nameplate scanning no longer stops at a missing `nameplate1`, and CLEU fallback stubs are only created when a hostile source damages the player or a known friendly.
+- **Target and comp edge cases are safer.** Immune/unreachable-only targets now produce `RESET` instead of a bad KILL call, `primaryTargetHp` publishes correctly from `healthPct`, low-mana healer kill probability works without `roleGuess`, and `TRIPLE_DPS` no longer matches 2-player double-DPS states.
+- **Profile contribution traces no longer duplicate `trinketsFear`.**
+
+### Changed
+- Updated the strategy/architecture docs to describe arena, BG, world PvP, burst gates, non-arena discovery, and the narrower dynamic `TRIPLE_DPS` fallback.
+
+### Notes
+- Tests 614 → 624 (+10 focused regressions). Locale parity green at 112 keys per locale. Full syntax check green.
+- Coverage was not run locally because `luacov` is not installed in this WSL environment; the CI coverage gate remains unchanged.
+
 ## [2.7.3] - 2026-05-26
 
 ### Fixed

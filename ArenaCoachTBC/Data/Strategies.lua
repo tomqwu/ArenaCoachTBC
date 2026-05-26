@@ -749,7 +749,7 @@ function ST:Identify(enemyClassList, enemies, bracket)
     -- changes the entire game plan (no-healer = defensive, double-healer =
     -- mana drain), regardless of which specific dps classes are on the field.
     -- Confidence is 1.0 — role counts are unambiguous, not spec-derived.
-    if healers == 0 then
+    if healers == 0 and dps >= 3 then
         for _, comp in ipairs(self.comps) do
             if comp.dynamic == "TRIPLE_DPS" and bracketMatches(comp) then return comp, 1.0 end
         end

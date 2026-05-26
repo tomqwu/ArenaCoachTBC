@@ -1,5 +1,5 @@
 -- Tests/ScreenEdgeGlow_spec.lua
--- Exercises the v2.2.0 mode-coloured screen-edge glow.
+-- Exercises the optional mode-coloured screen-edge cue.
 
 local H = _G.__ACC_TEST_HELPERS
 local ns = H.ns
@@ -23,6 +23,13 @@ end)
 
 H.it(g, "ColorFor returns nil for unknown modes", function()
     H.assertNil(Glow:ColorFor("BOGUS"))
+end)
+
+H.it(g, "visual profile stays thin and non-pulsing", function()
+    local profile = Glow:VisualProfile()
+    H.assertTrue(profile.edgeThickness <= 24, "edge cue must stay thin")
+    H.assertTrue(profile.alpha <= 0.16, "edge cue alpha must stay subtle")
+    H.assertFalse(profile.pulse, "edge cue must not pulse or flash")
 end)
 
 H.it(g, "SetMode records the current mode for known colours", function()

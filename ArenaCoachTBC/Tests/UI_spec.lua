@@ -12,7 +12,7 @@ local g = H.describe("UI")
 _G.ArenaCoachTBCDB = {
     enabled = true, locked = false, language = "auto",
     frame = { point = "CENTER", x = 0, y = 120, scale = 1.0 },
-    alerts = { sound = true, raidWarning = false, partyChat = false, screenFlash = true },
+    alerts = { sound = true, raidWarning = false, partyChat = false, screenFlash = false },
     strategy = {},
     debug = false,
 }
@@ -21,6 +21,7 @@ _G.ArenaCoachTBCDB = {
 H.it(g, "CreateFrame builds a frame with icon rows", function()
     local f = UI:CreateFrame()
     H.assertNotNil(f)
+    H.assertNotNil(f.arcadeText)
     H.assertNotNil(f.friendlyIconMap)
     H.assertNotNil(f.enemyIconMap)
 end)
@@ -52,6 +53,124 @@ H.it(g, "Apply with KILL recommendation sets big text & subtext", function()
         callouts = { "CALL_HOJ_KILL", "CALL_PURGE" },
         priority = "HIGH",
     })
+end)
+
+H.it(g, "Apply renders DBM-style player action assignments", function()
+    UI:CreateFrame()
+    UI:Apply({
+        mode = "KILL",
+        primaryTargetName = "Holyman",
+        callouts = {},
+        priority = "HIGH",
+        playerActions = {
+            { unit = "player", name = "Warrior", actionKey = "ACTION_WARRIOR_KILL", targetName = "Holyman" },
+            { unit = "party1", name = "Shaman", actionKey = "ACTION_SHAMAN_PURGE", targetName = "Holyman" },
+        },
+    })
+    local txt = UI.frame.actionText and UI.frame.actionText._text or ""
+    H.assertTrue(txt:find("Assignments", 1, true) ~= nil, "assignment header missing: " .. txt)
+    H.assertTrue(txt:find("Warrior:", 1, true) ~= nil, "player assignment missing: " .. txt)
+    H.assertTrue(txt:find("Shaman:", 1, true) ~= nil, "party assignment missing: " .. txt)
+    H.assertTrue(txt:find("Holyman", 1, true) ~= nil, "assignment target missing: " .. txt)
+end)
+
+H.it(g, "Apply renders arcade warning cue for burst windows", function()
+    UI:CreateFrame()
+    UI._flash = nil
+    UI:Apply({
+        mode = "KILL",
+        primaryTargetName = "Holyman",
+        callouts = { "CALL_PURGE", "BURST_NOW" },
+        burstAllowed = true,
+        priority = "HIGH",
+    })
+    local txt = UI.frame.arcadeText and UI.frame.arcadeText._text or ""
+    H.assertTrue(txt:find("BURST", 1, true) ~= nil, "burst arcade cue missing: " .. txt)
+    H.assertNil(UI._flash, "arcade cue must not use the fullscreen flash helper")
+end)
+
+H.it(g, "Apply renders arcade pinch cue for outnumbered BG/world warnings", function()
+    H.ns.Core = H.ns.Core or {}
+    H.ns.Core.state = H.ns.Core.state or {}
+    H.ns.Core.state.pvpContext = "bg"
+    UI:CreateFrame()
+    UI:Apply({
+        mode = "KILL",
+        primaryTargetName = "Rogue",
+        callouts = { "CALL_OUTNUMBERED_DISENGAGE" },
+        priority = "HIGH",
+    })
+    local txt = UI.frame.arcadeText and UI.frame.arcadeText._text or ""
+    H.assertTrue(txt:find("PINCH", 1, true) ~= nil, "pinch arcade cue missing: " .. txt)
+    H.ns.Core.state.pvpContext = nil
+end)
+
+H.it(g, "stale recommendations fade out and clear visual layers", function()
+    H.load("ScreenEdgeGlow.lua")
+    H.load("Nameplate.lua")
+    local Glow = H.ns.ScreenEdgeGlow
+    local NP = H.ns.Nameplate
+    _G.ArenaCoachTBCDB = _G.ArenaCoachTBCDB or {}
+    _G.ArenaCoachTBCDB.alerts = { edgeGlow = true, nameplate = true }
+    H.ns.Core = H.ns.Core or {}
+    H.ns.Core.state = H.ns.Core.state or {}
+    H.ns.Core.state.pvpContext = "arena"
+
+    UI:CreateFrame()
+    Glow:SetMode("KILL")
+    H.setUnit("nameplate1", { guid = "guid-target", class = "PRIEST",
+                              name = "Holyman", exists = true })
+    _G.nameplate1 = _G.nameplate1 or H.makeMockFrame{ name = "nameplate1" }
+    UI:Apply({
+        mode = "KILL",
+        primaryTarget = "guid-target",
+        primaryTargetName = "Holyman",
+        callouts = {},
+        priority = "HIGH",
+    })
+    local on = UI.frame._scripts.OnUpdate
+    H.assertNotNil(on)
+    H.assertEq(UI.frame._accAlpha, 1)
+    on(UI.frame, UI.staleFadeStart + (UI.staleFadeSeconds / 2))
+    H.assertTrue(UI.frame._accAlpha < 1 and UI.frame._accAlpha > 0,
+        "stale frame should be partially faded")
+    on(UI.frame, UI.staleFadeSeconds)
+    H.assertFalse(UI.frame:IsShown(), "stale frame should hide after fading out")
+    H.assertNil(Glow:CurrentMode(), "stale fade should clear edge cue")
+    for _, ov in pairs(NP._overlays or {}) do
+        H.assertFalse(ov:IsShown(), "stale fade should clear nameplate overlays")
+    end
+    H.ns.Core.state.pvpContext = nil
+end)
+
+H.it(g, "fresh recommendations restore full opacity after stale fade", function()
+    H.ns.Core = H.ns.Core or {}
+    H.ns.Core.state = H.ns.Core.state or {}
+    H.ns.Core.state.pvpContext = "arena"
+    UI:CreateFrame()
+    UI:Apply({ mode = "KILL", primaryTargetName = "Holyman", callouts = {}, priority = "HIGH" })
+    local on = UI.frame._scripts.OnUpdate
+    on(UI.frame, UI.staleFadeStart + UI.staleFadeSeconds + 0.1)
+    H.assertFalse(UI.frame:IsShown())
+    UI:Apply({ mode = "SWAP", primaryTargetName = "Mage", callouts = {}, priority = "HIGH" })
+    H.assertTrue(UI.frame:IsShown())
+    H.assertEq(UI.frame._accAlpha, 1)
+    H.ns.Core.state.pvpContext = nil
+end)
+
+H.it(g, "pre-gates OPEN plan does not fade just because the room is quiet", function()
+    H.ns.Core = H.ns.Core or {}
+    H.ns.Core.state = H.ns.Core.state or {}
+    H.ns.Core.state.pvpContext = "arena"
+    H.ns.Core.state.combatPhase = "PRE"
+    UI:CreateFrame()
+    UI:Apply({ mode = "OPEN", primaryTargetName = "Priest", callouts = {}, priority = "MEDIUM" })
+    local on = UI.frame._scripts.OnUpdate
+    on(UI.frame, UI.staleFadeStart + UI.staleFadeSeconds + 5)
+    H.assertTrue(UI.frame:IsShown(), "stable pre-gates opener plan should remain visible")
+    H.assertEq(UI.frame._accAlpha, 1)
+    H.ns.Core.state.pvpContext = nil
+    H.ns.Core.state.combatPhase = nil
 end)
 
 H.it(g, "Apply with each mode does not error", function()
@@ -99,7 +218,7 @@ H.it(g, "v2.0.2: Apply does NOT play voice cue outside arena", function()
     _G.IsActiveBattlefieldArena = saved
 end)
 
-H.it(g, "Apply with URGENT triggers screen flash", function()
+H.it(g, "Apply with URGENT does not trigger full-screen flash", function()
     -- Re-establish the DB in case another spec replaced it during dofile.
     _G.ArenaCoachTBCDB = {
         enabled = true, locked = false, language = "auto",
@@ -107,10 +226,14 @@ H.it(g, "Apply with URGENT triggers screen flash", function()
         alerts = { sound = true, screenFlash = true },
         strategy = {}, debug = false,
     }
+    H.ns.Core = H.ns.Core or {}
+    H.ns.Core.state = H.ns.Core.state or {}
+    H.ns.Core.state.pvpContext = "arena"
     UI:CreateFrame()
     UI._flash = nil
     UI:Apply({ mode = "DEFEND", reason = "flash", callouts = {}, priority = "URGENT" })
-    H.assertNotNil(UI._flash)
+    H.assertNil(UI._flash, "urgent recommendations should not strobe the screen")
+    H.ns.Core.state.pvpContext = nil
 end)
 
 H.it(g, "Apply with chain narrates to chat once per chain id change", function()
@@ -166,12 +289,12 @@ H.it(g, "Apply with primaryTargetClass fallback", function()
 end)
 
 -- =================================================================
--- v2.3.0: /acc test demo paints the full HUD (edge glow + nameplate),
+-- v2.3.0: /acc test demo paints optional edge cue + nameplate,
 -- not just the text. Regression for the bug where _forceShow bypassed
 -- the auto-hide gate but the visual-layer gate still required inPvP.
 -- =================================================================
 
-H.it(g, "v2.3.0: _forceShow bypasses inPvP gate for edge glow + nameplate", function()
+H.it(g, "v2.3.0: _forceShow bypasses inPvP gate for thin edge cue + nameplate", function()
     -- Load the visual-layer modules so UI:Apply can drive them.
     H.load("ScreenEdgeGlow.lua")
     H.load("Nameplate.lua")
@@ -212,7 +335,7 @@ H.it(g, "v2.3.0: _forceShow bypasses inPvP gate for edge glow + nameplate", func
     })
 
     H.assertEq(Glow:CurrentMode(), "KILL",
-        "edge glow should activate in KILL mode when _forceShow is set, even without pvp context")
+        "thin edge cue should activate in KILL mode when _forceShow is set, even without pvp context")
     local overlayCount = 0
     for _ in pairs(NP._overlays) do overlayCount = overlayCount + 1 end
     H.assertTrue(overlayCount >= 1,
@@ -239,7 +362,7 @@ H.it(g, "v2.3.0: without _forceShow + no pvp context, visual layers stay hidden"
         -- below also verifies Glow gets cleared)
     })
     H.assertNil(Glow:CurrentMode(),
-        "edge glow must be cleared when context is 'none' and _forceShow is not set")
+        "thin edge cue must be cleared when context is 'none' and _forceShow is not set")
     H.ns.Core.state.pvpContext = nil
 end)
 

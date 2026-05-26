@@ -98,9 +98,9 @@ trigger.
 
 ## Template 3 — Defensive alert (Group)
 
-A flashing overlay only when mode is `DEFEND`. The engine flips DEFEND on
-several signals (low healer HP, healer CC'd, enemy lust, train detection),
-so this catches them all.
+A steady defensive badge only when mode is `DEFEND`. The engine flips DEFEND
+on several signals (low healer HP, healer CC'd, enemy lust, train detection),
+so this catches them all without strobing over the arena.
 
 **Trigger (Status):**
 ```lua
@@ -117,7 +117,7 @@ function()
 end
 ```
 
-Pair with an Animation → Pulse on trigger.
+Pair with a glow border if you want extra visibility.
 
 ---
 
@@ -170,6 +170,39 @@ function()
         _G.ArenaCoachTBC.GetEnemyComp() or "?",
         _G.ArenaCoachTBC.GetBracket() or 5,
         _G.ArenaCoachTBC.GetBracket() or 5)
+end
+```
+
+---
+
+## Template 6 — Player assignments (Text Area)
+
+Renders the per-friendly action list that the built-in HUD shows under the
+main recommendation.
+
+**Trigger (Status):**
+```lua
+function()
+    if not _G.ArenaCoachTBC then return false end
+    local list = _G.ArenaCoachTBC.GetPlayerActions() or {}
+    return #list > 0
+end
+```
+
+**Custom Text:**
+```lua
+function()
+    if not _G.ArenaCoachTBC then return "" end
+    local list = _G.ArenaCoachTBC.GetPlayerActions() or {}
+    local L = _G.ArenaCoachTBC.L or function(k) return k end
+    local out = {}
+    for i = 1, math.min(#list, 5) do
+        local a = list[i]
+        local text = L(a.actionKey)
+        if a.targetName then text = text .. " -> " .. a.targetName end
+        table.insert(out, string.format("%s: %s", a.name or a.unit or "?", text))
+    end
+    return table.concat(out, "\n")
 end
 ```
 

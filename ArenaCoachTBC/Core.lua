@@ -32,7 +32,7 @@ local DEFAULTS = {
     -- saturated primaries. Toggle via /acc highcontrast on|off.
     frame    = { point = "CENTER", x = 0, y = 120, scale = 1.0,
                  verbose = false, highContrast = false },
-    alerts   = { sound = true, raidWarning = false, partyChat = false, screenFlash = true,
+    alerts   = { sound = true, raidWarning = false, partyChat = false, screenFlash = false,
                  -- v2.2.0: peripheral-vision visual layers.
                  -- v2.7.0: edgeGlow flipped from default-on to default-off.
                  -- User feedback: the full-screen pulsing band was more
@@ -46,6 +46,7 @@ local DEFAULTS = {
         allowDpsSwap = true,
         callBurstOnlyWhenMSActive = true,
         requireWindfuryNearby = true,
+        requireChainForBurst = false,
         peelTriggerWindow = 5,    -- seconds of sliding window for "trained" detection
         peelTriggerDamage = 3,    -- damage events in window to force DEFEND
         -- M11 #71: rating-aware aggression. "auto" reads
@@ -439,18 +440,19 @@ function Core:RefreshEnemiesNonArena()
     -- Walk nameplates. TBC supports up to 40; iterate defensively.
     for i = 1, 40 do
         local unit = "nameplate" .. i
-        if not UnitExists(unit) then break end
-        local isHostile = (type(UnitIsEnemy) == "function") and UnitIsEnemy("player", unit)
-        local isPlayer  = (type(UnitIsPlayer) == "function") and UnitIsPlayer(unit)
-        if isHostile and isPlayer then
-            local guid = (type(UnitGUID) == "function") and UnitGUID(unit) or nil
-            if guid then
-                local model = self.state.enemies[guid] or newEnemy(unit)
-                model.unit = unit
-                refreshUnit(model, unit)
-                model._lastSeen = now
-                self.state.enemies[guid] = model
-                seen[guid] = true
+        if UnitExists(unit) then
+            local isHostile = (type(UnitIsEnemy) == "function") and UnitIsEnemy("player", unit)
+            local isPlayer  = (type(UnitIsPlayer) == "function") and UnitIsPlayer(unit)
+            if isHostile and isPlayer then
+                local guid = (type(UnitGUID) == "function") and UnitGUID(unit) or nil
+                if guid then
+                    local model = self.state.enemies[guid] or newEnemy(unit)
+                    model.unit = unit
+                    refreshUnit(model, unit)
+                    model._lastSeen = now
+                    self.state.enemies[guid] = model
+                    seen[guid] = true
+                end
             end
         end
     end
@@ -558,8 +560,17 @@ end
 
 local function friendlyIsHealer(f)
     if not f then return false end
-    if ns.Classes and ns.Classes.IsHealer then return ns.Classes:IsHealer(f.class, f.spec) end
-    return f.class == "PRIEST" or f.class == "DRUID"
+    if f.roleGuess == "HEALER" or f.role == "HEALER" then return true end
+    if ns.Classes then
+        if f.spec and ns.Classes.IsHealer then return ns.Classes:IsHealer(f.class, f.spec) end
+        if ns.Classes.Info then
+            local info = ns.Classes:Info(f.class)
+            for _, role in ipairs(info.possibleRoles or {}) do
+                if role == "HEALER" then return true end
+            end
+        end
+    end
+    return false
 end
 
 local function markFriendlyDebuff(f, spellID, name)
@@ -738,9 +749,12 @@ local function onCLEU()
     -- Train detection: collect damage events landing on our friendlies.
     -- Pruned to the configured window in Evaluate.
     local damagedFriendly = Core._friendlyGUIDs[destGUID]
+    local friendlyDamageShouldEvaluate = false
     if subEvent and damagedFriendly and friendlyIsHealer(damagedFriendly)
        and (subEvent:find("_DAMAGE$") or subEvent == "SWING_DAMAGE") then
         table.insert(Core._friendlyDamageTs, ts or 0)
+        local strat = (_G.ArenaCoachTBCDB and _G.ArenaCoachTBCDB.strategy) or {}
+        friendlyDamageShouldEvaluate = #Core._friendlyDamageTs >= (strat.peelTriggerDamage or 3)
     end
 
     -- M13 #v2.1: BG / world PvP context — when a hostile player hits
@@ -751,12 +765,14 @@ local function onCLEU()
     if ctx == "bg" or ctx == "world" or ctx == "world_idle" then
         local playerHit = Core._friendlyGUIDs[destGUID]
             or (type(UnitGUID) == "function" and destGUID == UnitGUID("player"))
-        if playerHit and subEvent and (subEvent:find("_DAMAGE$") or subEvent == "SWING_DAMAGE") then
+        local isDamage = subEvent and (subEvent:find("_DAMAGE$") or subEvent == "SWING_DAMAGE")
+        if playerHit and isDamage then
             Core._lastWorldHostileTs = ts or 0
-        end
-        -- Stub-create an enemy from CLEU if we haven't seen them via nameplate yet.
-        if sourceGUID and Core._NonArenaCLEUStub then
-            Core:_NonArenaCLEUStub(sourceGUID, sourceName)
+            -- Stub-create an enemy from CLEU if a hostile player damages us
+            -- before their nameplate is visible.
+            if sourceGUID and sourceGUID ~= destGUID and Core._NonArenaCLEUStub then
+                Core:_NonArenaCLEUStub(sourceGUID, sourceName)
+            end
         end
     end
 
@@ -806,7 +822,8 @@ local function onCLEU()
 
     -- Re-evaluate cheaply on impactful events
     if subEvent == "SPELL_AURA_APPLIED" or subEvent == "SPELL_AURA_REMOVED"
-       or subEvent == "UNIT_DIED" or subEvent == "SPELL_CAST_SUCCESS" then
+       or subEvent == "UNIT_DIED" or subEvent == "SPELL_CAST_SUCCESS"
+       or friendlyDamageShouldEvaluate then
         Core:Evaluate()
     end
 end
@@ -918,14 +935,15 @@ local function handleSlash(input)
         chatPrint("ArenaCoachTBC enabled. The frame will appear when you enter a PvP context.")
         Core:Evaluate()
     elseif cmd == "glow" then
-        -- v2.2.0: toggle the mode-coloured screen-edge glow.
+        -- v2.8.2: this is now a thin static edge cue, not the old big
+        -- pulsing screen-edge band.
         db.alerts = db.alerts or {}
         local arg = (rest or ""):lower()
         if arg == "off" then db.alerts.edgeGlow = false
         elseif arg == "on" then db.alerts.edgeGlow = true
         else db.alerts.edgeGlow = not db.alerts.edgeGlow end
         if not db.alerts.edgeGlow and ns.ScreenEdgeGlow then ns.ScreenEdgeGlow:Hide() end
-        chatPrint(string.format("edge glow: %s", db.alerts.edgeGlow and "on" or "off"))
+        chatPrint(string.format("thin edge cue: %s", db.alerts.edgeGlow and "on" or "off"))
     elseif cmd == "nameplate" then
         -- v2.2.0: toggle nameplate highlighting for kill / swap targets.
         db.alerts = db.alerts or {}
@@ -1239,8 +1257,8 @@ end
 -- /acc test (default) walks the live UI through 7 beats over ~14 seconds:
 -- OPEN -> KILL -> burst-ready -> SWAP -> DEFEND -> profile-driven callout
 -- -> RESET. Each beat reuses the real UI:Apply path so the user sees
--- mode colour flips, chain block changes, BURST_NOW pulse, screen flash
--- on URGENT, and voice cues fire exactly as they would in a real match.
+-- mode colour flips, chain block changes, BURST_NOW, and voice cues
+-- fire exactly as they would in a real match.
 -- /acc test print preserves the legacy chat-only summary.
 local DEMO_BEATS = {
     {
@@ -1326,7 +1344,7 @@ local DEMO_BEATS = {
     },
     {
         delay = 8.0,
-        note  = "Healer being trained — DEFEND (blue + screen flash if alerts enabled).",
+        note  = "Healer being trained — DEFEND (blue defensive cue).",
         rec = {
             mode = "DEFEND",
             primaryTarget = nil, primaryTargetName = nil, primaryTargetClass = nil,

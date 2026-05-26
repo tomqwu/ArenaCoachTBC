@@ -283,6 +283,47 @@ H.it(g, "/acc debug toggles flag", function()
     stopCapture()
 end)
 
+H.it(g, "/acc visual toggles update persisted settings", function()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    startCapture()
+
+    SlashCmdList["ARENACOACH"]("highcontrast on")
+    H.assertTrue(_G.ArenaCoachTBCDB.frame.highContrast)
+    SlashCmdList["ARENACOACH"]("highcontrast off")
+    H.assertFalse(_G.ArenaCoachTBCDB.frame.highContrast)
+    SlashCmdList["ARENACOACH"]("hc")
+    H.assertTrue(_G.ArenaCoachTBCDB.frame.highContrast)
+
+    SlashCmdList["ARENACOACH"]("verbose on")
+    H.assertTrue(_G.ArenaCoachTBCDB.frame.verbose)
+    SlashCmdList["ARENACOACH"]("verbose off")
+    H.assertFalse(_G.ArenaCoachTBCDB.frame.verbose)
+    SlashCmdList["ARENACOACH"]("verbose")
+    H.assertTrue(_G.ArenaCoachTBCDB.frame.verbose)
+
+    SlashCmdList["ARENACOACH"]("off")
+    H.assertFalse(_G.ArenaCoachTBCDB.enabled)
+    SlashCmdList["ARENACOACH"]("on")
+    H.assertTrue(_G.ArenaCoachTBCDB.enabled)
+
+    SlashCmdList["ARENACOACH"]("glow on")
+    H.assertTrue(_G.ArenaCoachTBCDB.alerts.edgeGlow)
+    SlashCmdList["ARENACOACH"]("glow off")
+    H.assertFalse(_G.ArenaCoachTBCDB.alerts.edgeGlow)
+    SlashCmdList["ARENACOACH"]("glow")
+    H.assertTrue(_G.ArenaCoachTBCDB.alerts.edgeGlow)
+
+    SlashCmdList["ARENACOACH"]("nameplate off")
+    H.assertFalse(_G.ArenaCoachTBCDB.alerts.nameplate)
+    SlashCmdList["ARENACOACH"]("nameplate on")
+    H.assertTrue(_G.ArenaCoachTBCDB.alerts.nameplate)
+    SlashCmdList["ARENACOACH"]("nameplate")
+    H.assertFalse(_G.ArenaCoachTBCDB.alerts.nameplate)
+
+    stopCapture()
+    H.assertTrue(#captured >= 10)
+end)
+
 H.it(g, "/acc strategy valid sets aggression", function()
     _G.ArenaCoachTBCDB = nil; Core:InitDB()
     startCapture()
@@ -353,6 +394,50 @@ local function rebootForEvents()
     Core:Boot()             -- re-register all of Core's handlers
 end
 
+local function clearArenaApis()
+    _G.IsActiveBattlefieldArena = nil
+    _G.GetInstanceInfo = nil
+    _G.GetMaxBattlefieldID = nil
+    _G.GetBattlefieldStatus = nil
+    _G.GetPersonalRatedInfo = nil
+    Core._friendlyDamageTs = {}
+end
+
+local function setupRealisticArena3v3()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil
+    Core:InitDB()
+    Core.state.enemies = {}
+    Core.state.friendlies = {}
+    Core.state.observations = {}
+    Core._friendlyDamageTs = {}
+    H.ns.WeakAuraBridge._last = nil
+    H.ns.WeakAuraBridge._state = nil
+    if H.ns.UI then H.ns.UI._flash = nil; H.ns.UI:CreateFrame() end
+    H._unitData = {}
+    H.clearAuras()
+    H._gameTime = 1000
+
+    _G.IsActiveBattlefieldArena = function() return true end
+    _G.GetInstanceInfo = function() return "Nagrand Arena", "arena" end
+    _G.GetMaxBattlefieldID = function() return 1 end
+    _G.GetBattlefieldStatus = function()
+        return "active", "Nagrand Arena", nil, nil, nil, 3
+    end
+
+    H.setUnit("player", { class = "WARRIOR", guid = "guid-player", name = "Warrior", hp = 10000, hpMax = 10000 })
+    H.setUnit("party1", { class = "SHAMAN",  guid = "guid-shaman", name = "Shaman",  hp = 10000, hpMax = 10000 })
+    H.setUnit("party2", { class = "PALADIN", guid = "guid-pal",    name = "Paladin", hp = 10000, hpMax = 10000 })
+    H.setUnit("party3", { class = "DRUID",   guid = "guid-druid",  name = "Druid",   hp = 10000, hpMax = 10000 })
+    H.setUnit("party4", { class = "PRIEST",  guid = "guid-priest-friendly", name = "Priest", hp = 10000, hpMax = 10000 })
+
+    H.setUnit("arena1", { class = "PRIEST", guid = "guid-enemy-priest", name = "EnemyPriest", hp = 10000, hpMax = 10000, mp = 7000, mpMax = 10000 })
+    H.setUnit("arena2", { class = "MAGE",   guid = "guid-enemy-mage",   name = "EnemyMage",   hp = 10000, hpMax = 10000, mp = 8000, mpMax = 10000 })
+    H.setUnit("arena3", { class = "ROGUE",  guid = "guid-enemy-rogue",  name = "EnemyRogue",  hp = 10000, hpMax = 10000 })
+    H.setUnit("arena4", { exists = false })
+    H.setUnit("arena5", { exists = false })
+end
+
 H.it(g, "EventBus PLAYER_ENTERING_WORLD handler runs without error", function()
     rebootForEvents()
     _G.ArenaCoachTBCDB = nil; Core:InitDB()
@@ -415,6 +500,49 @@ H.it(g, "EventBus PLAYER_REGEN_DISABLED/ENABLED transitions combatPhase", functi
     H.assertEq(Core.state.combatPhase, "ACTIVE")
     EB:Dispatch("PLAYER_REGEN_ENABLED")
     H.assertEq(Core.state.combatPhase, "POST")
+end)
+
+H.it(g, "real arena lifecycle stays OPEN before gates and KILLs after combat starts", function()
+    setupRealisticArena3v3()
+    EB:Dispatch("PLAYER_ENTERING_WORLD")
+    EB:Dispatch("ARENA_OPPONENT_UPDATE")
+
+    H.assertEq(Core.state.pvpContext, "arena")
+    H.assertEq(Core.state.bracket, 3)
+    H.assertEq(Core.state.combatPhase, "PRE")
+    H.assertEq(_G.ArenaCoachTBC.GetMode(), "OPEN",
+        "visible arena opponents before combat should plan opener, not call KILL")
+
+    EB:Dispatch("PLAYER_REGEN_DISABLED")
+    H.assertEq(Core.state.combatPhase, "ACTIVE")
+    H.assertEq(_G.ArenaCoachTBC.GetMode(), "KILL")
+    H.assertEq(_G.ArenaCoachTBC.GetPrimaryTargetClass(), "PRIEST")
+    H.assertEq(_G.ArenaCoachTBC.GetEnemyComp(), "RMP_3V3")
+    H.assertNil(H.ns.UI._flash, "arena recommendations should not create a full-screen flash")
+    clearArenaApis()
+end)
+
+H.it(g, "real arena healer-train damage flips DEFEND through CLEU without flashing", function()
+    setupRealisticArena3v3()
+    _G.ArenaCoachTBCDB.alerts.screenFlash = true -- legacy saved setting should still be quiet
+    EB:Dispatch("PLAYER_ENTERING_WORLD")
+    EB:Dispatch("ARENA_OPPONENT_UPDATE")
+    EB:Dispatch("PLAYER_REGEN_DISABLED")
+    H.assertEq(_G.ArenaCoachTBC.GetMode(), "KILL")
+
+    for i = 1, 3 do
+        H.fireCLEU(1000 + i, "SPELL_DAMAGE", false, "guid-enemy-rogue", "EnemyRogue",
+                   nil, nil, "guid-priest-friendly", "Priest", nil, nil,
+                   H.ns.Spells.HEMORRHAGE, "Hemorrhage", nil, 1200)
+        EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
+    end
+
+    H.assertEq(_G.ArenaCoachTBC.GetMode(), "DEFEND",
+        "repeated real CLEU damage on our healer should publish DEFEND")
+    H.assertTrue(Core.state.observations.healerUnderPressure,
+        "healer train signal should be present on state")
+    H.assertNil(H.ns.UI._flash, "legacy screenFlash=true must not strobe during the arena run")
+    clearArenaApis()
 end)
 
 H.it(g, "EventBus UNIT_SPELLCAST_SUCCEEDED records cooldown for arenaN", function()
@@ -589,6 +717,7 @@ H.it(g, "train detection accumulates damage on friendly healers", function()
     _G.ArenaCoachTBCDB = nil; Core:InitDB()
     H.setUnit("player", { class = "PRIEST", guid = "guid-me", hp = 100, hpMax = 100 })
     Core:RefreshFriendlies()
+    Core._friendlyDamageTs = {}
     -- Three damage events on a healer in quick succession
     H._gameTime = 100
     for i = 1, 3 do
@@ -1128,6 +1257,28 @@ H.it(g, "RefreshEnemiesNonArena populates from nameplate scan", function()
     H.assertEq(Core.state.enemies[stubGuid].class, "ROGUE")
 end)
 
+H.it(g, "RefreshEnemiesNonArena handles sparse nameplate unit ids", function()
+    Core.state = Core.state or {}
+    Core.state.enemies = {}
+    local stubGuid = "guid-sparse-nameplate"
+    _G.UnitExists  = function(u) return u == "nameplate2" end
+    _G.UnitIsEnemy = function(_, u) return u == "nameplate2" end
+    _G.UnitIsPlayer = function(u) return u == "nameplate2" end
+    _G.UnitGUID    = function(u) return u == "nameplate2" and stubGuid or nil end
+    _G.UnitName    = function(u) return u == "nameplate2" and "Sparse" or nil end
+    _G.UnitClass   = function(u) return u == "nameplate2" and "Mage", "MAGE" or nil, nil end
+    _G.UnitHealth  = function(u) return u == "nameplate2" and 5000 or 0 end
+    _G.UnitHealthMax = function(u) return u == "nameplate2" and 10000 or 0 end
+    _G.UnitPower   = function() return 0 end
+    _G.UnitPowerMax = function() return 0 end
+    _G.UnitIsDeadOrGhost = function() return false end
+    H._gameTime = 1000
+    Core:RefreshEnemiesNonArena()
+    H.assertNotNil(Core.state.enemies[stubGuid],
+        "nameplate scan must continue past a missing nameplate1")
+    H.assertEq(Core.state.enemies[stubGuid].class, "MAGE")
+end)
+
 H.it(g, "RefreshEnemiesNonArena skips friendly nameplates", function()
     Core.state.enemies = {}
     _G.UnitExists   = function(u) return u == "nameplate1" end
@@ -1153,6 +1304,29 @@ H.it(g, "_NonArenaCLEUStub does not overwrite an existing entry", function()
     Core:_NonArenaCLEUStub("guid-known", "DontOverwrite")
     H.assertEq(Core.state.enemies["guid-known"].name, "Real",
         "must not overwrite existing enemy with stub")
+end)
+
+H.it(g, "CLEU creates non-arena enemy stubs only when hostile damage hits us", function()
+    rebootForEvents()
+    clearWoWApis()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    Core.state.pvpContext = "world"
+    Core.state.enemies = {}
+    Core._friendlyGUIDs = { ["guid-player"] = { class = "WARRIOR", alive = true } }
+    _G.UnitExists = function() return false end
+    H._gameTime = 1000
+
+    H.fireCLEU(1000, "SPELL_CAST_SUCCESS", false, "guid-enemy", "Enemy",
+               nil, nil, "guid-other", "Other", nil, nil, H.ns.Spells.POLYMORPH, "Polymorph")
+    EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
+    H.assertNil(Core.state.enemies["guid-enemy"],
+        "unrelated world CLEU casts should not create phantom enemies")
+
+    H.fireCLEU(1001, "SPELL_DAMAGE", false, "guid-enemy", "Enemy",
+               nil, nil, "guid-player", "Player", nil, nil, H.ns.Spells.PYROBLAST, "Pyroblast")
+    EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
+    H.assertNotNil(Core.state.enemies["guid-enemy"],
+        "damage to a friendly should create a combat stub when no nameplate is visible")
 end)
 
 H.it(g, "RefreshEnemiesNonArena TTL-prunes stale entries (>30s)", function()

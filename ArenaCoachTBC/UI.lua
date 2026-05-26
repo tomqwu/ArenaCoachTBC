@@ -1,8 +1,8 @@
 -- ArenaCoachTBC - UI layer
 -- One movable frame that shows the current recommendation (mode, target,
 -- HP%, kill prob, callouts). Driven event-by-event from Core; no polling.
--- v2.2.0 added two peripheral visual layers wired in here: a pulsing
--- mode-coloured screen-edge glow (ScreenEdgeGlow.lua) and a coloured
+-- v2.2.0 added two peripheral visual layers wired in here: a
+-- mode-coloured thin edge cue (ScreenEdgeGlow.lua) and a coloured
 -- border on the kill / swap target's nameplate (Nameplate.lua). No
 -- protected actions are ever bound to any visible button.
 
@@ -12,6 +12,12 @@ ns.UI = ns.UI or {}
 
 local UI = ns.UI
 UI.frame = nil
+
+local STALE_FADE_START = 3.0
+local STALE_FADE_SECONDS = 2.0
+
+UI.staleFadeStart = STALE_FADE_START
+UI.staleFadeSeconds = STALE_FADE_SECONDS
 
 -- Resolve a localized string by key.
 local function L(key, ...)
@@ -36,7 +42,7 @@ function UI:CreateFrame()
 
     local f = CreateFrame("Frame", "ArenaCoachTBCFrame", UIParent)
     -- v2.2.1: dropped the icon rows + 60px of vertical space.
-    f:SetSize(360, 110)
+    f:SetSize(400, 218)
     f:SetPoint(fcfg.point or "CENTER", UIParent, fcfg.point or "CENTER",
                fcfg.x or 0, fcfg.y or 120)
     f:SetScale(fcfg.scale or 1.0)
@@ -60,11 +66,24 @@ function UI:CreateFrame()
     f.title:SetPoint("TOP", f, "TOP", 0, -8)
     f.title:SetText(L("UI_TITLE"))
 
+    -- v2.8.1: Japanese-arcade-style warning plate. This is just a big,
+    -- passive text cue inside the HUD, never a fullscreen flash.
+    f.arcadeText = f:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
+    f.arcadeText:SetPoint("TOP", f.title, "BOTTOM", 0, -4)
+    if f.arcadeText.SetFont then
+        local fontPath = (f.arcadeText.GetFont and select(1, f.arcadeText:GetFont()))
+            or "Fonts\\FRIZQT__.TTF"
+        pcall(f.arcadeText.SetFont, f.arcadeText, fontPath, 28, "THICKOUTLINE")
+    end
+    f.arcadeText:SetJustifyH("CENTER")
+    f.arcadeText:SetWidth(370)
+    f.arcadeText:SetText("")
+
     -- Big recommendation line ("KILL: Warlock"). v2.1.6: enlarged from
     -- GameFontNormalHuge (~22pt) to a custom 32pt outlined font so the
     -- mode label is readable at a glance from across the screen.
     f.bigText = f:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
-    f.bigText:SetPoint("TOP", f.title, "BOTTOM", 0, -8)
+    f.bigText:SetPoint("TOP", f.arcadeText, "BOTTOM", 0, -6)
     if f.bigText.SetFont then
         local fontPath = (f.bigText.GetFont and select(1, f.bigText:GetFont()))
             or "Fonts\\FRIZQT__.TTF"
@@ -99,6 +118,15 @@ function UI:CreateFrame()
     f.subText:SetWidth(340)
     f.subText:SetText("")
 
+    -- DBM-style per-player assignments. These are plain advice lines from
+    -- StrategyEngine, never clickable or protected-action buttons.
+    f.actionText = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    f.actionText:SetPoint("TOP", f.subText, "BOTTOM", 0, -8)
+    if f.actionText.SetSpacing then pcall(f.actionText.SetSpacing, f.actionText, 2) end
+    f.actionText:SetJustifyH("LEFT")
+    f.actionText:SetWidth(370)
+    f.actionText:SetText("")
+
     -- Drag handlers (respect db.locked)
     f:SetScript("OnMouseDown", function(self, button)
         if button == "LeftButton" and not (ArenaCoachTBCDB and ArenaCoachTBCDB.locked) then
@@ -113,6 +141,9 @@ function UI:CreateFrame()
             ArenaCoachTBCDB.frame.x = x
             ArenaCoachTBCDB.frame.y = y
         end
+    end)
+    f:SetScript("OnUpdate", function(_, dt)
+        if UI and UI._UpdateStaleFade then UI:_UpdateStaleFade(dt) end
     end)
 
     self.frame = f
@@ -143,6 +174,55 @@ local modeColorsHighContrast = {
     DEFEND = {0.0, 0.7, 1.0},   -- saturated cyan-blue
     RESET  = {1.0, 1.0, 1.0},   -- white instead of grey
 }
+
+local arcadeCueByMode = {
+    OPEN   = "UI_ARCADE_READY",
+    KILL   = "UI_ARCADE_ATTACK",
+    SWAP   = "UI_ARCADE_SWITCH",
+    DEFEND = "UI_ARCADE_DANGER",
+    RESET  = "UI_ARCADE_RECOVER",
+}
+
+local arcadeCueByCallout = {
+    CALL_OUTNUMBERED_DISENGAGE = "UI_ARCADE_PINCH",
+    CALL_BURST_BLOCK_INCOMING  = "UI_ARCADE_HOLD",
+    CALL_FLAG_CARRIER_LOW      = "UI_ARCADE_PUSH",
+    CALL_BG_DEFEND             = "UI_ARCADE_DANGER",
+    CALL_BASE_UNDER_ATTACK     = "UI_ARCADE_DANGER",
+    CALL_PATTERN_RMP_CHEAP_BLIND = "UI_ARCADE_DANGER",
+    CALL_PATTERN_SHATTER_NOVA_SHEEP = "UI_ARCADE_DANGER",
+    CALL_PATTERN_FEAR_INTO_POLY = "UI_ARCADE_DANGER",
+    CALL_PATTERN_HUNTER_TRAP_SCATTER = "UI_ARCADE_DANGER",
+    CALL_PATTERN_HOJ_INTO_INTERCEPT = "UI_ARCADE_DANGER",
+}
+
+local function hasCallout(recommendation, key)
+    if not recommendation or not recommendation.callouts then return false end
+    for _, callout in ipairs(recommendation.callouts) do
+        if callout == key then return true end
+    end
+    return false
+end
+
+local function arcadeCueKey(recommendation, mode)
+    if recommendation and (recommendation.burstAllowed or hasCallout(recommendation, "BURST_NOW")) then
+        return "UI_ARCADE_BURST"
+    end
+    if recommendation and recommendation.callouts then
+        for _, callout in ipairs(recommendation.callouts) do
+            local key = arcadeCueByCallout[callout]
+            if key then return key end
+        end
+    end
+    if recommendation and recommendation.priority == "URGENT" then
+        return "UI_ARCADE_DANGER"
+    end
+    return arcadeCueByMode[mode] or "UI_ARCADE_READY"
+end
+
+local function arcadeCueText(recommendation, mode)
+    return string.format("!! %s !!", L(arcadeCueKey(recommendation, mode)))
+end
 
 -- v2.7.0: each callout key maps to a representative spell whose in-game
 -- icon best illustrates the action. The HUD renders the icon inline via
@@ -194,6 +274,67 @@ local function calloutIcon(key, size)
     return string.format("|T%s:%d:%d:0:0:64:64:5:59:5:59|t", tex, size, size)
 end
 
+local function formatPlayerActions(actions)
+    if not actions or #actions == 0 then return "" end
+    local lines = { "|cffc8a86b" .. L("UI_ACTIONS_HEADER") .. "|r" }
+    for i = 1, math.min(#actions, 5) do
+        local a = actions[i]
+        local who = a.name or a.unit or a.class or "?"
+        local text = a.text or (a.actionKey and L(a.actionKey)) or a.actionKey or "?"
+        local target = a.targetName or a.targetClass
+        if target and target ~= "" then
+            text = text .. " -> " .. target
+        end
+        table.insert(lines, string.format("%s: %s", who, text))
+    end
+    return table.concat(lines, "\n")
+end
+
+function UI:_SetFrameAlpha(alpha)
+    local f = self.frame
+    if not f then return end
+    f._accAlpha = alpha
+    if f.SetAlpha then f:SetAlpha(alpha) end
+end
+
+function UI:_ShouldStaleFade(recommendation, mode)
+    local phase = ns.Core and ns.Core.state and ns.Core.state.combatPhase
+    if mode == "OPEN" and phase == "PRE" and not recommendation._forceShow then
+        return false
+    end
+    return true
+end
+
+function UI:_ResetStaleFade(active)
+    self._staleElapsed = 0
+    self._staleFadeActive = (active ~= false)
+    self:_SetFrameAlpha(1)
+end
+
+function UI:_HideStaleFrame()
+    if self.frame then
+        self:_SetFrameAlpha(0)
+        self.frame:Hide()
+    end
+    self._staleFadeActive = false
+    if ns.ScreenEdgeGlow then ns.ScreenEdgeGlow:Hide() end
+    if ns.Nameplate then ns.Nameplate:ClearAll() end
+end
+
+function UI:_UpdateStaleFade(dt)
+    if not (self.frame and self._staleFadeActive and self.frame:IsShown()) then return end
+    self._staleElapsed = (self._staleElapsed or 0) + (dt or 0)
+    local age = self._staleElapsed
+    if age <= STALE_FADE_START then return end
+
+    local t = (age - STALE_FADE_START) / STALE_FADE_SECONDS
+    if t >= 1 then
+        self:_HideStaleFrame()
+        return
+    end
+    self:_SetFrameAlpha(1 - t)
+end
+
 function UI:Show()
     if self.frame then self.frame:Show() end
 end
@@ -227,10 +368,11 @@ function UI:Apply(recommendation)
     if not f:IsShown() then f:Show() end
 
     local mode = recommendation.mode or "RESET"
+    self:_ResetStaleFade(self:_ShouldStaleFade(recommendation, mode))
     -- v2.5.0: high-contrast skin. The default modeColors palette is
     -- tuned for visual coherence (slightly desaturated, easy on the
     -- eyes); the high-contrast palette pushes every channel to the
-    -- extreme so the label is readable through screen flashes, glare,
+    -- extreme so the label is readable through glare,
     -- and small-screen / poor-eyesight setups. Toggle via
     -- `/acc highcontrast on|off` (db.frame.highContrast).
     local highContrast = (ArenaCoachTBCDB and ArenaCoachTBCDB.frame
@@ -241,6 +383,11 @@ function UI:Apply(recommendation)
     local target = recommendation.primaryTargetName
                 or recommendation.primaryTargetClass
                 or ""
+
+    if f.arcadeText then
+        f.arcadeText:SetTextColor(color[1], color[2], color[3])
+        f.arcadeText:SetText(arcadeCueText(recommendation, mode))
+    end
 
     f.bigText:SetTextColor(color[1], color[2], color[3])
     -- v2.1.3: DEFEND and RESET are not target-attached modes. Showing
@@ -351,7 +498,7 @@ function UI:Apply(recommendation)
     end
 
     -- v2.4.0: comp badge only in verbose mode. The big colour-coded
-    -- mode label + target name + edge glow + nameplate already tell the
+    -- mode label + target name + arcade cue + nameplate already tell the
     -- user what's happening; the comp identity is post-match analysis.
     if verbose and recommendation.comp then
         local badgeKey = recommendation.compSpecConfirmed
@@ -398,6 +545,9 @@ function UI:Apply(recommendation)
         end
     end
     f.subText:SetText(table.concat(subParts, "\n"))
+    if f.actionText then
+        f.actionText:SetText(formatPlayerActions(recommendation.playerActions))
+    end
 
     -- v2.0.2 / v2.1: PvP-context gate. The aggressive alerts (screen
     -- flash, voice cue) should only fire in actual arena. Outside
@@ -418,11 +568,11 @@ function UI:Apply(recommendation)
                   or IsActiveBattlefieldArena()
     end
 
-    -- Screen flash for URGENT (defensive) — arena only
-    if inArena and recommendation.priority == "URGENT" and ArenaCoachTBCDB
-       and ArenaCoachTBCDB.alerts and ArenaCoachTBCDB.alerts.screenFlash then
-        self:_Flash()
-    end
+    -- v2.7.5: no automatic full-screen flash. The frame, sound cue,
+    -- nameplate highlight, and optional thin edge cue carry urgency without
+    -- strobing over the playfield during a real arena run. `_Flash`
+    -- remains below as an isolated helper for legacy/debug coverage, but
+    -- recommendations no longer call it.
 
     -- M12 #77: voice callouts. Fire one sound per *new* top callout.
     -- Arena-gated for the same reason — BG combat noise produces
@@ -460,7 +610,7 @@ function UI:Apply(recommendation)
     -- can demo the full HUD (text + glow + nameplate) without being
     -- in arena/BG/world. Pre-v2.3.0 the demo only painted the text.
     --
-    -- edgeGlow: pulsing mode-colored band around the screen edges.
+    -- edgeGlow: optional thin static mode-coloured cue around the edges.
     -- nameplate: paint the kill / swap target's nameplate border so
     -- the player can identify them in a fight with multiple enemies.
     local alerts = ArenaCoachTBCDB and ArenaCoachTBCDB.alerts or nil

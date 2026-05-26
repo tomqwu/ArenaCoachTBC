@@ -37,6 +37,15 @@ H.it(g, "Identify falls back to TRIPLE_DPS when 0 healers", function()
     H.assertEq(c.defaultMode, "DEFEND")
 end)
 
+H.it(g, "Identify does not label a 2-player double DPS team as TRIPLE_DPS", function()
+    local enemies = {
+        a = { class = "ROGUE", roleGuess = "MELEE" },
+        b = { class = "MAGE",  roleGuess = "CASTER" },
+    }
+    local c = ST:Identify({"ROGUE","MAGE"}, enemies, 2)
+    H.assertNil(c, "2v2 double DPS should not use the triple-DPS game plan")
+end)
+
 H.it(g, "Identify finds DOUBLE_HEALER when 2 healers", function()
     local enemies = {
         a = { class = "PRIEST" },
@@ -496,9 +505,9 @@ H.it(g, "spec-keyed comp requires a dead enemy's spec to NOT count", function()
     }
     local m = ST:Identify({"ROGUE","MAGE","PRIEST"}, enemies, 3)
     -- The dead priest also fails the class presence check (alive=false),
-    -- so we expect no static 3v3 match. With 0 healers in alive set we
-    -- expect TRIPLE_DPS dynamic.
-    H.assertEq(m.id, "TRIPLE_DPS")
+    -- so we expect no static 3v3 match. Two remaining DPS are not a
+    -- triple-DPS comp, so the matcher should return nil.
+    H.assertNil(m)
 end)
 
 H.it(g, "catalog contains at least 6 spec-keyed comps", function()

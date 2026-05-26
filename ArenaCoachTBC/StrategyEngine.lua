@@ -160,14 +160,96 @@ local function hasPurgeableBuff(enemy)
     return false
 end
 
--- Lowest HP healer in our group, or nil
-local function lowestHealer(friendlies)
+local function classCanHeal(class)
+    local Classes = ns.Classes
+    if not Classes or not Classes.Info then return false end
+    local info = Classes:Info(class)
+    for _, role in ipairs(info.possibleRoles or {}) do
+        if role == "HEALER" then return true end
+    end
+    return false
+end
+
+local function isFriendlySupport(f)
+    if not f or not f.class then return false end
+    if f.roleGuess == "HEALER" or f.role == "HEALER" then return true end
+    local Classes = ns.Classes
+    if Classes then
+        if f.spec and Classes.IsHealer then return Classes:IsHealer(f.class, f.spec) end
+        return classCanHeal(f.class)
+    end
+    return false
+end
+
+local MELEE_SPECS = {
+    ARMS = true, FURY = true, PROTECTION = true,
+    ENHANCEMENT = true, RETRIBUTION = true, FERAL = true,
+    ASSASSINATION = true, COMBAT = true, SUBTLETY = true,
+}
+
+local function isMeleeFriendly(f)
+    if not f or not f.class then return false end
+    local role = f.roleGuess or f.role
+    if role == "MELEE" then return true end
+    if role == "HEALER" or role == "CASTER" or role == "RANGED" then return false end
+    local spec = f.spec and f.spec:upper() or nil
+    if spec and MELEE_SPECS[spec] then return true end
+    if not role and ns.Classes then role = ns.Classes:DefaultRole(f.class) end
+    return role == "MELEE" or role == "HYBRID"
+end
+
+local FRIENDLY_UNIT_ORDER = { "player", "party1", "party2", "party3", "party4" }
+
+local function friendlyRole(f)
+    if not f or not f.class then return nil end
+    if f.roleGuess or f.role then return f.roleGuess or f.role end
+    if isFriendlySupport(f) then return "HEALER" end
+    local Classes = ns.Classes
+    if Classes and Classes.DefaultRole then return Classes:DefaultRole(f.class) end
+    return nil
+end
+
+local function friendlyActionList(friendlies)
+    local out, seen = {}, {}
+    friendlies = friendlies or {}
+    for _, unit in ipairs(FRIENDLY_UNIT_ORDER) do
+        local f = friendlies[unit]
+        if f and f.alive ~= false then
+            table.insert(out, f)
+            seen[f] = true
+        end
+    end
+    local rest = {}
+    for _, f in pairs(friendlies) do
+        if f and f.alive ~= false and not seen[f] then table.insert(rest, f) end
+    end
+    table.sort(rest, function(a, b)
+        return tostring(a.unit or a.name or a.class or "")
+             < tostring(b.unit or b.name or b.class or "")
+    end)
+    for _, f in ipairs(rest) do table.insert(out, f) end
+    return out
+end
+
+-- Lowest HP healer-capable friendly, or nil. In solo world PvP there may
+-- be no healer-capable friendly at all, so fall back to the player/lowest
+-- friendly and still surface a defensive call when they are dying.
+local function lowestDefensiveFriendly(state)
+    local friendlies = state and state.friendlies or nil
     if not friendlies then return nil end
     local lowest, lowHP = nil, 101
     for _, f in pairs(friendlies) do
-        if f.alive ~= false and (f.class == "PRIEST" or f.class == "DRUID")
+        if f.alive ~= false and isFriendlySupport(f)
            and (f.healthPct or 100) < lowHP then
             lowest = f; lowHP = f.healthPct or 100
+        end
+    end
+    if lowest then return lowest end
+    if state and state.pvpContext == "world" then
+        for _, f in pairs(friendlies) do
+            if f.alive ~= false and (f.healthPct or 100) < lowHP then
+                lowest = f; lowHP = f.healthPct or 100
+            end
         end
     end
     return lowest
@@ -177,7 +259,7 @@ end
 local function meleeLockedDown(state)
     local friendlies = state.friendlies or {}
     for _, f in pairs(friendlies) do
-        if f.alive ~= false and (f.class == "WARRIOR" or f.class == "SHAMAN" or f.class == "PALADIN") then
+        if f.alive ~= false and isMeleeFriendly(f) then
             if f.debuffs and (f.debuffs.rooted or f.debuffs.snared) and not (f.buffs and f.buffs.freedom) then
                 return true
             end
@@ -189,7 +271,7 @@ end
 local function ourHealerCCd(state)
     local friendlies = state.friendlies or {}
     for _, f in pairs(friendlies) do
-        if (f.class == "PRIEST" or f.class == "DRUID") and f.debuffs
+        if isFriendlySupport(f) and f.debuffs
            and (f.debuffs.stunned or f.debuffs.feared or f.debuffs.sheeped or f.debuffs.silenced) then
             return true
         end
@@ -375,6 +457,7 @@ function SE:KillProb(target, state)
     if state and state.enemies then
         for _, e in pairs(state.enemies) do
             local role = e.roleGuess
+            if not role and e.class then role = roleOf(e) end
             if role == "HEALER" and e.manaPct and e.manaPct < 30 then
                 comps.healerLowMana = W.healerLowMana
                 break
@@ -411,6 +494,8 @@ SE.BURST_KILL_PROB_THRESHOLD = {
 function SE:BurstDecision(state, target, chain)
     state = state or {}
     local gates = {}
+    local cfg = (state.config and state.config.strategy) or {}
+    local obs = state.observations or {}
     local agg = state.aggression
         or (state.config and state.config.strategy and state.config.strategy.aggression)
         or "balanced"
@@ -425,15 +510,37 @@ function SE:BurstDecision(state, target, chain)
         threshold = killThreshold,
     }
 
-    -- 2. chain_ready gate
+    -- 2. chain_ready gate. Chain planning is advisory by default because
+    -- BG/world fights and several arena catalog entries do not have a
+    -- canonical setup template yet. Strict setups can opt in through config.
     local chainEP = chain and (chain.expectedProb or 0) or 0
     gates.chain_ready = {
-        allowed = chain ~= nil and chainEP > 0,
-        value   = chainEP,
+        allowed  = (chain ~= nil and chainEP > 0) or cfg.requireChainForBurst ~= true,
+        value    = chainEP,
+        required = cfg.requireChainForBurst == true,
     }
 
-    -- 3. incoming_pressure gate
-    local obs = state.observations or {}
+    -- 3. configured prerequisite gates. These are the older burstAllowed()
+    -- checks folded into the auditable decision so the HUD and API cannot
+    -- disagree about BURST_NOW.
+    gates.target_vulnerable = {
+        allowed = not (target and activeImmunity(target)),
+        reason  = target and activeImmunity(target) or nil,
+    }
+    gates.ms_active = {
+        allowed = ((not cfg.callBurstOnlyWhenMSActive)
+            or (target and obs.msActiveOn and obs.msActiveOn == target.guid)) and true or false,
+        value   = obs.msActiveOn,
+    }
+    gates.windfury = {
+        allowed = (not cfg.requireWindfuryNearby) or obs.windfuryActive == true,
+        value   = obs.windfuryActive == true,
+    }
+    gates.melee_uptime = {
+        allowed = not meleeLockedDown(state),
+    }
+
+    -- 4. incoming_pressure gate
     local underPressure = obs.healerUnderPressure or obs.enemyBloodlustActive
         or obs.multipleBurstsDetected
     gates.incoming_pressure = {
@@ -441,7 +548,7 @@ function SE:BurstDecision(state, target, chain)
         reason  = underPressure and "healer trained / enemy lust" or nil,
     }
 
-    -- 4. rating_aware: an audit trail of the aggression label that
+    -- 5. rating_aware: an audit trail of the aggression label that
     -- influenced the thresholds above. Always allowed; surfaces context.
     gates.rating_aware = {
         allowed    = true,
@@ -449,12 +556,21 @@ function SE:BurstDecision(state, target, chain)
         rating     = state.rating,
     }
 
-    local order = { "kill_prob", "chain_ready", "incoming_pressure", "rating_aware" }
+    local order = {
+        "target_vulnerable", "ms_active", "windfury", "melee_uptime",
+        "kill_prob", "chain_ready", "incoming_pressure", "rating_aware",
+    }
+    local blockedNames = {
+        target_vulnerable = "target_immune",
+        ms_active         = "no_ms",
+        windfury          = "no_windfury",
+        melee_uptime      = "melee_root",
+    }
     local allowed, blockedBy = true, nil
     for _, key in ipairs(order) do
         if gates[key].allowed == false then
             allowed = false
-            if not blockedBy then blockedBy = key end
+            if not blockedBy then blockedBy = blockedNames[key] or key end
         end
     end
     return { allowed = allowed, blockedBy = blockedBy, gates = gates }
@@ -485,7 +601,7 @@ local function shouldDefend(state)
     -- outnumbered callout instead of DEFEND. Cooldowns CAN save a
     -- 2v3; this ordering preserves that.
 
-    local lowest = lowestHealer(state.friendlies)
+    local lowest = lowestDefensiveFriendly(state)
     -- M11 #71: defensive HP threshold shifts with aggression.
     -- Greedy: 30 (only defend on real emergencies). Safe: 50 (defend earlier).
     local hpThreshold = 40
@@ -544,35 +660,6 @@ local function isOutnumbered(state)
     local nFriendly = aliveCount(state.friendlies)
     local nEnemy    = aliveCount(state.enemies)
     return nFriendly > 0 and nEnemy >= 4 and (nEnemy - nFriendly) >= 2
-end
-
--- ============================================================
--- Burst gating per spec rules:
---   - MS must be active on the kill target (when configured)
---   - Windfury must be active when configured
---   - No melee locked down without freedom
---   - Target must not be immune
--- ============================================================
-local function burstAllowed(state, target)
-    local cfg = (state.config and state.config.strategy) or {}
-    local obs = state.observations or {}
-
-    if target then
-        if activeImmunity(target) then return false, "target_immune" end
-    end
-
-    if cfg.callBurstOnlyWhenMSActive then
-        if not obs.msActiveOn or (target and obs.msActiveOn ~= target.guid) then
-            return false, "no_ms"
-        end
-    end
-    if cfg.requireWindfuryNearby and not obs.windfuryActive then
-        return false, "no_windfury"
-    end
-    if meleeLockedDown(state) then
-        return false, "melee_root"
-    end
-    return true
 end
 
 -- ============================================================
@@ -708,6 +795,107 @@ local function buildCallouts(state, comp, primaryTarget, mode)
     return out
 end
 
+local function offTargetForAction(state, primaryTarget, secondTarget)
+    for _, e in pairs(state.enemies or {}) do
+        if isAlive(e) and isHealer(e)
+           and (not primaryTarget or e.guid ~= primaryTarget.guid) then
+            return e
+        end
+    end
+    return secondTarget
+end
+
+local function addPlayerAction(out, f, actionKey, target, targetType, priority)
+    if not f or f.alive == false or not actionKey then return end
+    table.insert(out, {
+        unit        = f.unit,
+        guid        = f.guid,
+        name        = f.name,
+        class       = f.class,
+        spec        = f.spec,
+        role        = friendlyRole(f),
+        actionKey   = actionKey,
+        priority    = priority or "MEDIUM",
+        target      = target and target.guid or nil,
+        targetUnit  = target and target.unit or nil,
+        targetName  = target and target.name or nil,
+        targetClass = target and target.class or nil,
+        targetType  = target and (targetType or "enemy") or nil,
+    })
+end
+
+local function buildPlayerActions(state, mode, primaryTarget, secondTarget, burstAllowed)
+    local actions = {}
+    local killTarget = primaryTarget
+    local offTarget = offTargetForAction(state, primaryTarget, secondTarget)
+    local defensiveTarget = lowestDefensiveFriendly(state)
+
+    for _, f in ipairs(friendlyActionList(state.friendlies)) do
+        local class = f.class
+        local key, target, targetType = nil, killTarget, "enemy"
+        local priority = (mode == "DEFEND") and "URGENT" or "HIGH"
+
+        if mode == "RESET" then
+            key = isFriendlySupport(f) and "ACTION_HEALER_RESET" or "ACTION_DPS_RESET"
+            target = nil
+            priority = "LOW"
+        elseif mode == "DEFEND" then
+            target = defensiveTarget
+            targetType = "friendly"
+            if class == "PRIEST" then key = "ACTION_PRIEST_DEFEND"
+            elseif class == "PALADIN" then key = "ACTION_PALADIN_DEFEND"
+            elseif class == "DRUID" then key = "ACTION_DRUID_DEFEND"
+            elseif class == "SHAMAN" then key = "ACTION_SHAMAN_DEFEND"
+            else key = "ACTION_DPS_PEEL" end
+        elseif mode == "OPEN" then
+            if class == "ROGUE" then
+                key = "ACTION_ROGUE_OPEN"; target = offTarget or killTarget
+            elseif class == "MAGE" then
+                key = "ACTION_MAGE_CC"; target = offTarget or secondTarget or killTarget
+            elseif class == "WARLOCK" then
+                key = "ACTION_WARLOCK_CC"; target = offTarget or secondTarget or killTarget
+            elseif class == "HUNTER" then
+                key = "ACTION_HUNTER_TRAP"; target = offTarget or secondTarget or killTarget
+            elseif class == "PALADIN" then
+                key = "ACTION_PALADIN_HOJ"
+            elseif class == "DRUID" then
+                key = "ACTION_DRUID_CC"; target = offTarget or secondTarget or killTarget
+            else
+                key = "ACTION_OPEN_SETUP"
+            end
+        else
+            if burstAllowed and class == "SHAMAN" then
+                key = "ACTION_SHAMAN_BLOODLUST"
+            elseif class == "WARRIOR" then
+                key = "ACTION_WARRIOR_KILL"
+            elseif class == "ROGUE" then
+                key = "ACTION_ROGUE_KILL"
+            elseif class == "HUNTER" then
+                key = "ACTION_HUNTER_TRAP"; target = offTarget or secondTarget or killTarget
+            elseif class == "MAGE" then
+                key = "ACTION_MAGE_CC"; target = offTarget or secondTarget or killTarget
+            elseif class == "WARLOCK" then
+                key = "ACTION_WARLOCK_CC"; target = offTarget or secondTarget or killTarget
+            elseif class == "SHAMAN" then
+                key = "ACTION_SHAMAN_PURGE"
+            elseif class == "PALADIN" then
+                key = "ACTION_PALADIN_HOJ"
+            elseif class == "PRIEST" then
+                key = isFriendlySupport(f) and "ACTION_PRIEST_OFFENSE" or "ACTION_PRIEST_DAMAGE"
+            elseif class == "DRUID" then
+                key = isFriendlySupport(f) and "ACTION_DRUID_HEAL_CC" or "ACTION_DRUID_CC"
+                target = offTarget or secondTarget or killTarget
+            else
+                key = "ACTION_DPS_KILL"
+            end
+        end
+
+        addPlayerAction(actions, f, key, target, targetType, priority)
+    end
+
+    return actions
+end
+
 -- ============================================================
 -- Pick mode based on phase, comp, and target situation
 -- ============================================================
@@ -717,16 +905,14 @@ local function decideMode(state, topTarget, secondTarget, comp)
 
     local phase = state.combatPhase or "PRE"
     local ctx   = state.pvpContext
+    if not topTarget or (topTarget._score or 0) <= 0 then return "RESET" end
     -- M15 (v2.1): world / BG don't have a meaningful "pre-combat
     -- planning" phase — the engagement IS the start. Skip OPEN and
     -- go straight to KILL when there's a target.
     if phase == "PRE" and ctx ~= "world" and ctx ~= "bg" then
-        if topTarget then return "OPEN" end
-        return "RESET"
+        return "OPEN"
     end
 
-    -- no living enemies with positive score -> reset
-    if not topTarget then return "RESET" end
 
     -- M15 (v2.1): in world PvP, suppress SWAP entirely — there's no
     -- coordinated team to "swap target" with; the player just KILLs
@@ -869,12 +1055,6 @@ function SE:Evaluate(state)
         reason = reason .. string.format(" | %s %s (%.2f)", comp.id, tag, compConfidence or 0.0)
     end
 
-    -- Burst guidance
-    local burstOK, burstWhy = burstAllowed(state, topTarget)
-    if mode == "KILL" and burstOK then
-        table.insert(callouts, "BURST_NOW")
-    end
-
     -- v2.7.1: outnumbered callout. shouldDefend() returns false in the
     -- outnumbered case so we fall through to KILL — but we want to be
     -- explicit that the player is in a bad spot, not just "kill this
@@ -890,7 +1070,9 @@ function SE:Evaluate(state)
     -- floats so the UI can compute integer percentages locally.
     local primaryTargetHp
     if topTarget then
-        if topTarget.hpPct then
+        if topTarget.healthPct then
+            primaryTargetHp = (topTarget.healthPct or 0) / 100
+        elseif topTarget.hpPct then
             primaryTargetHp = topTarget.hpPct
         elseif topTarget.hp and topTarget.hpMax and topTarget.hpMax > 0 then
             primaryTargetHp = topTarget.hp / topTarget.hpMax
@@ -969,6 +1151,13 @@ function SE:Evaluate(state)
         end
     end
 
+    local burstDecision = (mode == "KILL") and self:BurstDecision(state, topTarget, pickedChain) or nil
+    local finalBurstAllowed = burstDecision and burstDecision.allowed == true or false
+    if finalBurstAllowed then
+        table.insert(callouts, "BURST_NOW")
+    end
+    local playerActions = buildPlayerActions(state, mode, topTarget, secondTarget, finalBurstAllowed)
+
     return {
         mode            = mode,
         primaryTarget   = topTarget and topTarget.guid or nil,
@@ -991,12 +1180,13 @@ function SE:Evaluate(state)
         opponentSignature = state.opponentSignature,
         aggression      = state.aggression,
         rating          = state.rating,
-        burstDecision   = (mode == "KILL") and self:BurstDecision(state, topTarget, pickedChain) or nil,
+        burstDecision   = burstDecision,
         ownArchetype    = ownArchetype and ownArchetype.id or nil,
         ownArchetypeLabel = ownArchetype and ownArchetype.label or nil,
         ownCapabilities = ownCaps,
-        burstAllowed    = burstOK,
-        burstBlockedBy  = (not burstOK) and burstWhy or nil,
+        playerActions   = playerActions,
+        burstAllowed    = finalBurstAllowed,
+        burstBlockedBy  = (burstDecision and not burstDecision.allowed) and burstDecision.blockedBy or nil,
         primaryTargetHp = primaryTargetHp,   -- v2.1.6: 0..1 fraction
         killProb        = primaryKillProb,    -- v2.1.6: 0..1 fraction
         _topScore       = topTarget and topTarget._score or 0,

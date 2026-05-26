@@ -31,9 +31,11 @@ H.it(g, "Evaluate completes in <5ms per call on a 5v5 state (target <1ms)", func
     local iters = 200
     for i = 1, iters do SE:Evaluate(state) end
     local avgMs = ((os.clock() - start) / iters) * 1000
-    -- 5ms is the CI margin; locally we aim for <1ms.
-    H.assertTrue(avgMs < 5,
-        string.format("Evaluate avg %.3fms per call (budget 5ms)", avgMs))
+    local budgetMs = package.loaded["luacov"] and 15 or 5
+    -- 5ms is the raw CI margin; under luacov instrumentation the timing
+    -- budget is looser because coverage hooks dominate the measured cost.
+    H.assertTrue(avgMs < budgetMs,
+        string.format("Evaluate avg %.3fms per call (budget %dms)", avgMs, budgetMs))
 end)
 
 -- =================================================================

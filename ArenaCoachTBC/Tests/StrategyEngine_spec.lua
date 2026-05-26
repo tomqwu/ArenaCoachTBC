@@ -182,6 +182,8 @@ test("Bloodlust burst recommendation requires MS if config says so", function()
     state2.observations.bloodlustReady = true
     state2.observations.windfuryActive = true
     local priest = findEnemyByClass(state2, "PRIEST")
+    priest.healthPct = 10
+    priest.hasTrinket = false
     state2.observations.msActiveOn = priest.guid
     local rec2 = SE:Evaluate(state2)
     assertEq(rec2.burstAllowed, true, "burst should now be allowed")

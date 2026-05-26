@@ -13,9 +13,9 @@ A real-time arena strategy coach for **World of Warcraft TBC Classic / TBC Anniv
 | Context | Behaviour |
 |---|---|
 | **Arena 2v2 / 3v3 / 5v5** | Full engine: comp ID, spec inference, chain planning, opponent profiles, lookahead, burst gating, all visual + audio alerts. |
-| **Battlegrounds** (WSG/AB/AV/EotS) | Engine adapts: nameplate-based enemy discovery, flag-carrier priority (+200), low-HP straggler boost, BG-specific callouts (`CALL_FLAG_CARRIER_LOW`, `CALL_BG_DEFEND`). Class-prior tier kicks in when the team-signature profile lacks samples (PUG'd rosters). |
-| **World PvP / duels** | Engine simplifies: single-target focus, no SWAP thrash, no comp matching. `DUEL_REQUESTED` auto-engages. |
-| **Arena-only alerts** stay gated to arena | Screen flash + voice cues only fire when `IsActiveBattlefieldArena()` is true. No spurious red flash in WSG. |
+| **Battlegrounds** (WSG/AB/AV/EotS) | Engine adapts: sparse nameplate enemy discovery, hostile-damage CLEU fallback, flag-carrier priority (+200), low-HP straggler boost, BG-specific callouts (`CALL_FLAG_CARRIER_LOW`, `CALL_BG_DEFEND`). Class-prior tier kicks in when the team-signature profile lacks samples (PUG'd rosters). |
+| **World PvP / duels** | Engine simplifies: single-target focus, no SWAP thrash, no comp matching. Low player HP can still trigger `DEFEND`, even solo on a non-healer. `DUEL_REQUESTED` auto-engages. |
+| **Arena-only alerts** stay gated to arena | Voice cues only fire when `IsActiveBattlefieldArena()` is true. No full-screen flash or spurious red flash in WSG. |
 
 ---
 
@@ -58,7 +58,7 @@ The 100+ enemy comp catalog in `Data/Strategies.lua` carries `ownVariants` so th
 /acc selftest verbose  -- in-client validation
 ```
 
-After `/acc test` the recommendation frame appears center-screen and walks through 7 beats over 14 seconds (mode flips, BURST_NOW pulse, DEFEND screen flash, profile callout) — you'll see every kind of UI transition the addon emits. **If you see this demo, the addon is loaded and working.** Move the frame to a corner you'll actually look at during a match.
+After `/acc test` the recommendation frame appears center-screen and walks through 7 beats over 14 seconds (mode flips, BURST_NOW pulse, DEFEND cue, profile callout) — you'll see every kind of UI transition the addon emits without a full-screen flash. **If you see this demo, the addon is loaded and working.** Move the frame to a corner you'll actually look at during a match.
 
 ---
 
@@ -69,9 +69,9 @@ You don't run anything during a match. The addon auto-engages on `PLAYER_ENTERIN
 **What you'll see during a match:**
 
 1. **Pre-combat (arena gates closed)**: Mode = `OPEN` (yellow), target = the comp's default open target. Plan your opener.
-2. **Active**: Mode flips to `KILL` (red) / `SWAP` (orange) / `DEFEND` (blue). The big text shows who to attack; the stats row shows target HP% and kill probability; the callouts row shows utility cues; the chain block shows the canonical CC sequence; the comp badge shows whether the engine has confirmed enemy specs.
-3. **Burst window**: `BURST READY` pill in the stats row — every burst gate has passed (kill probability ≥ threshold, chain ready, no incoming pressure). A loud sound cue + the red KILL edge glow flash up around the screen edges.
-4. **Defensive**: When your healer is being trained or enemy lust pops, mode flips to `DEFEND` (blue). The edge glow turns blue; callouts shift to Pain Sup / BoP / peel reminders.
+2. **Active**: Mode flips to `KILL` (red) / `SWAP` (orange) / `DEFEND` (blue). The arcade warning plate shows punchy cues like `!! BURST !!`, `!! DANGER !!`, or `!! PINCH !!`; the big text shows who to attack; the stats row shows target HP% and kill probability; the callouts row shows utility cues; the assignments block gives each friendly a DBM-style action; the chain block shows the canonical CC sequence; the comp badge shows whether the engine has confirmed enemy specs. If the recommendation stops refreshing, the HUD fades out instead of leaving stale text on screen.
+3. **Burst window**: `BURST READY` pill in the stats row — every burst gate has passed (target vulnerable, configured MS/Windfury requirements met, melee can connect, kill probability ≥ threshold, no incoming pressure). Chain readiness is shown in the gate breakdown and only blocks burst when `strategy.requireChainForBurst` is enabled.
+4. **Defensive**: When your healer is being trained or enemy lust pops, mode flips to `DEFEND` (blue). The HUD plate and nameplate cues carry the warning without a big screen-edge flash; callouts shift to Pain Sup / BoP / peel reminders.
 
 ---
 
@@ -82,14 +82,14 @@ You don't run anything during a match. The addon auto-engages on `PLAYER_ENTERIN
 | `/acc help` | Print the command list |
 | `/acc toggle` | Show / hide the recommendation frame |
 | `/acc lock` / `/acc unlock` | Freeze / release the frame for dragging |
-| `/acc test` | 14s DBM-style UI demo (mode flips, BURST_NOW, DEFEND flash) |
+| `/acc test` | 14s DBM-style UI demo (mode flips, BURST_NOW, DEFEND cue) |
 | `/acc test bg` | BG-mode walk-through (flag carrier + low-HP straggler + CALL_BG_DEFEND) |
 | `/acc test world` | World PvP walk-through (single-target focus) |
 | `/acc test print` | Legacy chat-only summary |
 | `/acc enemy <c1> <c2> ...` | Simulate a custom enemy comp |
 | `/acc reset` | Wipe SavedVariables + `/reload` |
 | `/acc strategy safe\|balanced\|greedy` | Manual aggression override |
-| `/acc glow [on\|off]` | Toggle the mode-coloured screen edge glow (v2.2+) |
+| `/acc glow [on\|off]` | Toggle the optional thin mode-coloured edge cue |
 | `/acc nameplate [on\|off]` | Toggle nameplate highlights for KILL / SWAP targets (v2.2+) |
 | `/acc debug` | Toggle debug print |
 | `/acc selftest [verbose]` | In-client validation suite |
@@ -112,11 +112,12 @@ All settings persist in `ArenaCoachTBCDB` (SavedVariables). They're forward-comp
 | `strategy.ratingAggression` | `"auto"` | `"auto"` reads `GetPersonalRatedInfo()` and tunes thresholds. Or pin: `"greedy"` / `"balanced"` / `"safe"` / a number. |
 | `strategy.callBurstOnlyWhenMSActive` | `true` | Require Mortal Strike debuff on the target before `BURST_NOW`. |
 | `strategy.requireWindfuryNearby` | `true` | Require Windfury Totem before burst. |
+| `strategy.requireChainForBurst` | `false` | Treat a positive CC chain as mandatory for `BURST_NOW`; off by default so BG/world and sparse catalog entries can still call obvious burst windows. |
 | `strategy.peelTriggerWindow` / `peelTriggerDamage` | `5` / `3` | Train detection sensitivity (damage events × window → DEFEND). |
 | `strategy.lookaheadEnabled` | `true` | Engage the M10 expectimax over chain × opponent response. |
 | `frame.compactMode` | `false` | Hides the friendly/enemy cooldown icon rows. |
-| `alerts.sound` / `alerts.screenFlash` | `true` / `true` | Voice cue + URGENT-mode screen flash. |
-| `alerts.edgeGlow` / `alerts.nameplate` | `true` / `true` | v2.2 mode-coloured edge glow + nameplate highlight. |
+| `alerts.sound` / `alerts.screenFlash` | `true` / `false` | Voice cue toggle; `screenFlash` is retained for SavedVariables compatibility but no longer triggers full-screen flashing. |
+| `alerts.edgeGlow` / `alerts.nameplate` | `false` / `true` | Optional thin edge cue + default-on nameplate highlight. |
 
 ---
 
@@ -126,13 +127,13 @@ Spell IDs in `Data/Spells.lua` are **universal** — a single integer that's the
 
 Same for **mouse-over tooltips on the icon rows** — they call `GameTooltip:SetSpellByID(spellID)` so the tooltip is the canonical Blizzard popup in your client's locale (icon + name + flavor text).
 
-User-facing **callout strings** (e.g. "Tremor for fear", "Burst the priest") are addon-locale-keyed: `Locales/enUS.lua` is canonical with 112 keys, `Locales/zhCN.lua` is in parity. The addon picks the locale from `GetLocale()` automatically; override with `db.language` if needed.
+User-facing **callout and assignment strings** (e.g. "Tremor for fear", "Warrior: MS target") are addon-locale-keyed: `Locales/enUS.lua` is canonical and `Locales/zhCN.lua` stays in parity. The addon picks the locale from `GetLocale()` automatically; override with `db.language` if needed.
 
 ---
 
 ## Customising the display with WeakAuras
 
-The built-in HUD (mode label, target stats, edge glow, nameplate highlight, audio) covers what most users want — no WeakAura needed. If you want to drive your own custom HUD on top, the addon exposes its full live state through `_G.ArenaCoachTBC`.
+The built-in HUD (arcade cue, mode label, target stats, nameplate highlight, audio, and optional thin edge cue) covers what most users want — no WeakAura needed. If you want to drive your own custom HUD on top, the addon exposes its full live state through `_G.ArenaCoachTBC`.
 
 > **About paste-ready import strings**: v2.0–v2.2.5 tried to ship pre-built WA import strings in this README. The `node-weakauras-parser` library we used to generate them produces strings that decode correctly but fail WA's import-validator byte check (the import dialog never shows the Import button). After 6 patches chasing it we concluded the parser is the wrong tool. If you want to use the templates, the source for each (mode badge, burst gate, defensive alert, callout stream, comp readout) is in `docs/weakaura-pack.md` — paste the trigger Lua into a Custom-trigger WeakAura you build in-game, no import-string round-trip needed.
 
@@ -145,6 +146,9 @@ _G.ArenaCoachTBC.GetPrimaryTargetName()
 _G.ArenaCoachTBC.IsBurstAllowed()      -- bool: burst gate passed
 _G.ArenaCoachTBC.GetBurstDecision()    -- multi-gate breakdown
 _G.ArenaCoachTBC.GetChain()            -- {id, label, expectedProb, steps, links}
+_G.ArenaCoachTBC.GetPlayerActions()    -- per-friendly DBM-style assignments
+_G.ArenaCoachTBC.GetPlayerAction()     -- assignment for unit "player"
+_G.ArenaCoachTBC.GetActionForUnit("party1")
 _G.ArenaCoachTBC.GetKillProb(guid)     -- 0..1
 _G.ArenaCoachTBC.GetCompConfidence()   -- 0..1
 _G.ArenaCoachTBC.GetCompSpecConfirmed()
@@ -195,7 +199,7 @@ lua5.1 tools/check_locales.lua
 lua5.1 tools/replay.lua <path/to/ArenaCoachTBC.lua>
 ```
 
-CI runs syntax check → locale parity → tests → 99% coverage gate on every push and PR. v2.2.0 ships with **613 tests**, **99%+ coverage**, and an **81% baseline** agreement against hand-labelled benchmark scenarios.
+CI runs syntax check → locale parity → tests → 99% coverage gate on every push and PR. The current headless suite has **624 tests** and the benchmark suite tracks agreement against hand-labelled scenarios.
 
 ---
 
@@ -220,8 +224,8 @@ MIT.
 | 场景 | 行为 |
 |---|---|
 | **竞技场 2v2 / 3v3 / 5v5** | 完整引擎：阵容识别、天赋推断、连锁规划、对手档案、lookahead、爆发判断、全部视觉与音频警报。 |
-| **战场**（WSG/AB/AV/EotS） | 引擎自适应：铭牌探测敌人、夺旗者优先级（+200）、低血单位提升、战场专属提示（`CALL_FLAG_CARRIER_LOW`、`CALL_BG_DEFEND`）。队伍特征档案样本不足时（如临时组队）自动启用职业级先验。 |
-| **户外 PvP / 决斗** | 引擎简化：单目标聚焦、不会左右横跳、不做阵容匹配。`DUEL_REQUESTED` 自动启动。 |
+| **战场**（WSG/AB/AV/EotS） | 引擎自适应：稀疏铭牌探测敌人、受击 CLEU 兜底、夺旗者优先级（+200）、低血单位提升、战场专属提示（`CALL_FLAG_CARRIER_LOW`、`CALL_BG_DEFEND`）。队伍特征档案样本不足时（如临时组队）自动启用职业级先验。 |
+| **户外 PvP / 决斗** | 引擎简化：单目标聚焦、不会左右横跳、不做阵容匹配。低血量也会触发 `DEFEND`，即使你是单人非治疗职业。`DUEL_REQUESTED` 自动启动。 |
 | **竞技场专属警报**仅在竞技场触发 | 屏幕闪烁与语音提示只在 `IsActiveBattlefieldArena()` 为真时触发。战场中不会出现错误的红色闪屏。 |
 
 ---
@@ -277,7 +281,7 @@ MIT.
 
 1. **战前（铁门未开）**：模式 = `OPEN`（黄色），目标 = 阵容默认起手目标。规划开场。
 2. **战斗中**：模式切换为 `KILL`（红）/ `SWAP`（橙）/ `DEFEND`（蓝）。大字显示击杀目标；信息行显示目标血量百分比和击杀概率；提示行显示功能性提示；连锁块显示标准 CC 序列；阵容徽章显示天赋是否已确认。
-3. **爆发窗口**：信息行出现 `BURST READY` 标签——所有爆发门禁通过（击杀概率 ≥ 阈值、连锁就绪、无即将到来的压力）。同时屏幕边缘出现红色 KILL 光晕，并播放响亮提示音。
+3. **爆发窗口**：信息行出现 `BURST READY` 标签——目标可被击杀、配置要求的 MS / 风怒已满足、近战能贴住、击杀概率 ≥ 阈值且没有敌方反压。连锁就绪会显示在门禁明细中，只有启用 `strategy.requireChainForBurst` 时才会硬性阻止爆发。
 4. **防御**：当你的治疗被集火或敌方爆发激活，模式切换为 `DEFEND`（蓝色）。屏幕边缘光晕转蓝；提示切换为痛苦压制 / 保护祝福 / 剥离。
 
 ---
@@ -296,7 +300,7 @@ MIT.
 | `/acc enemy <c1> <c2> ...` | 模拟自定义敌方阵容 |
 | `/acc reset` | 清空存档并 `/reload` |
 | `/acc strategy safe\|balanced\|greedy` | 手动调整侵略性 |
-| `/acc glow [on\|off]` | 切换模式着色屏幕边缘光晕（v2.2+） |
+| `/acc glow [on\|off]` | 切换可选的细边缘提示 |
 | `/acc nameplate [on\|off]` | 切换击杀/换火目标的铭牌高亮（v2.2+） |
 | `/acc debug` | 切换调试输出 |
 | `/acc selftest [verbose]` | 客户端内自检 |
@@ -319,11 +323,12 @@ MIT.
 | `strategy.ratingAggression` | `"auto"` | `"auto"` 自动读取战场分数。也可锁定为 `"greedy"` / `"balanced"` / `"safe"` 或具体分数。 |
 | `strategy.callBurstOnlyWhenMSActive` | `true` | 必须 MS 减疗已挂在目标上才允许爆发。 |
 | `strategy.requireWindfuryNearby` | `true` | 必须风怒图腾就位才允许爆发。 |
+| `strategy.requireChainForBurst` | `false` | 将正收益控制链设为 `BURST_NOW` 的硬性条件；默认关闭，以便战场、户外和缺少链模板的阵容仍能提示明显爆发窗口。 |
 | `strategy.peelTriggerWindow` / `peelTriggerDamage` | `5` / `3` | 集火检测灵敏度（伤害事件 × 时间窗 → DEFEND）。 |
 | `strategy.lookaheadEnabled` | `true` | 启用 M10 lookahead（连锁 × 对手反应期望值最大化）。 |
 | `frame.compactMode` | `false` | 隐藏己方/敌方冷却图标行。 |
-| `alerts.sound` / `alerts.screenFlash` | `true` / `true` | 语音提示 + 紧急模式屏幕闪烁。 |
-| `alerts.edgeGlow` / `alerts.nameplate` | `true` / `true` | v2.2 屏幕边缘模式着色光晕 + 铭牌高亮。 |
+| `alerts.sound` / `alerts.screenFlash` | `true` / `false` | 语音提示开关；`screenFlash` 为存档兼容保留，但不会再触发全屏闪烁。 |
+| `alerts.edgeGlow` / `alerts.nameplate` | `false` / `true` | 可选细边缘提示 + 默认开启的铭牌高亮。 |
 
 ---
 

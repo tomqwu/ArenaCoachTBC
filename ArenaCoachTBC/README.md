@@ -4,9 +4,13 @@ A strategy coach addon for **TBC Classic / TBC Anniversary** arena. Watches your
 
 **TBC 怀旧服 / TBC 周年服**竞技场战术教练插件。监视战斗、推断己方能力和敌方阵容、实时打分敌方目标，并告知你开打谁、何时切换、何时爆发、何时防御。
 
-**Adapts dynamically to any team comp** — capability inference (Mortal Strike? Bloodlust? Mass Dispel? Freedom? Cleanse?) drives the strategy, not class hardcodes.
+**Adapts dynamically to any team comp and PvP context** — capability inference (Mortal Strike? Bloodlust? Mass Dispel? Freedom? Cleanse?) drives the strategy, not class hardcodes. Arena uses full comp/chain/profile logic; BG and world PvP use opportunistic nameplate plus hostile-damage discovery, skip brittle comp matching, and keep defensive calls available when the player or a healer-capable friendly is low.
 
-**自适应任意队伍组合**——通过能力推理驱动战术（致死打击？嗜血？群驱散？自由祝福？驱散？），而非职业硬编码。
+**自适应任意队伍组合与 PvP 场景**——通过能力推理驱动战术（致死打击？嗜血？群驱散？自由祝福？驱散？），而非职业硬编码。竞技场启用完整阵容/控制链/对手档案逻辑；战场与户外 PvP 使用铭牌与受击事件探测敌人，跳过不稳定的阵容匹配，并在玩家或可治疗队友低血量时保留防御建议。
+
+If the recommendation stops refreshing, the HUD fades out and clears stale visual cues instead of leaving old text over the fight.
+
+如果推荐停止刷新，HUD 会淡出并清理过期视觉提示，而不是把旧文字留在战斗画面上。
 
 > ⚠️ **This addon never automates gameplay.** It does not cast spells, does not target enemies for you, does not click protected buttons, and does not edit secure macros in combat. Everything it does is visual / audio / text suggestions.
 >
@@ -39,9 +43,9 @@ The addon stores SavedVariables in `ArenaCoachTBCDB`.
 | `/acc toggle` | show / hide the recommendation frame | 显示 / 隐藏提示框 |
 | `/acc lock` / `/acc unlock` | lock or unlock the frame for dragging | 锁定 / 解锁框体 |
 | `/acc off` / `/acc on` (aliases `/acc disable` / `/acc enable`) | **master switch.** Stops the engine + hides every visual layer. Persists across `/reload`. | **主开关**。停止引擎并隐藏所有视觉层，`/reload` 后保持。 |
-| `/acc glow on\|off` | toggle the mode-coloured screen-edge glow (v2.2.0) | 切换屏幕边缘模式着色光晕（v2.2.0） |
+| `/acc glow on\|off` | toggle the optional thin mode-coloured edge cue | 切换可选的细边缘提示 |
 | `/acc nameplate on\|off` | toggle the KILL / SWAP target nameplate highlights (v2.2.0) | 切换击杀/换火目标的铭牌高亮（v2.2.0） |
-| `/acc test` | arena 7-beat UI demo — paints the full HUD (mode label, target stats, edge glow, nameplate, audio cues) | 竞技场 7 节拍 UI 演示——完整 HUD（模式、信息行、边缘光晕、铭牌、音效） |
+| `/acc test` | arena 7-beat UI demo — paints the full HUD (arcade warning plate, mode label, target stats, nameplate, audio cues, optional thin edge cue) | 竞技场 7 节拍 UI 演示——完整 HUD（街机警示牌、模式、信息行、铭牌、音效、可选细边缘提示） |
 | `/acc test bg` | battleground walk-through (flag carrier + low-HP straggler) | 战场演示（夺旗者 + 低血单位） |
 | `/acc test world` | world PvP walk-through (single-target focus) | 户外 PvP 演示（单目标聚焦） |
 | `/acc test print` | legacy chat-only summary of 5 sample comps | 仅文字摘要（旧行为） |
@@ -123,6 +127,9 @@ Entries can also carry an optional `specs = { CLASS = "SPEC" }` map. A spec-keye
   ownCapabilities     = { hasMortalStrike=true, hasBloodlust=true, ... },
   burstAllowed        = true,
   burstBlockedBy      = nil,
+  burstDecision       = { allowed=true, gates={ target_vulnerable={}, ms_active={}, windfury={}, melee_uptime={}, kill_prob={}, chain_ready={} } },
+  primaryTargetHp     = 0.37,
+  killProb            = 0.82,
 }
 ```
 
@@ -173,6 +180,9 @@ The addon publishes its current recommendation and full state through the global
 | `GetPrimaryTargetClass()` | "PRIEST" |
 | `GetSecondaryTarget()` | swap-candidate GUID / 切换备选 GUID |
 | `GetCallouts()` | array of locale keys / 本地化键数组 |
+| `GetPlayerActions()` | DBM-style per-friendly assignments / 每个队友的分工提示 |
+| `GetPlayerAction()` | assignment for `player` / 玩家自己的分工 |
+| `GetActionForUnit("party1")` | assignment for a party unit / 指定队友的分工 |
 | `IsBurstAllowed()` | true / false |
 | `GetBurstBlocker()` | "no_ms" / "target_immune" / nil |
 | `GetEnemyComp()` | "RMP" / "WLD" / ... |
@@ -187,7 +197,7 @@ The addon publishes its current recommendation and full state through the global
 | `GetFriendlies()` | full friendlies map / 完整己方表 |
 | `GetEnemyByGUID(guid)` | one enemy / 单个敌方 |
 | `GetCombatPhase()` | "PRE" / "ACTIVE" / "POST" |
-| `GetVersion()` | "2.7.3" |
+| `GetVersion()` | "2.8.4" |
 
 ### Sample custom trigger / 自定义触发器示例
 
@@ -208,10 +218,11 @@ function()
     local r = api.GetRecommendation()
     if not r then return "" end
     return string.format(
-        "%s: %s\n%s\nComp: %s vs %s",
+        "%s: %s\n%s\nMy action: %s\nComp: %s vs %s",
         r.mode or "",
         r.primaryTargetName or r.primaryTargetClass or "",
         r.reason or "",
+        (api.GetPlayerAction() and api.L(api.GetPlayerAction().actionKey)) or "",
         r.ownArchetypeLabel or "?", r.compLabel or "?"
     )
 end

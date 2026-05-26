@@ -38,6 +38,8 @@ function mockMethods:SetJustifyH()        end
 function mockMethods:SetJustifyV()        end
 function mockMethods:SetWidth()           end
 function mockMethods:SetFont()            end
+function mockMethods:SetAlpha(v)          self._alpha = v end
+function mockMethods:GetAlpha()           return self._alpha end
 
 local makeMockFrame  -- forward decl
 
@@ -120,7 +122,7 @@ function H.installStubs()
     _G.UnitIsDeadOrGhost = function(u) local d = ud(u); return d and d.dead == true or false end
     _G.CombatLogGetCurrentEventInfo = function()
         if not H._lastCLEU then return nil end
-        return unpack(H._lastCLEU)
+        return unpack(H._lastCLEU, 1, H._lastCLEU.n)
     end
     _G.UnitAura = function(u, i, filter)
         local byUnit = H._auras[u]
@@ -165,7 +167,7 @@ function H.clearAuras()
 end
 
 function H.fireCLEU(...)
-    H._lastCLEU = { ... }
+    H._lastCLEU = { n = select("#", ...), ... }
 end
 
 function H.advanceTime(seconds)

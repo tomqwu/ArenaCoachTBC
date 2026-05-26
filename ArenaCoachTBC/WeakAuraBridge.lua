@@ -34,6 +34,17 @@ function API.GetSecondaryTargetClass() return WAB._last and WAB._last.secondaryT
 
 -- ----- Callouts & burst -----
 function API.GetCallouts()       return WAB._last and WAB._last.callouts or {} end
+function API.GetPlayerActions()  return WAB._last and WAB._last.playerActions or {} end
+function API.GetActionForUnit(unit)
+    if not unit then return nil end
+    for _, action in ipairs(API.GetPlayerActions()) do
+        if action.unit == unit then return action end
+    end
+    return nil
+end
+function API.GetPlayerAction()
+    return API.GetActionForUnit("player")
+end
 function API.IsBurstAllowed()    return WAB._last and WAB._last.burstAllowed or false end
 function API.GetBurstBlocker()   return WAB._last and WAB._last.burstBlockedBy end
 function API.GetBurstDecision()  return WAB._last and WAB._last.burstDecision end
@@ -146,11 +157,11 @@ function API.GetDebugState()
     return {
         last       = WAB._last,
         state      = WAB._state,
-        version    = "2.7.3",
+        version    = "2.8.4",
         addon      = ADDON_NAME,
     }
 end
-function API.GetVersion() return "2.7.3" end
+function API.GetVersion() return "2.8.4" end
 
 function WAB:Publish(recommendation, state)
     self._last  = recommendation

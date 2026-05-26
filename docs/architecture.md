@@ -106,9 +106,9 @@ Sum clamped to `[0..1]`. Weights exposed via `SE.KILL_PROB_WEIGHTS`. WeakAuraBri
 
 ### BurstDecision (M11)
 
-`SE:BurstDecision(state, target, chain) -> { allowed, blockedBy, gates }` with four named gates: `kill_prob` (threshold scales with aggression — greedy 0.35, balanced 0.45, safe 0.55), `chain_ready`, `incoming_pressure`, `rating_aware`. Engine populates `rec.burstDecision` on KILL recommendations.
+`SE:BurstDecision(state, target, chain) -> { allowed, blockedBy, gates }` is the single source of truth for `BURST_NOW`. It includes target/setup prerequisite gates (`target_vulnerable`, `ms_active`, `windfury`, `melee_uptime`), the calibrated `kill_prob` gate (threshold scales with aggression: greedy 0.35, balanced 0.45, safe 0.55), `chain_ready`, `incoming_pressure`, and `rating_aware`. `chain_ready` is advisory by default so BG/world fights and sparse arena catalog entries can still recommend a clean burst window; set `db.strategy.requireChainForBurst = true` to make a positive chain mandatory. Engine populates `rec.burstDecision` and mirrors the first failing gate into `rec.burstBlockedBy` (`target_immune`, `no_ms`, `no_windfury`, `melee_root`, `kill_prob`, `chain_ready`, etc.).
 
-四个命名门禁：`kill_prob`（阈值随侵略性变化——greedy 0.35、balanced 0.45、safe 0.55）、`chain_ready`、`incoming_pressure`、`rating_aware`。引擎在 KILL 建议上填充 `rec.burstDecision`。
+爆发判断现在统一在 `BurstDecision` 内完成：目标是否免疫、MS 是否在目标上、风怒是否就位、近战是否能贴住、击杀概率、控制链、敌方压力与分数侵略性都会进入同一个 `gates` 表。默认情况下 `chain_ready` 只做审计提示；只有 `db.strategy.requireChainForBurst = true` 时才会阻止爆发。
 
 ### Rating-aware aggression (M11 — Core / 分数感知侵略性)
 
@@ -132,11 +132,11 @@ Pre-v2.1.6 this module referenced `Sound/Voice/*.ogg` paths that were never bund
 
 将提示键和模式名映射到 WoW 客户端内置的数字 SoundKit ID。`UI:Apply` 在新顶层提示和模式切换时触发一次性音效（受 `db.alerts.sound` 控制，仅竞技场触发）。v2.1.6 前引用的 `Sound/Voice/*.ogg` 路径并未打包进插件，所以历史版本的音效从未真正发出。
 
-### ScreenEdgeGlow.lua (v2.2.0)
+### ScreenEdgeGlow.lua (v2.2.0, softened in v2.8.2)
 
-A full-screen frame with four edge bands (top / bottom / left / right). Each band's color follows the current recommendation mode (KILL=red, SWAP=orange, DEFEND=blue, OPEN=yellow). An `OnUpdate` script breathes the alpha between 0.18 and 0.42 over a 1.6 s cycle. `RESET` and `nil` mode hide the frame so between-fight downtime is dark. Toggle via `db.alerts.edgeGlow` / `/acc glow on|off`. Driven from `UI:Apply` after the recommendation is rendered.
+A full-screen frame with four very thin edge lines (top / bottom / left / right). Each line's color follows the current recommendation mode (KILL=red, SWAP=orange, DEFEND=blue, OPEN=yellow). v2.8.2 removed the old pulsing 96px band; the cue is now 18px, low-alpha, and static so it does not flash around the screen. `RESET` and `nil` mode hide the frame so between-fight downtime is dark. Toggle via `db.alerts.edgeGlow` / `/acc glow on|off`. Driven from `UI:Apply` after the recommendation is rendered.
 
-全屏框、四条边带（上/下/左/右）。每条带颜色随当前模式（KILL 红、SWAP 橙、DEFEND 蓝、OPEN 黄）。`OnUpdate` 让透明度在 0.18-0.42 间以 1.6 秒周期呼吸。`RESET` 和 `nil` 隐藏。通过 `db.alerts.edgeGlow` / `/acc glow on|off` 控制。
+全屏框、四条很细的边缘线（上/下/左/右）。每条线颜色随当前模式（KILL 红、SWAP 橙、DEFEND 蓝、OPEN 黄）。v2.8.2 移除了旧的 96px 脉冲边带；现在是 18px、低透明度、静态显示，不会在屏幕周围闪烁。`RESET` 和 `nil` 隐藏。通过 `db.alerts.edgeGlow` / `/acc glow on|off` 控制。
 
 ### Nameplate.lua (v2.2.0)
 
@@ -144,9 +144,15 @@ Iterates `nameplate1..nameplate40` to resolve the current frame for a given enem
 
 遍历 `nameplate1..nameplate40` 找到指定敌方 GUID 对应的当前铭牌，挂上一个含四条彩带的子覆盖框。击杀目标得红色边框，换火候选得橙色。`UI:Apply` 每次都清空重绘。从不修改铭牌原生的血条/施法条/姓名，与 Plater/KuiNameplates/TidyPlates 共存。
 
+### Non-arena discovery (Unreleased)
+
+BG/world enemy state is intentionally opportunistic. `Core:RefreshEnemiesNonArena()` scans all `nameplate1..nameplate40` slots without stopping at the first gap because nameplate unit IDs can be sparse. CLEU fallback stubs are only created when a hostile source damages the player or a known friendly, which avoids phantom enemies from unrelated world combat nearby. World PvP defensive mode uses healer-capable friendlies when present and falls back to the lowest alive friendly in solo play, so a low-HP non-healer player still gets `DEFEND` instead of a forced `KILL`.
+
 ### Auto-hide gate + master switch (v2.2.5)
 
-`UI:Apply` checks `Core.state.pvpContext` and hides the frame + screen-edge glow + nameplate overlays when the context is explicitly `"none"` or `"world_idle"`. This stops the engine from drawing a stale rec on screen between fights and stops `onNameplateChange` from re-evaluating in cities (where the firehose of nameplate add/remove events was a major frame-rate hit before v2.2.5).
+`UI:Apply` checks `Core.state.pvpContext` and hides the frame + thin edge cue + nameplate overlays when the context is explicitly `"none"` or `"world_idle"`. This stops the engine from drawing a stale rec on screen between fights and stops `onNameplateChange` from re-evaluating in cities (where the firehose of nameplate add/remove events was a major frame-rate hit before v2.2.5).
+
+v2.8.3 adds a stale-recommendation fade timer on the HUD frame. Each fresh `UI:Apply` resets opacity to 1.0. If no fresh recommendation refreshes the frame after 3 seconds, opacity fades over 2 seconds; at the end the frame hides and clears nameplate / edge cues. This handles the "situation out of sync" case without flashing or forcing the user to manually toggle the frame.
 
 `/acc off` and `/acc on` (aliases `/acc disable` / `/acc enable`) toggle `db.enabled`. When off, `Core:Evaluate` short-circuits at the top — no event handlers, no engine work, all visual layers hidden. Persists across `/reload`. The `/acc test` demo bypasses both gates via a per-beat `recommendation._forceShow` flag so the walk-through paints the full HUD outside arena.
 
@@ -175,8 +181,10 @@ The engine's `Evaluate` returns roughly this / 引擎 `Evaluate` 返回大致结
   compSpecConfirmed  = bool,
   ownArchetype       = "MELEE_CLEAVE",
   burstAllowed       = bool,
-  burstDecision      = { allowed, blockedBy, gates = {kill_prob, chain_ready, ...} },
+  burstDecision      = { allowed, blockedBy, gates = {target_vulnerable, ms_active, windfury, melee_uptime, kill_prob, chain_ready, ...} },
   chain              = { id, label, labelKey, steps, links, expectedProb, expectedValue },
+  primaryTargetHp    = 0..1,
+  killProb           = 0..1,
   profileContrib     = "trinketsFear=0.82,kicksFirstHeal=0.71",
   opponentSignature  = "<class_set>#<hash>",
   aggression         = "greedy|balanced|safe",

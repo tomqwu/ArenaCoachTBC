@@ -103,21 +103,15 @@ H.it(g, "UI frame drag OnMouseDown / OnMouseUp", function()
     UI.frame._scripts.OnMouseDown(UI.frame, "RightButton")
 end)
 
-H.it(g, "UI _Flash OnUpdate eventually hides the overlay", function()
+H.it(g, "UI _Flash helper OnUpdate eventually hides the overlay", function()
     _G.ArenaCoachTBCDB = {
         alerts = { screenFlash = true },
         frame = { point = "CENTER", x = 0, y = 0, scale = 1 },
         strategy = {}, enabled = true,
     }
-    -- M13 / M15 (v2.1): UI:Apply gates the screen flash on
-    -- state.pvpContext == "arena". Force arena context so this test
-    -- still drives the flash codepath after the gate was added.
-    if H.ns.Core and H.ns.Core.state then
-        H.ns.Core.state.pvpContext = "arena"
-    end
     UI:CreateFrame()
     UI._flash = nil
-    UI:Apply({ mode = "DEFEND", priority = "URGENT", callouts = {} })
+    UI:_Flash()
     H.assertNotNil(UI._flash)
     -- Simulate enough OnUpdate ticks to drive alpha to 0
     local on = UI._flash._scripts.OnUpdate
@@ -167,6 +161,12 @@ H.it(g, "Burst KILL with no MS/WF requirement appends BURST_NOW callout", functi
     state.config.strategy.callBurstOnlyWhenMSActive = false
     state.config.strategy.requireWindfuryNearby     = false
     state.lastPrimaryGUID = nil
+    for _, e in pairs(state.enemies) do
+        if e.class == "PRIEST" then
+            e.healthPct = 10
+            e.hasTrinket = false
+        end
+    end
     local rec = SE:Evaluate(state)
     if rec.mode == "KILL" then
         local hasBurst = false
