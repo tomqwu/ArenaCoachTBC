@@ -15,6 +15,7 @@ H.load("Data/Strategies.lua")
 H.load("EventBus.lua")
 H.load("CooldownTracker.lua")
 H.load("DRTracker.lua")
+H.load("Chain.lua")
 H.load("StrategyEngine.lua")
 H.load("UI.lua")
 H.load("WeakAuraBridge.lua")
@@ -164,9 +165,15 @@ end)
 H.it(g, "Burst KILL with no MS/WF requirement appends BURST_NOW callout", function()
     local state = SE:BuildTestState({"MAGE","PRIEST"})
     state.combatPhase = "ACTIVE"
+    state.bracket = 2
+    state.pvpContext = "arena"
     state.config.strategy.callBurstOnlyWhenMSActive = false
     state.config.strategy.requireWindfuryNearby     = false
     state.lastPrimaryGUID = nil
+    for _, e in pairs(state.enemies) do
+        e.healthPct = 20
+        e.hasTrinket = false
+    end
     local rec = SE:Evaluate(state)
     if rec.mode == "KILL" then
         local hasBurst = false

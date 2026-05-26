@@ -873,57 +873,6 @@ function SE:Evaluate(state)
         reason = reason .. string.format(" | %s %s (%.2f)", comp.id, tag, compConfidence or 0.0)
     end
 
-    -- Burst guidance
-    local burstOK, burstWhy = burstAllowed(state, topTarget)
-    if mode == "KILL" and burstOK then
-        table.insert(callouts, "BURST_NOW")
-    end
-
-    -- v2.7.1: outnumbered callout. shouldDefend() returns false in the
-    -- outnumbered case so we fall through to KILL — but we want to be
-    -- explicit that the player is in a bad spot, not just "kill this
-    -- target". Prepend the OUTNUMBERED callout so it's the top entry
-    -- and gets the prominent icon + text slot in the HUD.
-    if isOutnumbered(state) then
-        table.insert(callouts, 1, "CALL_OUTNUMBERED_DISENGAGE")
-    end
-
-    -- v2.1.6: surface target HP fraction + kill probability in the
-    -- recommendation so the HUD can render a "HP 62% / kill 47%" stats
-    -- line without having to reach back into state. Both are 0..1
-    -- floats so the UI can compute integer percentages locally.
-    local primaryTargetHp
-    if topTarget then
-        if type(topTarget.hpPct) == "number" then
-            primaryTargetHp = topTarget.hpPct
-        elseif type(topTarget.healthPct) == "number" then
-            primaryTargetHp = math.max(0, math.min(1, topTarget.healthPct / 100))
-        elseif topTarget.hp and topTarget.hpMax and topTarget.hpMax > 0 then
-            primaryTargetHp = math.max(0, math.min(1, topTarget.hp / topTarget.hpMax))
-        end
-    end
-    local primaryKillProb
-    if topTarget and self.KillProb then
-        local kp = self:KillProb(topTarget, state)
-        primaryKillProb = kp and kp.prob or nil
-    end
-
-    local confidence
-    if not topTarget then
-        confidence = 0.0
-    else
-        local diff = (topTarget._score or 0) - ((secondTarget and secondTarget._score) or 0)
-        -- normalize: 0-50 spread -> 0.5-1.0
-        confidence = math.max(0.0, math.min(1.0, 0.5 + diff / 100))
-    end
-
-    local priority = "MEDIUM"
-    if mode == "DEFEND" then priority = "URGENT"
-    elseif mode == "SWAP" then priority = "HIGH"
-    elseif mode == "OPEN" then priority = "MEDIUM"
-    elseif mode == "RESET" then priority = "LOW"
-    else priority = "HIGH" end
-
     -- M8 #61: chain scoring. Pick the top-scoring chain for this comp
     -- against the current state. nil if the comp has no chains, no
     -- chain has at least one castable link, or the top chain's
@@ -975,6 +924,68 @@ function SE:Evaluate(state)
         end
     end
 
+    -- Burst guidance. Legacy hard gates catch immediate "do not press"
+    -- states; BurstDecision adds kill-probability, chain, pressure, and
+    -- aggression-aware gates. The HUD should show BURST_NOW only when
+    -- both layers agree.
+    local legacyBurstOK, burstWhy = burstAllowed(state, topTarget)
+    local burstDecision = (mode == "KILL") and self:BurstDecision(state, topTarget, pickedChain) or nil
+    local burstOK = legacyBurstOK and ((not burstDecision) or burstDecision.allowed)
+    local burstBlockedBy = nil
+    if not legacyBurstOK then
+        burstBlockedBy = burstWhy
+    elseif burstDecision and not burstDecision.allowed then
+        burstBlockedBy = burstDecision.blockedBy
+    end
+    if mode == "KILL" and burstOK then
+        table.insert(callouts, "BURST_NOW")
+    end
+
+    -- v2.7.1: outnumbered callout. shouldDefend() returns false in the
+    -- outnumbered case so we fall through to KILL — but we want to be
+    -- explicit that the player is in a bad spot, not just "kill this
+    -- target". Prepend the OUTNUMBERED callout so it's the top entry
+    -- and gets the prominent icon + text slot in the HUD.
+    if isOutnumbered(state) then
+        table.insert(callouts, 1, "CALL_OUTNUMBERED_DISENGAGE")
+    end
+
+    -- v2.1.6: surface target HP fraction + kill probability in the
+    -- recommendation so the HUD can render a "HP 62% / kill 47%" stats
+    -- line without having to reach back into state. Both are 0..1
+    -- floats so the UI can compute integer percentages locally.
+    local primaryTargetHp
+    if topTarget then
+        if type(topTarget.hpPct) == "number" then
+            primaryTargetHp = topTarget.hpPct
+        elseif type(topTarget.healthPct) == "number" then
+            primaryTargetHp = math.max(0, math.min(1, topTarget.healthPct / 100))
+        elseif topTarget.hp and topTarget.hpMax and topTarget.hpMax > 0 then
+            primaryTargetHp = math.max(0, math.min(1, topTarget.hp / topTarget.hpMax))
+        end
+    end
+    local primaryKillProb
+    if topTarget and self.KillProb then
+        local kp = self:KillProb(topTarget, state)
+        primaryKillProb = kp and kp.prob or nil
+    end
+
+    local confidence
+    if not topTarget then
+        confidence = 0.0
+    else
+        local diff = (topTarget._score or 0) - ((secondTarget and secondTarget._score) or 0)
+        -- normalize: 0-50 spread -> 0.5-1.0
+        confidence = math.max(0.0, math.min(1.0, 0.5 + diff / 100))
+    end
+
+    local priority = "MEDIUM"
+    if mode == "DEFEND" then priority = "URGENT"
+    elseif mode == "SWAP" then priority = "HIGH"
+    elseif mode == "OPEN" then priority = "MEDIUM"
+    elseif mode == "RESET" then priority = "LOW"
+    else priority = "HIGH" end
+
     return {
         mode            = mode,
         primaryTarget   = topTarget and topTarget.guid or nil,
@@ -997,12 +1008,12 @@ function SE:Evaluate(state)
         opponentSignature = state.opponentSignature,
         aggression      = state.aggression,
         rating          = state.rating,
-        burstDecision   = (mode == "KILL") and self:BurstDecision(state, topTarget, pickedChain) or nil,
+        burstDecision   = burstDecision,
         ownArchetype    = ownArchetype and ownArchetype.id or nil,
         ownArchetypeLabel = ownArchetype and ownArchetype.label or nil,
         ownCapabilities = ownCaps,
         burstAllowed    = burstOK,
-        burstBlockedBy  = (not burstOK) and burstWhy or nil,
+        burstBlockedBy  = burstBlockedBy,
         primaryTargetHp = primaryTargetHp,   -- v2.1.6: 0..1 fraction
         killProb        = primaryKillProb,    -- v2.1.6: 0..1 fraction
         _topScore       = topTarget and topTarget._score or 0,

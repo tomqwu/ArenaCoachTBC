@@ -58,6 +58,7 @@ load("Data/Strategies.lua")
 load("EventBus.lua")
 load("CooldownTracker.lua")
 load("DRTracker.lua")
+load("Chain.lua")
 load("StrategyEngine.lua")
 
 local SE = ns.StrategyEngine
@@ -182,6 +183,8 @@ test("Bloodlust burst recommendation requires MS if config says so", function()
     state2.observations.bloodlustReady = true
     state2.observations.windfuryActive = true
     local priest = findEnemyByClass(state2, "PRIEST")
+    priest.healthPct = 20
+    priest.hasTrinket = false
     state2.observations.msActiveOn = priest.guid
     local rec2 = SE:Evaluate(state2)
     assertEq(rec2.burstAllowed, true, "burst should now be allowed")

@@ -720,6 +720,32 @@ H.it(g, "Evaluate populates rec.burstDecision when mode is KILL", function()
     end
 end)
 
+H.it(g, "arena quality: BURST_NOW is suppressed when BurstDecision blocks kill probability", function()
+    local state = SE:BuildTestState({ "ROGUE", "MAGE", "PRIEST" }, {
+        observations = { hojReady = true, windfuryActive = true },
+        config = { strategy = { callBurstOnlyWhenMSActive = false, requireWindfuryNearby = true } },
+    })
+    state.combatPhase = "ACTIVE"
+    state.bracket = 3
+    state.pvpContext = "arena"
+
+    for _, enemy in pairs(state.enemies) do
+        enemy.healthPct = 100
+        enemy.hasTrinket = true
+        enemy.importantBuffs = {}
+    end
+
+    local rec = SE:Evaluate(state)
+
+    H.assertEq(rec.mode, "KILL")
+    H.assertEq(rec.burstDecision.blockedBy, "kill_prob")
+    H.assertFalse(rec.burstAllowed, "legacy hard gates are not enough for burst-ready display")
+    H.assertEq(rec.burstBlockedBy, "kill_prob")
+    for _, callout in ipairs(rec.callouts or {}) do
+        H.assertNotEq(callout, "BURST_NOW", "BURST_NOW should not appear when BurstDecision blocks")
+    end
+end)
+
 -- =================================================================
 -- M11 #72: KillProb model
 -- =================================================================
