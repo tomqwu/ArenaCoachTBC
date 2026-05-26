@@ -475,26 +475,15 @@ local function aliveCount(map)
 end
 
 local function shouldDefend(state)
-    -- v2.7.1: outnumbered override. User report — in an arena 2v4
-    -- (5v5 attrition; 3 friendlies dead, 1 enemy dead) the engine
-    -- recommended DEFEND because "healer being trained" fires by
-    -- definition when 4 enemies attack 2 players. But defensive
-    -- cooldowns can't save a 2v4 — they get spent in one global and
-    -- everyone dies. The actionable advice is "disengage / counter-
-    -- burst the lowest-HP enemy", not "burn Pain Sup".
-    --
-    -- The override is **arena-only**. In BG/world the enemy count
-    -- comes from nameplate scans and includes hostile players who
-    -- aren't actively fighting you — so a 3v10 BG nameplate count
-    -- isn't a real "outnumbered" state. Arena's `arenaN` unit IDs
-    -- are exactly the opposing team, so the ratio is meaningful.
-    if (state.pvpContext == nil or state.pvpContext == "arena") then
-        local nFriendly = aliveCount(state.friendlies)
-        local nEnemy    = aliveCount(state.enemies)
-        if nFriendly > 0 and nEnemy >= nFriendly * 1.5 then
-            return false, "outnumbered_no_defend"
-        end
-    end
+    -- ORDER MATTERS. Real-emergency signals (low_healer, healer_cc,
+    -- enemy_lust, multi_burst) check FIRST and short-circuit before the
+    -- outnumbered override. v2.7.1 put the override at the top with a
+    -- 1.5x ratio, which incorrectly suppressed DEFEND in normal 2v3 /
+    -- 1v2 emergencies (the ratio fires every time you've lost one
+    -- friendly). Codex review on v2.7.1 flagged this: in a 3v3 down to
+    -- 2v3 with the healer at 20% HP, the engine returned KILL +
+    -- outnumbered callout instead of DEFEND. Cooldowns CAN save a
+    -- 2v3; this ordering preserves that.
 
     local lowest = lowestHealer(state.friendlies)
     -- M11 #71: defensive HP threshold shifts with aggression.
@@ -509,6 +498,24 @@ local function shouldDefend(state)
     local obs = state.observations or {}
     if obs.enemyBloodlustActive then return true, "enemy_lust" end
     if obs.multipleBurstsDetected then return true, "multi_burst" end
+
+    -- v2.7.3 (narrowed): outnumbered override. Only fires when enemy
+    -- count >= 4 AND enemy-friend delta >= 2 (catches 2v4, 2v5, 1v3,
+    -- 1v4 — never 2v3 / 1v2). Original v2.7.1 user case was a 2v4
+    -- where defensives can't save anyone; v2.7.3 keeps that fix but
+    -- doesn't veto the salvageable cases.
+    --
+    -- Arena-only: BG/world enemy counts come from nameplate scans,
+    -- which include hostile players who aren't actively fighting you.
+    -- Arena's `arenaN` unit IDs ARE the opposing team.
+    if (state.pvpContext == nil or state.pvpContext == "arena") then
+        local nFriendly = aliveCount(state.friendlies)
+        local nEnemy    = aliveCount(state.enemies)
+        if nFriendly > 0 and nEnemy >= 4 and (nEnemy - nFriendly) >= 2 then
+            return false, "outnumbered_no_defend"
+        end
+    end
+
     if obs.healerUnderPressure then return true, "trained" end
 
     -- enemy comp = triple DPS, no clean opener (arena-only —
@@ -527,16 +534,16 @@ local function shouldDefend(state)
     return false
 end
 
--- v2.7.1: helper for the decideMode caller to know whether the engine
--- decided NOT to DEFEND because we're outnumbered. Used to attach the
--- CALL_OUTNUMBERED callout to the KILL recommendation. Arena-only for
--- the same reason as the override above — BG nameplate counts aren't
--- meaningful for "outnumbered in active combat".
+-- v2.7.3: outnumbered callout helper. Same threshold as the override
+-- above so the two stay in sync. Note: this returning true does NOT
+-- mean DEFEND was suppressed — low_healer / healer_cc / enemy_lust /
+-- multi_burst still keep DEFEND on. The callout just acknowledges
+-- the bad spot in addition to whatever mode the engine picks.
 local function isOutnumbered(state)
     if state.pvpContext ~= nil and state.pvpContext ~= "arena" then return false end
     local nFriendly = aliveCount(state.friendlies)
     local nEnemy    = aliveCount(state.enemies)
-    return nFriendly > 0 and nEnemy >= nFriendly * 1.5
+    return nFriendly > 0 and nEnemy >= 4 and (nEnemy - nFriendly) >= 2
 end
 
 -- ============================================================

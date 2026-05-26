@@ -54,6 +54,53 @@ H.it(g, "v2.7.1: arena 2v4 (outnumbered 2x) suppresses DEFEND + adds CALL_OUTNUM
         "outnumbered state must add CALL_OUTNUMBERED_DISENGAGE so the user knows the engine saw it")
 end)
 
+-- v2.7.3 (Codex review on v2.7.1): the v2.7.1 override at >=1.5x ratio
+-- caught normal 2v3 / 1v2 states where defensives DO save the team.
+-- Narrowed to enemy count >= 4 AND delta >= 2. Real-emergency signals
+-- (low_healer, healer_cc, enemy_lust) check FIRST and short-circuit
+-- before the outnumbered override, so they always win.
+H.it(g, "v2.7.3: arena 2v3 with low healer must still DEFEND (not KILL + outnumbered)", function()
+    -- 3v3 down to 2v3 — one friendly dead, healer alive at 20% HP.
+    -- Defensives CAN save this; v2.7.1 incorrectly suppressed DEFEND.
+    local state = SE:BuildTestState({"ROGUE","MAGE","PRIEST"})   -- 3 enemies
+    state.combatPhase = "ACTIVE"
+    state.pvpContext  = "arena"
+    state.observations = { healerUnderPressure = true }
+    -- 5 default friendlies; mark 3 dead so we're at 2 alive. Make the
+    -- alive ones include a healer (party3 = DRUID resto) at 20% HP.
+    state.friendlies.party1.alive = false
+    state.friendlies.party2.alive = false
+    state.friendlies.party4.alive = false
+    state.friendlies.party3.healthPct = 20   -- the healer is low
+    local nF, nE = 0, 0
+    for _, u in pairs(state.friendlies) do if u.alive ~= false then nF = nF + 1 end end
+    for _, u in pairs(state.enemies)    do if u.alive ~= false then nE = nE + 1 end end
+    H.assertEq(nF, 2, "test setup: 2 alive friendlies")
+    H.assertEq(nE, 3, "test setup: 3 alive enemies")
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.mode, "DEFEND",
+        "2v3 with the healer at 20% HP must still recommend DEFEND - cooldowns CAN save this")
+end)
+
+H.it(g, "v2.7.3: low_healer signal beats outnumbered override even in 2v4", function()
+    -- 2v4 with the healer at 15% HP. low_healer fires first and wins,
+    -- so we still recommend DEFEND. The outnumbered override only
+    -- suppresses the weaker `trained` (healerUnderPressure) signal.
+    local state = SE:BuildTestState({"ROGUE","MAGE","WARLOCK","PRIEST"})
+    state.combatPhase = "ACTIVE"
+    state.pvpContext  = "arena"
+    -- Keep party3 (DRUID RESTORATION = the real healer) alive at 15% HP,
+    -- kill three others. lowestHealer needs an actual healer alive to
+    -- fire the low_healer branch.
+    state.friendlies.player.alive = false
+    state.friendlies.party1.alive = false
+    state.friendlies.party2.alive = false
+    state.friendlies.party3.healthPct = 15   -- the healer is dying
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.mode, "DEFEND",
+        "low_healer must take precedence over the outnumbered override")
+end)
+
 H.it(g, "v2.7.1: BG 3v10 (nameplate count, not real combatants) still allows DEFEND", function()
     local state = SE:BuildTestState({"WARRIOR","PRIEST","SHAMAN"})
     state.combatPhase = "ACTIVE"

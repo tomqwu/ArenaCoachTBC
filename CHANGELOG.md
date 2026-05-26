@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.7.3] - 2026-05-26
+
+### Fixed
+- **v2.7.1 outnumbered override was too aggressive — suppressed DEFEND in salvageable 2v3 / 1v2 emergencies.** Found by a Codex adversarial review run against `v2.6.0..HEAD`: in a 3v3 down to 2v3 with the healer at 20% HP and pressure detected, the engine returned `KILL` + the `CALL_OUTNUMBERED_DISENGAGE` callout instead of `DEFEND`. The 1.5x ratio caught every state where you'd lost one friendly, not just the unrecoverable 2v4 case the override was designed for. Defensive cooldowns CAN save a 2v3; suppressing DEFEND there is a regression.
+
+  Fix has two parts:
+
+  1. **Restructured `shouldDefend` so real-emergency signals check FIRST.** `low_healer` (any healer below the HP threshold), `healer_cc` (healer mid-CC), `enemy_lust` (Bloodlust active), and `multi_burst` now short-circuit before the outnumbered override runs. These signals indicate that defensives are *exactly* what saves the team, regardless of numbers.
+  2. **Narrowed the outnumbered threshold** from `nEnemy >= nFriendly * 1.5` to `nEnemy >= 4 AND (nEnemy - nFriendly) >= 2`. Catches the original 2v4 / 2v5 / 1v3+ cases; no longer fires on 2v3 / 1v2 where defensives still work. `isOutnumbered` (the callout helper) follows the same threshold so the override + callout stay in sync.
+
+### Notes
+- Tests 612 → 614 (+2 Codex-suggested regressions: arena 2v3 with low healer must still DEFEND; 2v4 with low healer alive at 15% must still DEFEND via `low_healer` taking precedence over `outnumbered`). Locale parity green.
+- The original v2.7.1 user case (arena 2v4 with `healerUnderPressure` but no specific defensive signal) still works correctly: `low_healer` doesn't fire (nobody's low), `enemy_lust` doesn't fire, so we fall through to the outnumbered branch which suppresses DEFEND and adds the `CALL_OUTNUMBERED_DISENGAGE` callout.
+
 ## [2.7.2] - 2026-05-26
 
 Two stacked lifecycle bugs both rooted in stale state.
