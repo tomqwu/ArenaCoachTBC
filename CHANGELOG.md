@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.7.5] - 2026-05-26
+
+### Fixed
+- **Removed automatic full-screen flashing from live recommendations and `/acc test`.** `UI:Apply` no longer calls the red `_Flash()` overlay for URGENT/DEFEND, even if an older SavedVariables file still has `alerts.screenFlash = true`. The quieter cues remain: HUD colour, nameplate highlight, optional edge glow, and arena-gated sound.
+- **Healer-train damage now re-evaluates through the real CLEU path once the peel threshold is reached.** Repeated damage on a healer in arena now publishes `DEFEND` immediately instead of waiting for the next spellcast/aura event.
+
+### Added
+- **Realistic arena lifecycle regressions.** Added event-driven tests that go through `PLAYER_ENTERING_WORLD`, `ARENA_OPPONENT_UPDATE`, `PLAYER_REGEN_DISABLED`, live `arenaN` unit stubs, CLEU healer damage, `UI:Apply`, and `WeakAuraBridge` publication. These cover the gates-closed `OPEN` state, active-combat `KILL`, healer-train `DEFEND`, and the no-flash behavior in a shape much closer to an actual arena run.
+
+### Notes
+- Tests 624 → 626 (+2 real-arena lifecycle regressions). Locale parity green at 112 keys per locale. Full syntax check green.
+
 ## [2.7.4] - 2026-05-26
 
 ### Fixed

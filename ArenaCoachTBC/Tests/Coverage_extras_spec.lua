@@ -103,21 +103,15 @@ H.it(g, "UI frame drag OnMouseDown / OnMouseUp", function()
     UI.frame._scripts.OnMouseDown(UI.frame, "RightButton")
 end)
 
-H.it(g, "UI _Flash OnUpdate eventually hides the overlay", function()
+H.it(g, "UI _Flash helper OnUpdate eventually hides the overlay", function()
     _G.ArenaCoachTBCDB = {
         alerts = { screenFlash = true },
         frame = { point = "CENTER", x = 0, y = 0, scale = 1 },
         strategy = {}, enabled = true,
     }
-    -- M13 / M15 (v2.1): UI:Apply gates the screen flash on
-    -- state.pvpContext == "arena". Force arena context so this test
-    -- still drives the flash codepath after the gate was added.
-    if H.ns.Core and H.ns.Core.state then
-        H.ns.Core.state.pvpContext = "arena"
-    end
     UI:CreateFrame()
     UI._flash = nil
-    UI:Apply({ mode = "DEFEND", priority = "URGENT", callouts = {} })
+    UI:_Flash()
     H.assertNotNil(UI._flash)
     -- Simulate enough OnUpdate ticks to drive alpha to 0
     local on = UI._flash._scripts.OnUpdate

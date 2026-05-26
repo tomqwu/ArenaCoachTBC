@@ -15,7 +15,7 @@ A real-time arena strategy coach for **World of Warcraft TBC Classic / TBC Anniv
 | **Arena 2v2 / 3v3 / 5v5** | Full engine: comp ID, spec inference, chain planning, opponent profiles, lookahead, burst gating, all visual + audio alerts. |
 | **Battlegrounds** (WSG/AB/AV/EotS) | Engine adapts: sparse nameplate enemy discovery, hostile-damage CLEU fallback, flag-carrier priority (+200), low-HP straggler boost, BG-specific callouts (`CALL_FLAG_CARRIER_LOW`, `CALL_BG_DEFEND`). Class-prior tier kicks in when the team-signature profile lacks samples (PUG'd rosters). |
 | **World PvP / duels** | Engine simplifies: single-target focus, no SWAP thrash, no comp matching. Low player HP can still trigger `DEFEND`, even solo on a non-healer. `DUEL_REQUESTED` auto-engages. |
-| **Arena-only alerts** stay gated to arena | Screen flash + voice cues only fire when `IsActiveBattlefieldArena()` is true. No spurious red flash in WSG. |
+| **Arena-only alerts** stay gated to arena | Voice cues only fire when `IsActiveBattlefieldArena()` is true. No full-screen flash or spurious red flash in WSG. |
 
 ---
 
@@ -58,7 +58,7 @@ The 100+ enemy comp catalog in `Data/Strategies.lua` carries `ownVariants` so th
 /acc selftest verbose  -- in-client validation
 ```
 
-After `/acc test` the recommendation frame appears center-screen and walks through 7 beats over 14 seconds (mode flips, BURST_NOW pulse, DEFEND screen flash, profile callout) — you'll see every kind of UI transition the addon emits. **If you see this demo, the addon is loaded and working.** Move the frame to a corner you'll actually look at during a match.
+After `/acc test` the recommendation frame appears center-screen and walks through 7 beats over 14 seconds (mode flips, BURST_NOW pulse, DEFEND cue, profile callout) — you'll see every kind of UI transition the addon emits without a full-screen flash. **If you see this demo, the addon is loaded and working.** Move the frame to a corner you'll actually look at during a match.
 
 ---
 
@@ -116,7 +116,7 @@ All settings persist in `ArenaCoachTBCDB` (SavedVariables). They're forward-comp
 | `strategy.peelTriggerWindow` / `peelTriggerDamage` | `5` / `3` | Train detection sensitivity (damage events × window → DEFEND). |
 | `strategy.lookaheadEnabled` | `true` | Engage the M10 expectimax over chain × opponent response. |
 | `frame.compactMode` | `false` | Hides the friendly/enemy cooldown icon rows. |
-| `alerts.sound` / `alerts.screenFlash` | `true` / `true` | Voice cue + URGENT-mode screen flash. |
+| `alerts.sound` / `alerts.screenFlash` | `true` / `false` | Voice cue toggle; `screenFlash` is retained for SavedVariables compatibility but no longer triggers full-screen flashing. |
 | `alerts.edgeGlow` / `alerts.nameplate` | `true` / `true` | v2.2 mode-coloured edge glow + nameplate highlight. |
 
 ---
@@ -324,7 +324,7 @@ MIT.
 | `strategy.peelTriggerWindow` / `peelTriggerDamage` | `5` / `3` | 集火检测灵敏度（伤害事件 × 时间窗 → DEFEND）。 |
 | `strategy.lookaheadEnabled` | `true` | 启用 M10 lookahead（连锁 × 对手反应期望值最大化）。 |
 | `frame.compactMode` | `false` | 隐藏己方/敌方冷却图标行。 |
-| `alerts.sound` / `alerts.screenFlash` | `true` / `true` | 语音提示 + 紧急模式屏幕闪烁。 |
+| `alerts.sound` / `alerts.screenFlash` | `true` / `false` | 语音提示开关；`screenFlash` 为存档兼容保留，但不会再触发全屏闪烁。 |
 | `alerts.edgeGlow` / `alerts.nameplate` | `true` / `true` | v2.2 屏幕边缘模式着色光晕 + 铭牌高亮。 |
 
 ---

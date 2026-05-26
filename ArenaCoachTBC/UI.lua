@@ -230,7 +230,7 @@ function UI:Apply(recommendation)
     -- v2.5.0: high-contrast skin. The default modeColors palette is
     -- tuned for visual coherence (slightly desaturated, easy on the
     -- eyes); the high-contrast palette pushes every channel to the
-    -- extreme so the label is readable through screen flashes, glare,
+    -- extreme so the label is readable through glare,
     -- and small-screen / poor-eyesight setups. Toggle via
     -- `/acc highcontrast on|off` (db.frame.highContrast).
     local highContrast = (ArenaCoachTBCDB and ArenaCoachTBCDB.frame
@@ -418,11 +418,11 @@ function UI:Apply(recommendation)
                   or IsActiveBattlefieldArena()
     end
 
-    -- Screen flash for URGENT (defensive) — arena only
-    if inArena and recommendation.priority == "URGENT" and ArenaCoachTBCDB
-       and ArenaCoachTBCDB.alerts and ArenaCoachTBCDB.alerts.screenFlash then
-        self:_Flash()
-    end
+    -- v2.7.5: no automatic full-screen flash. The frame, sound cue,
+    -- nameplate highlight, and optional edge glow carry urgency without
+    -- strobing over the playfield during a real arena run. `_Flash`
+    -- remains below as an isolated helper for legacy/debug coverage, but
+    -- recommendations no longer call it.
 
     -- M12 #77: voice callouts. Fire one sound per *new* top callout.
     -- Arena-gated for the same reason — BG combat noise produces

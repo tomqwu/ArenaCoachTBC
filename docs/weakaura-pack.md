@@ -98,9 +98,9 @@ trigger.
 
 ## Template 3 — Defensive alert (Group)
 
-A flashing overlay only when mode is `DEFEND`. The engine flips DEFEND on
-several signals (low healer HP, healer CC'd, enemy lust, train detection),
-so this catches them all.
+A steady defensive badge only when mode is `DEFEND`. The engine flips DEFEND
+on several signals (low healer HP, healer CC'd, enemy lust, train detection),
+so this catches them all without strobing over the arena.
 
 **Trigger (Status):**
 ```lua
@@ -117,7 +117,7 @@ function()
 end
 ```
 
-Pair with an Animation → Pulse on trigger.
+Pair with a glow border if you want extra visibility.
 
 ---
 

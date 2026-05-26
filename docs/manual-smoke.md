@@ -32,9 +32,10 @@ behaviour is what tests can't see.
 - [ ] OPEN / KILL / SWAP / DEFEND / RESET modes each render with a distinct colour (yellow / red / orange / blue / grey)
 - [ ] Target stats row shows `HP <n>%   kill <n>%   BURST READY` when there's a primary target; hidden on DEFEND / RESET
 - [ ] Screen-edge glow pulses (1.6 s cycle, alpha 0.18-0.42) in the mode colour; dark on RESET
+- [ ] DEFEND/URGENT does not create a full-screen red flash; use HUD colour, nameplate, optional edge glow, and sound cues instead
 - [ ] Nameplate of the kill target gets a red border; swap target gets orange (when in SWAP mode)
 - [ ] Audio cue fires on mode flip (KILL/SWAP/DEFEND/OPEN play distinct WoW SoundKit IDs); arena-only
-- [ ] URGENT callouts flash the screen briefly (configurable)
+- [ ] URGENT callouts stay readable without a full-screen flash, even if an old SavedVariables file has `alerts.screenFlash = true`
 - [ ] Standing in Stormwind / Orgrimmar for 30 s: no frame-rate drop (city-lag fix, v2.2.5)
 
 ## In-arena

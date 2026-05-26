@@ -209,7 +209,7 @@ CurseForge lets you upload up to 10 screenshots. Suggested set:
 
 1. **HUD in action** — `/acc test` showing mode label + target stats + edge glow + nameplate border
 2. **BG mode** — frame in WSG showing flag-carrier priority
-3. **DEFEND alert** — blue mode with screen flash
+3. **DEFEND alert** — blue mode with steady defensive cue
 4. **Comp badge** — `RMP (confirmed Disc Priest)` after spec inference
 5. **Bridge API** — chat showing `/acc trace dump` output (proves the depth)
 6. **Slash command help** — `/acc help` output

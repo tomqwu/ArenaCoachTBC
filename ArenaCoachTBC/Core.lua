@@ -32,7 +32,7 @@ local DEFAULTS = {
     -- saturated primaries. Toggle via /acc highcontrast on|off.
     frame    = { point = "CENTER", x = 0, y = 120, scale = 1.0,
                  verbose = false, highContrast = false },
-    alerts   = { sound = true, raidWarning = false, partyChat = false, screenFlash = true,
+    alerts   = { sound = true, raidWarning = false, partyChat = false, screenFlash = false,
                  -- v2.2.0: peripheral-vision visual layers.
                  -- v2.7.0: edgeGlow flipped from default-on to default-off.
                  -- User feedback: the full-screen pulsing band was more
@@ -749,9 +749,12 @@ local function onCLEU()
     -- Train detection: collect damage events landing on our friendlies.
     -- Pruned to the configured window in Evaluate.
     local damagedFriendly = Core._friendlyGUIDs[destGUID]
+    local friendlyDamageShouldEvaluate = false
     if subEvent and damagedFriendly and friendlyIsHealer(damagedFriendly)
        and (subEvent:find("_DAMAGE$") or subEvent == "SWING_DAMAGE") then
         table.insert(Core._friendlyDamageTs, ts or 0)
+        local strat = (_G.ArenaCoachTBCDB and _G.ArenaCoachTBCDB.strategy) or {}
+        friendlyDamageShouldEvaluate = #Core._friendlyDamageTs >= (strat.peelTriggerDamage or 3)
     end
 
     -- M13 #v2.1: BG / world PvP context — when a hostile player hits
@@ -819,7 +822,8 @@ local function onCLEU()
 
     -- Re-evaluate cheaply on impactful events
     if subEvent == "SPELL_AURA_APPLIED" or subEvent == "SPELL_AURA_REMOVED"
-       or subEvent == "UNIT_DIED" or subEvent == "SPELL_CAST_SUCCESS" then
+       or subEvent == "UNIT_DIED" or subEvent == "SPELL_CAST_SUCCESS"
+       or friendlyDamageShouldEvaluate then
         Core:Evaluate()
     end
 end
@@ -1252,8 +1256,8 @@ end
 -- /acc test (default) walks the live UI through 7 beats over ~14 seconds:
 -- OPEN -> KILL -> burst-ready -> SWAP -> DEFEND -> profile-driven callout
 -- -> RESET. Each beat reuses the real UI:Apply path so the user sees
--- mode colour flips, chain block changes, BURST_NOW pulse, screen flash
--- on URGENT, and voice cues fire exactly as they would in a real match.
+-- mode colour flips, chain block changes, BURST_NOW, and voice cues
+-- fire exactly as they would in a real match.
 -- /acc test print preserves the legacy chat-only summary.
 local DEMO_BEATS = {
     {
@@ -1339,7 +1343,7 @@ local DEMO_BEATS = {
     },
     {
         delay = 8.0,
-        note  = "Healer being trained — DEFEND (blue + screen flash if alerts enabled).",
+        note  = "Healer being trained — DEFEND (blue defensive cue).",
         rec = {
             mode = "DEFEND",
             primaryTarget = nil, primaryTargetName = nil, primaryTargetClass = nil,

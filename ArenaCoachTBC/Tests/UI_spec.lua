@@ -12,7 +12,7 @@ local g = H.describe("UI")
 _G.ArenaCoachTBCDB = {
     enabled = true, locked = false, language = "auto",
     frame = { point = "CENTER", x = 0, y = 120, scale = 1.0 },
-    alerts = { sound = true, raidWarning = false, partyChat = false, screenFlash = true },
+    alerts = { sound = true, raidWarning = false, partyChat = false, screenFlash = false },
     strategy = {},
     debug = false,
 }
@@ -99,7 +99,7 @@ H.it(g, "v2.0.2: Apply does NOT play voice cue outside arena", function()
     _G.IsActiveBattlefieldArena = saved
 end)
 
-H.it(g, "Apply with URGENT triggers screen flash", function()
+H.it(g, "Apply with URGENT does not trigger full-screen flash", function()
     -- Re-establish the DB in case another spec replaced it during dofile.
     _G.ArenaCoachTBCDB = {
         enabled = true, locked = false, language = "auto",
@@ -107,10 +107,14 @@ H.it(g, "Apply with URGENT triggers screen flash", function()
         alerts = { sound = true, screenFlash = true },
         strategy = {}, debug = false,
     }
+    H.ns.Core = H.ns.Core or {}
+    H.ns.Core.state = H.ns.Core.state or {}
+    H.ns.Core.state.pvpContext = "arena"
     UI:CreateFrame()
     UI._flash = nil
     UI:Apply({ mode = "DEFEND", reason = "flash", callouts = {}, priority = "URGENT" })
-    H.assertNotNil(UI._flash)
+    H.assertNil(UI._flash, "urgent recommendations should not strobe the screen")
+    H.ns.Core.state.pvpContext = nil
 end)
 
 H.it(g, "Apply with chain narrates to chat once per chain id change", function()
