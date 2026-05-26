@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.4] - 2026-05-26
+
+### Changed
+- **CurseForge project description rewritten for approval clarity.** The dashboard copy now explicitly explains the features offered, what players experience in arena/BG/world PvP/duels, safety limits, privacy behavior, slash commands, localization, and current validation numbers.
+
+### Notes
+- Docs-only distribution polish. Package version bumped so GitHub release notes and downloadable addon metadata stay aligned.
+
 ## [2.8.3] - 2026-05-26
 
 ### Added

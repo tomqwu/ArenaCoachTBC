@@ -1,229 +1,259 @@
-# CurseForge project description — paste these into the dashboard
+# CurseForge Project Description
 
-Open [the CurseForge dashboard for this project](https://authors.curseforge.com/#/projects/1552792) and paste each block into the matching field.
-
----
-
-## Project Name (top of page)
-
-```
-ArenaCoachTBC — Real-time PvP Strategy Coach
-```
+Paste the blocks below into the CurseForge project dashboard for project `1552792`.
 
 ---
 
-## Summary (one-line, ~250 char limit)
+## Project Name
 
-```
-Real-time PvP strategy coach for TBC Anniversary. Identifies enemy comps with spec inference, picks kill targets, plans CC chains, calls swaps and defensives. Works in arena, battlegrounds, world PvP, and duels. Advice only — never automates.
+```text
+ArenaCoachTBC - Real-time PvP Strategy Coach
 ```
 
 ---
 
-## Categories (left sidebar)
+## Summary
 
-- **Class** → PvP
-- **Combat** → Combat → Arena
-- **Combat** → Combat → Battlegrounds
+```text
+Real-time PvP strategy HUD for TBC Anniversary. Shows arena, battleground, duel, and world-PvP advice: opener, kill target, swap, defensive warning, burst gate, nameplate highlight, and per-player assignments. Advice only; never casts or targets.
+```
+
+---
+
+## Categories
+
+- Class -> PvP
+- Combat -> Arena
+- Combat -> Battlegrounds
 
 ---
 
 ## Tags
 
-```
-arena, pvp, coach, strategy, battleground, world-pvp, comp-tracker,
-cooldown-tracker, dr-tracker, chain-planner, opponent-profile, weakauras
+```text
+arena, pvp, tbc, anniversary, coach, strategy, battleground, world-pvp, duel, cooldown-tracker, dr-tracker, weakauras
 ```
 
 ---
 
 ## Game Versions
 
-- **TBC Classic 2.5.5** (current Anniversary client — `Interface: 20505`)
-- **TBC Classic 2.5.4** (compatible — older Anniversary builds)
+- TBC Anniversary / TBC Classic 2.5.5 (`Interface: 20505`)
+- TBC Classic 2.5.4 compatible if your client allows loading older-interface addons
 
 ---
 
-## Description (rich text body — paste into the description editor)
+## Description
 
 ````markdown
 # ArenaCoachTBC
 
-A real-time PvP strategy coach for **World of Warcraft TBC Anniversary / TBC Classic**. Watches your fight, identifies the enemy comp (including specs), picks a kill target, plans CC chains, and surfaces a live recommendation:
+ArenaCoachTBC is a real-time PvP strategy HUD for **World of Warcraft TBC Anniversary / TBC Classic**. It watches the current fight, builds a live picture of enemies and teammates, and turns that state into short tactical advice:
 
-> **OPEN** · **KILL** · **SWAP** · **DEFEND** · **RESET**
+> **OPEN** - plan the opener before gates open
+> **KILL** - stay on the current kill target
+> **SWAP** - switch to a better target
+> **DEFEND** - peel, use defensives, or save a teammate
+> **RESET** - no clean kill window; line, stabilize, or drink
 
-The addon shows the current call as a big mode-coloured label on the screen, with the target name, HP %, kill probability, top callouts, and the matched comp directly below. Enemy nameplates of the kill and swap targets get coloured borders so you can pick them out in a crowded fight. An optional thin edge cue can follow the mode colour, but the old big pulsing screen-edge band is gone.
+It is built for players who want DBM-style PvP reminders without automation and without a flashing screen. The addon does not play the game for you. It gives readable visual, audio, and text cues so you can make faster decisions.
 
-> ⚠️ **Advice only.** ArenaCoachTBC never casts spells, never targets enemies, never clicks protected buttons, never modifies secure macros. It only renders visual, audio, and text recommendations. Anything that crosses into protected actions is rejected by design.
+## What You Experience In Game
 
----
+### Before Arena Gates Open
 
-## What you get
+The HUD shows an **OPEN** call with the recommended opener target. For example, into Rogue / Mage / Priest it may show the priest as the opener target and prepare your team for Tremor, Grounding, dispel, or CC setup reminders.
 
-| Feature | Notes |
+### During The Match
+
+The central HUD updates as the fight changes:
+
+- **KILL: Priest** with target HP and estimated kill chance
+- **SWAP: Mage** when the mage becomes a better target than the current one
+- **DEFEND** when your healer is low, crowd-controlled, or under repeated pressure
+- **BURST READY** only when the burst gates pass
+- **Assignments** showing one compact action per teammate, such as Warrior MS, Shaman purge, Paladin HoJ, Priest dispel, or Druid Cyclone
+
+The text fades out if the fight state stops refreshing, so stale instructions do not sit on the screen after the situation has moved on.
+
+### In Battlegrounds
+
+The engine switches to battleground behavior. It uses nearby hostile players and nameplates instead of arena unit IDs, boosts Warsong flag carriers, favors low-HP stragglers when appropriate, and uses BG-specific defensive callouts.
+
+### In World PvP And Duels
+
+The addon simplifies the advice. It focuses on the current enemy, avoids noisy swap calls, and can still show DEFEND when you are low or being pressured.
+
+### In Cities Or Idle Areas
+
+The HUD hides itself. It does not keep painting stale PvP text while you are standing around in a city, quest hub, or idle world-PvP state.
+
+## Core Features
+
+### Live PvP Recommendations
+
+ArenaCoachTBC evaluates the current fight and returns one clear mode: **OPEN**, **KILL**, **SWAP**, **DEFEND**, or **RESET**. The mode determines HUD color, optional sound, nameplate behavior, and the top callout.
+
+### Kill Target And Swap Target Advice
+
+Enemies are scored with transparent PvP signals: role, class armor type, health, mana, trinket state, active immunities, purgeable defensives, Mortal Strike, HoJ readiness, Windfury, crowd-control pressure, and battleground objectives.
+
+### Spec-Aware Composition Matching
+
+The catalog currently contains **40 enemy strategy entries** across 2v2, 3v3, 5v5, and dynamic matchups. Spec inference uses **57 spell/spec hints**. For example, a priest can start as an unknown Priest and later become Disc, Holy, or Shadow after the addon observes defining spells.
+
+### Burst Gate
+
+The addon does not simply yell "burst" whenever a target is low. It checks multiple gates first:
+
+- target is not immune
+- configured Mortal Strike requirement is satisfied
+- configured Windfury requirement is satisfied
+- melee can connect
+- kill probability is high enough for your aggression setting
+- incoming pressure is not forcing DEFEND
+- optional chain readiness, if enabled
+
+If burst is blocked, the decision records the blocker for trace and WeakAura displays.
+
+### DBM-Style Player Assignments
+
+Each recommendation can include per-friendly assignments. The built-in HUD shows up to five compact lines, one per player. Examples:
+
+- Warrior: MS / Hamstring -> kill target
+- Shaman: Purge / shock -> kill target
+- Paladin: HoJ kill target -> priest
+- Priest: Dispel / Mana Burn -> target
+- Druid: HoTs / Cyclone -> teammate or off-target
+
+These are passive advice lines only. They are never clickable action buttons.
+
+### Nameplate Target Highlight
+
+The kill target gets a red nameplate border. The swap candidate gets an orange border. This helps you find the correct target in busy arena, battleground, and world-PvP fights. The addon does not replace or modify native nameplate bars, so it can coexist with Plater, KuiNameplates, TidyPlates, Gladius, and sArena.
+
+### Non-Flashing Visual Warning Style
+
+ArenaCoachTBC uses a central arcade-style warning word such as **READY**, **ATTACK**, **SWITCH**, **DANGER**, **BURST**, **HOLD**, **PUSH**, or **PINCH**. Optional edge cues are thin, static, low-alpha lines. The live recommendation path does not trigger a full-screen flashing overlay.
+
+### Audio Cues
+
+Arena-only sound cues can play on mode changes and important callouts. The sounds use built-in WoW SoundKit IDs, so there are no bundled audio files to install.
+
+### WeakAura Bridge
+
+Power users can build their own displays using the public `_G.ArenaCoachTBC` API. The bridge exposes the current recommendation, mode, priority, target, callouts, player assignments, burst decision, comp confidence, kill probability, PvP context, and version. It also fires:
+
+```lua
+WeakAuras.ScanEvents("ACC_RECOMMENDATION", rec)
+```
+
+The repository includes `docs/weakaura-pack.md` with trigger snippets for hand-built WeakAuras.
+
+### Local Trace, Replay, And Self-Test Tools
+
+Useful commands are built in:
+
+- `/acc selftest verbose` validates the addon in-game
+- `/acc trace dump` shows recent decisions and why they happened
+- `/acc record on` records local combat-log events for offline replay
+- `/acc whatif skip <i>` replays a local recording with one event skipped
+- `/acc bugreport` prints a sanitized report for GitHub issues
+
+## Safety And Privacy
+
+ArenaCoachTBC is advice-only:
+
+- It never casts spells
+- It never changes targets
+- It never clicks protected buttons
+- It never modifies secure macros
+- It never sends combat chat commands
+- It does not include default-on telemetry
+
+Learning and recordings are local SavedVariables only. `/acc reset` clears saved addon data.
+
+## Slash Commands
+
+| Command | What It Does |
 |---|---|
-| **Spec-aware comp matching** | 100+ enemy comps in the catalog; matches confirm spec (Disc Priest vs Shadow Priest) once it sees specific casts and tailors advice accordingly |
-| **CC chain planner** | Reads the comp + DR state to pick the highest-expected-value chain (e.g. *Sap into Kidney* vs *Fear into Burst*) and narrates it |
-| **Opponent profiles (Bayesian)** | Per-team behaviour priors that learn from your repeat opponents (e.g. *this priest always trinkets Fear → save Tremor for HoJ*). Local-only, no cloud |
-| **Lookahead / expectimax** | Scores chains × likely opponent responses to pick the highest-EV opener |
-| **Burst gate** | Holds the BURST callout until every gate passes (MS active, no incoming pressure, Bloodlust not blocking, etc.) — and tells you which gate fired when it doesn't |
-| **Rating-aware aggression** | `auto` mode reads `GetPersonalRatedInfo` and tunes swap-threshold + burst aggression by bracket rating |
-| **Thin edge cue** | Optional low-alpha static lines on the four screen edges — peripheral-vision cue, never a big flashing border |
-| **Nameplate highlight** | Red border on the kill target's nameplate, orange on the swap candidate. Coexists with Plater / KuiNameplates / TidyPlates |
-| **Audio cues** | One-shot WoW sound on every mode transition + on key callouts (HoJ landed, Tremor, etc.). Arena-only by default |
-| **City auto-hide** | Frame stays hidden in cities / quest hubs. No FPS hit while flagged in Stormwind |
-| **`/acc off` master switch** | One command to fully dormant the addon. Persists across `/reload` |
-| **Bilingual** | English + Simplified Chinese, parity-gated in CI. Spell names follow the client's `GetLocale()` |
-
----
-
-## Works in every PvP context
-
-| Context | What the engine does |
-|---|---|
-| **Arena 2v2 / 3v3 / 5v5** | Full engine: comp ID, spec inference, chain planning, opponent profiles, lookahead, burst gating, all visual + audio alerts |
-| **Battlegrounds** (WSG / AB / AV / EotS) | Engine adapts: nameplate-based enemy discovery, flag-carrier priority, low-HP straggler boost, BG-specific callouts. PUG'd rosters fall back to per-class behavioural priors |
-| **World PvP / duels** | Engine simplifies: single-target focus, no swap thrash, no comp matching. `DUEL_REQUESTED` auto-engages |
-| **Cities / questing** | Frame hides automatically. Engine short-circuits. No background CPU cost |
-
----
-
-## Works with any team composition
-
-There's no "tuned-for" team. `OwnComps:Infer` walks your party and returns a capability table — `hasMortalStrike`, `hasBloodlust`, `hasFreedom`, `hasMassDispel`, `hasMainHealer`, etc. — then picks an archetype:
-
-- **MELEE_CLEAVE** — ≥2 melee + healer. Aggressive kill-pressure callouts.
-- **CASTER_CLEAVE** — ≥2 casters + healer. Ground / dispel callouts.
-- **DRAIN** — Affli / Shadow Priest sustain. Mana-burn callouts.
-- **JUNGLE** — Hunter + Feral + healer. Trap + scatter setup.
-- **DOUBLE_HEALER** — 2+ healers. Mana drain plan.
-
-The 100+ enemy comps in the catalog carry `ownVariants`, so the same enemy team gives different advice depending on your archetype. No hardcoded class assumptions in the engine.
-
----
+| `/acc help` | Show all commands |
+| `/acc test` | Run a 14-second arena HUD demo |
+| `/acc test bg` | Run a battleground demo |
+| `/acc test world` | Run a world-PvP demo |
+| `/acc toggle` | Show or hide the HUD |
+| `/acc lock` / `/acc unlock` | Lock or drag the HUD |
+| `/acc off` / `/acc on` | Master disable or enable |
+| `/acc glow on/off` | Toggle the optional thin edge cue |
+| `/acc nameplate on/off` | Toggle nameplate highlights |
+| `/acc strategy safe/balanced/greedy` | Set aggression manually |
+| `/acc selftest verbose` | Run in-client validation |
+| `/acc trace on/dump/clear` | Inspect decisions |
+| `/acc record on/dump/clear` | Manage local CLEU recording |
+| `/acc bugreport` | Print sanitized diagnostic text |
+| `/acc reset` | Wipe SavedVariables and reload |
 
 ## Installation
 
-1. **Download** the latest zip from this page, or via the CurseForge app.
-2. **Extract the `ArenaCoachTBC/` folder** into `<WoW>/_classic_/Interface/AddOns/`
-3. **Restart the client** (or `/reload` if already in-game). ArenaCoachTBC should appear in the AddOns list, enabled.
-4. If "Out of Date" appears at character-select, enable **Load out of date AddOns**.
+1. Download the latest `ArenaCoachTBC-vX.Y.Z.zip`.
+2. Extract the inner `ArenaCoachTBC` folder into:
 
----
-
-## First-run checklist (~3 min)
-
-```
-/acc help              -- show all slash commands
-/acc test              -- 14s scripted UI demo (paints the full HUD)
-/acc unlock            -- enable dragging the frame
-/acc lock              -- freeze position
-/acc selftest verbose  -- in-client validation
+```text
+World of Warcraft/_anniversary_/Interface/AddOns/
 ```
 
-After `/acc test` the recommendation frame walks through 7 beats over 14 seconds. **If you see the demo, the addon is loaded and working.** Move the frame to a corner you'll actually look at during a match.
+or your client-specific Classic addon folder.
 
----
-
-## Slash commands
-
-| Command | What it does |
-|---|---|
-| `/acc help` | Print the command list |
-| `/acc toggle` | Show / hide the recommendation frame |
-| `/acc lock` / `/acc unlock` | Lock / unlock the frame for dragging |
-| `/acc off` / `/acc on` | **Master switch.** Stops the engine + hides every visual layer. Persists across `/reload`. Aliases: `/acc disable`, `/acc enable` |
-| `/acc glow [on\|off]` | Toggle the optional thin edge cue |
-| `/acc nameplate [on\|off]` | Toggle nameplate highlights for KILL / SWAP targets |
-| `/acc test` | Arena 7-beat UI demo (full HUD) |
-| `/acc test bg` | Battleground walk-through |
-| `/acc test world` | World PvP walk-through |
-| `/acc enemy <c1> <c2> ...` | Simulate a custom enemy comp |
-| `/acc strategy safe \| balanced \| greedy` | Manual aggression override |
-| `/acc selftest [verbose]` | In-client validation |
-| `/acc trace [on\|off\|dump\|clear]` | Decision-trace ring buffer |
-| `/acc record [on\|off\|dump\|clear]` | CLEU recording for offline replay |
-| `/acc whatif skip <i>` | Counterfactual replay (skip event #i) |
-| `/acc bugreport` | Sanitised error report for GitHub issues |
-| `/acc reset` | Wipe SavedVariables + `/reload` |
-
----
-
-## Privacy & safety
-
-- **No automation, ever.** No spells cast, no targets switched, no protected buttons clicked, no secure macros modified.
-- **Local-only learning.** Per-opponent profiles (`db.profiles`) and per-class priors (`db.classPriors`) live entirely in SavedVariables. They never leave your machine. No telemetry, no analytics, no cloud sync.
-- **Player names never stored.** Profile keys hash class composition + a djb2 hash of player names. The names themselves are discarded; only the hash persists.
-- **`/acc reset`** wipes every stored profile and CLEU recording instantly.
-
----
-
-## Customising the display with WeakAuras
-
-The built-in HUD covers what most users want — no WeakAura needed. For power users who want a custom display, the addon publishes its full recommendation through `_G.ArenaCoachTBC` and fires `WeakAuras.ScanEvents("ACC_RECOMMENDATION", rec)` on every evaluation.
-
-The GitHub repo includes `docs/weakaura-pack.md` with trigger Lua snippets for 5 ready-made templates (mode badge, burst gate, defensive alert, callout stream, comp readout) you can paste into a hand-built WeakAura.
-
-> Note: the previous "paste-ready import strings" path was removed in v2.2.6. The `node-weakauras-parser` library used to generate them produces strings that decode correctly but fail WeakAuras' import-validator byte check. The trigger-code path is the supported route.
-
----
+3. Restart the game or run `/reload`.
+4. Enable "Load out of date AddOns" if your client reports an interface mismatch.
+5. Run `/acc test` to verify the HUD appears.
 
 ## Localization
 
-- **English** (enUS, canonical) — 110 callout / UI keys
-- **Simplified Chinese** (zhCN) — parity-gated in CI
-- **Spell names** follow the WoW client's locale via `GetSpellInfo(spellID)` — no hardcoded English
+ArenaCoachTBC currently ships:
 
-Want another locale? Open an issue on GitHub and add `Locales/<locale>.lua` with the same key set.
+- English (`enUS`)
+- Simplified Chinese (`zhCN`)
 
----
+Both locales are parity-checked in CI. Current locale parity is **144 keys per locale**. Spell names are resolved by the WoW client through spell IDs, so they follow the language of your client where Blizzard provides localized spell data.
 
-## Compatibility
+## Project Quality
 
-- **Game version**: TBC Anniversary 2.5.5 (`Interface: 20505`). Also loads on TBC Classic 2.5.4 if your client doesn't enforce strict version match.
-- **No conflicts** with Gladius, sArena, OmniCC, OmniBar, Plater, KuiNameplates, TidyPlates (we never modify protected nameplate elements).
-- **`/acc bugreport`** generates a sanitised error report for filing on GitHub.
+The addon is developed as a pure Lua 5.1 project with headless tests for the strategy engine and WoW API stubs for UI/core behavior. Current local release validation:
 
----
+- **639 tests passing**
+- **99%+ coverage**
+- Locale parity check
+- Lua syntax check
+- GitHub Actions on push and release tags
 
 ## Links
 
-- 🐛 **Report bugs / request features**: [GitHub Issues](https://github.com/tomqwu/ArenaCoachTBC/issues)
-- 📝 **Changelog**: [CHANGELOG.md](https://github.com/tomqwu/ArenaCoachTBC/blob/main/CHANGELOG.md)
-- 📦 **Source code**: [GitHub repo](https://github.com/tomqwu/ArenaCoachTBC)
-- 🧪 **608 tests, 99%+ coverage**, locale parity gate, CI on every push
-
----
+- Source: https://github.com/tomqwu/ArenaCoachTBC
+- Issues: https://github.com/tomqwu/ArenaCoachTBC/issues
+- Changelog: https://github.com/tomqwu/ArenaCoachTBC/blob/main/CHANGELOG.md
 
 ## License
 
-MIT. Free to use, fork, modify, redistribute.
+MIT. Free to use, fork, modify, and redistribute.
 ````
 
 ---
 
-## Screenshots needed (optional but recommended for CF visibility)
+## Screenshot Suggestions
 
-CurseForge lets you upload up to 10 screenshots. Suggested set:
+CurseForge approval does not require all of these, but they make the page clearer:
 
-1. **HUD in action** — `/acc test` showing mode label + target stats + nameplate border + optional thin edge cue
-2. **BG mode** — frame in WSG showing flag-carrier priority
-3. **DEFEND alert** — blue mode with steady defensive cue
-4. **Comp badge** — `RMP (confirmed Disc Priest)` after spec inference
-5. **Bridge API** — chat showing `/acc trace dump` output (proves the depth)
-6. **Slash command help** — `/acc help` output
-
-If you don't have these handy, ship without screenshots — the description is the primary signal.
+1. `/acc test` showing the central HUD, arcade warning word, target stats, assignments, and nameplate border.
+2. A DEFEND state with the blue HUD and defensive assignments.
+3. A battleground demo showing flag-carrier or low-HP target priority.
+4. `/acc trace dump` showing the decision trace.
+5. The options/slash-command help output.
 
 ---
 
-## After pasting
+## Notes For The CurseForge Editor
 
-CF descriptions render with their own light Markdown subset. Some tweaks may be needed in the editor preview:
-
-- Triple-backtick code blocks render fine
-- Tables render fine
-- Quote blocks (`>`) render as a tinted box
-- Emoji renders fine on the modern CurseForge layout
-- Heading hierarchy: CF treats the project title as h1, so start your description at h1 (which becomes the first big banner heading)
+- CurseForge supports headings, lists, tables, links, and code blocks.
+- If a table renders poorly in preview, convert it to bullet points.
+- Keep the safety/privacy section visible; it answers the most common moderation concern for PvP addons.
