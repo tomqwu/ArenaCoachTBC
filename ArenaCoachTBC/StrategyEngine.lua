@@ -53,6 +53,7 @@ SE.weights = {
     off_healer_cc        =  15,
     comp_open_target     =  20,
     comp_swap_target     =  10,
+    comp_kill_target     =  35,
     -- M14 (v2.1) — BG mode boosts
     bg_flag_carrier      = 200,  -- enemy carrying the WSG flag dominates kill priority
     bg_low_hp_straggler  =  30,  -- additional boost for <30% HP targets in BG (low-HP swap practice)
@@ -266,6 +267,9 @@ local function scoreEnemy(enemy, state, comp)
     if comp and comp.swapTarget and phase ~= "PRE" and cfg.allowDpsSwap ~= false
        and enemy.class == comp.swapTarget then
         add(w.comp_swap_target, "comp_swap_target")
+    end
+    if comp and comp.killTarget and phase ~= "PRE" and enemy.class == comp.killTarget then
+        add(w.comp_kill_target, "comp_kill_target")
     end
 
     -- M14 (v2.1): BG-specific scoring boosts. Active only when the

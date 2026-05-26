@@ -32,6 +32,8 @@ local ST = ns.Strategies
 --                 Bracket-specific entries win over agnostic ones.
 --   openTarget  : class to suggest opening on (if alive)
 --   swapTarget  : class to consider swapping to
+--   killTarget  : class to bias as the active KILL target when the matchup
+--                 plan differs from generic role/armor scoring
 --   threats     : { class -> top danger note }
 --   callouts    : ordered list of callout keys (resolved via locale)
 --   defensiveTriggers : optional list of trigger names that force DEFEND
@@ -150,6 +152,7 @@ ST.comps = {
         core  = { WARLOCK = true, PALADIN = true },
         openTarget = "PALADIN",
         swapTarget = "WARLOCK",
+        killTarget = "PALADIN",
         callouts = { "CALL_PURGE", "CALL_MANA_BURN_PLAN" },
         chains = {
             { id = "wlp_fear_into_hoj", labelKey = "CHAIN_WLP_FEAR_INTO_HOJ",

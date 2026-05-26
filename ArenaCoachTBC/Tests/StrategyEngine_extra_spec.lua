@@ -1076,3 +1076,15 @@ H.it(g, "v2.1.3: KILL mode does NOT set reasonKey (variable contributor text)", 
     H.assertNil(rec.reasonKey,
         "KILL has variable contributor data; reasonKey stays nil so UI uses the rec.reason text")
 end)
+
+H.it(g, "arena quality: WLP drain 2v2 kills paladin as the active matchup plan", function()
+    local state = SE:BuildTestState({ "WARLOCK", "PALADIN" })
+    state.combatPhase = "ACTIVE"
+    state.bracket = 2
+    state.pvpContext = "arena"
+
+    local rec = SE:Evaluate(state)
+
+    H.assertEq(rec.mode, "KILL")
+    H.assertEq(rec.primaryTargetClass, "PALADIN", "drain matchup plan should target paladin")
+end)
