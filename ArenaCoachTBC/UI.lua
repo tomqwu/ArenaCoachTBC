@@ -2,7 +2,7 @@
 -- One movable frame that shows the current recommendation (mode, target,
 -- HP%, kill prob, callouts). Driven event-by-event from Core; no polling.
 -- v2.2.0 added two peripheral visual layers wired in here: a pulsing
--- mode-coloured screen-edge glow (ScreenEdgeGlow.lua) and a coloured
+-- mode-coloured thin edge cue (ScreenEdgeGlow.lua) and a coloured
 -- border on the kill / swap target's nameplate (Nameplate.lua). No
 -- protected actions are ever bound to any visible button.
 
@@ -443,7 +443,7 @@ function UI:Apply(recommendation)
     end
 
     -- v2.4.0: comp badge only in verbose mode. The big colour-coded
-    -- mode label + target name + edge glow + nameplate already tell the
+    -- mode label + target name + arcade cue + nameplate already tell the
     -- user what's happening; the comp identity is post-match analysis.
     if verbose and recommendation.comp then
         local badgeKey = recommendation.compSpecConfirmed
@@ -514,7 +514,7 @@ function UI:Apply(recommendation)
     end
 
     -- v2.7.5: no automatic full-screen flash. The frame, sound cue,
-    -- nameplate highlight, and optional edge glow carry urgency without
+    -- nameplate highlight, and optional thin edge cue carry urgency without
     -- strobing over the playfield during a real arena run. `_Flash`
     -- remains below as an isolated helper for legacy/debug coverage, but
     -- recommendations no longer call it.
@@ -555,7 +555,7 @@ function UI:Apply(recommendation)
     -- can demo the full HUD (text + glow + nameplate) without being
     -- in arena/BG/world. Pre-v2.3.0 the demo only painted the text.
     --
-    -- edgeGlow: pulsing mode-colored band around the screen edges.
+    -- edgeGlow: optional thin static mode-coloured cue around the edges.
     -- nameplate: paint the kill / swap target's nameplate border so
     -- the player can identify them in a fight with multiple enemies.
     local alerts = ArenaCoachTBCDB and ArenaCoachTBCDB.alerts or nil

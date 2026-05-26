@@ -15,13 +15,13 @@ behaviour is what tests can't see.
 - [ ] `/acc help` same
 - [ ] `/acc toggle` hides and shows the frame
 - [ ] `/acc lock` / `/acc unlock` toggles drag-lock; frame can be repositioned when unlocked
-- [ ] `/acc off` (alias `/acc disable`) hides the frame + edge glow + nameplate paint and short-circuits the engine; persists across `/reload`
+- [ ] `/acc off` (alias `/acc disable`) hides the frame + thin edge cue + nameplate paint and short-circuits the engine; persists across `/reload`
 - [ ] `/acc on` (alias `/acc enable`) re-enables; the frame returns once you enter a PvP context
-- [ ] `/acc glow on|off` toggles the screen-edge glow independently of the master switch
+- [ ] `/acc glow on|off` toggles the optional thin edge cue independently of the master switch
 - [ ] `/acc nameplate on|off` toggles nameplate highlighting (KILL = red border, SWAP = orange) independently
 - [ ] `/acc reset` wipes SavedVariables; `/reload` restores defaults
 - [ ] `/acc debug` toggles debug printing
-- [ ] `/acc test` runs the arena demo: mode label, target stats row (HP %, kill prob %, BURST READY), pulsing edge glow, nameplate border on any visible enemy. **All four visual layers should paint, not just the text** (regression-tested in v2.3.0)
+- [ ] `/acc test` runs the arena demo: arcade warning plate, mode label, target stats row (HP %, kill prob %, BURST READY), nameplate border on any visible enemy, and the thin edge cue only if `/acc glow on` is enabled.
 - [ ] `/acc test bg` runs the battleground walk-through (flag carrier priority, low-HP straggler, CALL_BG_DEFEND)
 - [ ] `/acc test world` runs the world-PvP walk-through (single-target focus)
 - [ ] `/acc enemy war mage priest druid pala` populates manual enemy list and the engine emits a recommendation
@@ -33,8 +33,8 @@ behaviour is what tests can't see.
 - [ ] Arcade warning plate renders big passive cues (`!! READY !!`, `!! BURST !!`, `!! DANGER !!`, `!! PINCH !!`) inside the frame without covering the playfield
 - [ ] Target stats row shows `HP <n>%   kill <n>%   BURST READY` when there's a primary target; hidden on DEFEND / RESET
 - [ ] Assignment block shows one compact action per living friendly (for example Warrior MS, Shaman purge, Paladin HoJ)
-- [ ] Screen-edge glow pulses (1.6 s cycle, alpha 0.18-0.42) in the mode colour; dark on RESET
-- [ ] DEFEND/URGENT does not create a full-screen red flash; use HUD colour, nameplate, optional edge glow, and sound cues instead
+- [ ] Optional edge cue is thin, static, low-alpha, and dark on RESET; it must not pulse or flash around the screen
+- [ ] DEFEND/URGENT does not create a full-screen red flash; use HUD colour, nameplate, arcade cue, and sound cues instead
 - [ ] Nameplate of the kill target gets a red border; swap target gets orange (when in SWAP mode)
 - [ ] Audio cue fires on mode flip (KILL/SWAP/DEFEND/OPEN play distinct WoW SoundKit IDs); arena-only
 - [ ] URGENT callouts stay readable without a full-screen flash, even if an old SavedVariables file has `alerts.screenFlash = true`

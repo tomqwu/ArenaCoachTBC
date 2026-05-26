@@ -71,7 +71,7 @@ You don't run anything during a match. The addon auto-engages on `PLAYER_ENTERIN
 1. **Pre-combat (arena gates closed)**: Mode = `OPEN` (yellow), target = the comp's default open target. Plan your opener.
 2. **Active**: Mode flips to `KILL` (red) / `SWAP` (orange) / `DEFEND` (blue). The arcade warning plate shows punchy cues like `!! BURST !!`, `!! DANGER !!`, or `!! PINCH !!`; the big text shows who to attack; the stats row shows target HP% and kill probability; the callouts row shows utility cues; the assignments block gives each friendly a DBM-style action; the chain block shows the canonical CC sequence; the comp badge shows whether the engine has confirmed enemy specs.
 3. **Burst window**: `BURST READY` pill in the stats row — every burst gate has passed (target vulnerable, configured MS/Windfury requirements met, melee can connect, kill probability ≥ threshold, no incoming pressure). Chain readiness is shown in the gate breakdown and only blocks burst when `strategy.requireChainForBurst` is enabled.
-4. **Defensive**: When your healer is being trained or enemy lust pops, mode flips to `DEFEND` (blue). The edge glow turns blue; callouts shift to Pain Sup / BoP / peel reminders.
+4. **Defensive**: When your healer is being trained or enemy lust pops, mode flips to `DEFEND` (blue). The HUD plate and nameplate cues carry the warning without a big screen-edge flash; callouts shift to Pain Sup / BoP / peel reminders.
 
 ---
 
@@ -89,7 +89,7 @@ You don't run anything during a match. The addon auto-engages on `PLAYER_ENTERIN
 | `/acc enemy <c1> <c2> ...` | Simulate a custom enemy comp |
 | `/acc reset` | Wipe SavedVariables + `/reload` |
 | `/acc strategy safe\|balanced\|greedy` | Manual aggression override |
-| `/acc glow [on\|off]` | Toggle the mode-coloured screen edge glow (v2.2+) |
+| `/acc glow [on\|off]` | Toggle the optional thin mode-coloured edge cue |
 | `/acc nameplate [on\|off]` | Toggle nameplate highlights for KILL / SWAP targets (v2.2+) |
 | `/acc debug` | Toggle debug print |
 | `/acc selftest [verbose]` | In-client validation suite |
@@ -117,7 +117,7 @@ All settings persist in `ArenaCoachTBCDB` (SavedVariables). They're forward-comp
 | `strategy.lookaheadEnabled` | `true` | Engage the M10 expectimax over chain × opponent response. |
 | `frame.compactMode` | `false` | Hides the friendly/enemy cooldown icon rows. |
 | `alerts.sound` / `alerts.screenFlash` | `true` / `false` | Voice cue toggle; `screenFlash` is retained for SavedVariables compatibility but no longer triggers full-screen flashing. |
-| `alerts.edgeGlow` / `alerts.nameplate` | `false` / `true` | Optional mode-coloured edge glow + default-on nameplate highlight. |
+| `alerts.edgeGlow` / `alerts.nameplate` | `false` / `true` | Optional thin edge cue + default-on nameplate highlight. |
 
 ---
 
@@ -133,7 +133,7 @@ User-facing **callout and assignment strings** (e.g. "Tremor for fear", "Warrior
 
 ## Customising the display with WeakAuras
 
-The built-in HUD (mode label, target stats, edge glow, nameplate highlight, audio) covers what most users want — no WeakAura needed. If you want to drive your own custom HUD on top, the addon exposes its full live state through `_G.ArenaCoachTBC`.
+The built-in HUD (arcade cue, mode label, target stats, nameplate highlight, audio, and optional thin edge cue) covers what most users want — no WeakAura needed. If you want to drive your own custom HUD on top, the addon exposes its full live state through `_G.ArenaCoachTBC`.
 
 > **About paste-ready import strings**: v2.0–v2.2.5 tried to ship pre-built WA import strings in this README. The `node-weakauras-parser` library we used to generate them produces strings that decode correctly but fail WA's import-validator byte check (the import dialog never shows the Import button). After 6 patches chasing it we concluded the parser is the wrong tool. If you want to use the templates, the source for each (mode badge, burst gate, defensive alert, callout stream, comp readout) is in `docs/weakaura-pack.md` — paste the trigger Lua into a Custom-trigger WeakAura you build in-game, no import-string round-trip needed.
 
@@ -300,7 +300,7 @@ MIT.
 | `/acc enemy <c1> <c2> ...` | 模拟自定义敌方阵容 |
 | `/acc reset` | 清空存档并 `/reload` |
 | `/acc strategy safe\|balanced\|greedy` | 手动调整侵略性 |
-| `/acc glow [on\|off]` | 切换模式着色屏幕边缘光晕（v2.2+） |
+| `/acc glow [on\|off]` | 切换可选的细边缘提示 |
 | `/acc nameplate [on\|off]` | 切换击杀/换火目标的铭牌高亮（v2.2+） |
 | `/acc debug` | 切换调试输出 |
 | `/acc selftest [verbose]` | 客户端内自检 |
@@ -328,7 +328,7 @@ MIT.
 | `strategy.lookaheadEnabled` | `true` | 启用 M10 lookahead（连锁 × 对手反应期望值最大化）。 |
 | `frame.compactMode` | `false` | 隐藏己方/敌方冷却图标行。 |
 | `alerts.sound` / `alerts.screenFlash` | `true` / `false` | 语音提示开关；`screenFlash` 为存档兼容保留，但不会再触发全屏闪烁。 |
-| `alerts.edgeGlow` / `alerts.nameplate` | `true` / `true` | v2.2 屏幕边缘模式着色光晕 + 铭牌高亮。 |
+| `alerts.edgeGlow` / `alerts.nameplate` | `false` / `true` | 可选细边缘提示 + 默认开启的铭牌高亮。 |
 
 ---
 

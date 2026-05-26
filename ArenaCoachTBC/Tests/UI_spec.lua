@@ -221,12 +221,12 @@ H.it(g, "Apply with primaryTargetClass fallback", function()
 end)
 
 -- =================================================================
--- v2.3.0: /acc test demo paints the full HUD (edge glow + nameplate),
+-- v2.3.0: /acc test demo paints optional edge cue + nameplate,
 -- not just the text. Regression for the bug where _forceShow bypassed
 -- the auto-hide gate but the visual-layer gate still required inPvP.
 -- =================================================================
 
-H.it(g, "v2.3.0: _forceShow bypasses inPvP gate for edge glow + nameplate", function()
+H.it(g, "v2.3.0: _forceShow bypasses inPvP gate for thin edge cue + nameplate", function()
     -- Load the visual-layer modules so UI:Apply can drive them.
     H.load("ScreenEdgeGlow.lua")
     H.load("Nameplate.lua")
@@ -267,7 +267,7 @@ H.it(g, "v2.3.0: _forceShow bypasses inPvP gate for edge glow + nameplate", func
     })
 
     H.assertEq(Glow:CurrentMode(), "KILL",
-        "edge glow should activate in KILL mode when _forceShow is set, even without pvp context")
+        "thin edge cue should activate in KILL mode when _forceShow is set, even without pvp context")
     local overlayCount = 0
     for _ in pairs(NP._overlays) do overlayCount = overlayCount + 1 end
     H.assertTrue(overlayCount >= 1,
@@ -294,7 +294,7 @@ H.it(g, "v2.3.0: without _forceShow + no pvp context, visual layers stay hidden"
         -- below also verifies Glow gets cleared)
     })
     H.assertNil(Glow:CurrentMode(),
-        "edge glow must be cleared when context is 'none' and _forceShow is not set")
+        "thin edge cue must be cleared when context is 'none' and _forceShow is not set")
     H.ns.Core.state.pvpContext = nil
 end)
 

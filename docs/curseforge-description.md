@@ -53,7 +53,7 @@ A real-time PvP strategy coach for **World of Warcraft TBC Anniversary / TBC Cla
 
 > **OPEN** · **KILL** · **SWAP** · **DEFEND** · **RESET**
 
-The addon shows the current call as a big mode-coloured label on the screen, with the target name, HP %, kill probability, top callouts, and the matched comp directly below. A pulsing screen-edge glow follows the mode colour (red KILL, orange SWAP, blue DEFEND, yellow OPEN) so your peripheral vision keeps up too. Enemy nameplates of the kill and swap targets get coloured borders so you can pick them out in a crowded fight.
+The addon shows the current call as a big mode-coloured label on the screen, with the target name, HP %, kill probability, top callouts, and the matched comp directly below. Enemy nameplates of the kill and swap targets get coloured borders so you can pick them out in a crowded fight. An optional thin edge cue can follow the mode colour, but the old big pulsing screen-edge band is gone.
 
 > ⚠️ **Advice only.** ArenaCoachTBC never casts spells, never targets enemies, never clicks protected buttons, never modifies secure macros. It only renders visual, audio, and text recommendations. Anything that crosses into protected actions is rejected by design.
 
@@ -69,7 +69,7 @@ The addon shows the current call as a big mode-coloured label on the screen, wit
 | **Lookahead / expectimax** | Scores chains × likely opponent responses to pick the highest-EV opener |
 | **Burst gate** | Holds the BURST callout until every gate passes (MS active, no incoming pressure, Bloodlust not blocking, etc.) — and tells you which gate fired when it doesn't |
 | **Rating-aware aggression** | `auto` mode reads `GetPersonalRatedInfo` and tunes swap-threshold + burst aggression by bracket rating |
-| **Screen edge glow** | Mode-coloured pulsing band on the four screen edges — peripheral-vision cue, never blocks the action |
+| **Thin edge cue** | Optional low-alpha static lines on the four screen edges — peripheral-vision cue, never a big flashing border |
 | **Nameplate highlight** | Red border on the kill target's nameplate, orange on the swap candidate. Coexists with Plater / KuiNameplates / TidyPlates |
 | **Audio cues** | One-shot WoW sound on every mode transition + on key callouts (HoJ landed, Tremor, etc.). Arena-only by default |
 | **City auto-hide** | Frame stays hidden in cities / quest hubs. No FPS hit while flagged in Stormwind |
@@ -134,7 +134,7 @@ After `/acc test` the recommendation frame walks through 7 beats over 14 seconds
 | `/acc toggle` | Show / hide the recommendation frame |
 | `/acc lock` / `/acc unlock` | Lock / unlock the frame for dragging |
 | `/acc off` / `/acc on` | **Master switch.** Stops the engine + hides every visual layer. Persists across `/reload`. Aliases: `/acc disable`, `/acc enable` |
-| `/acc glow [on\|off]` | Toggle the screen-edge glow |
+| `/acc glow [on\|off]` | Toggle the optional thin edge cue |
 | `/acc nameplate [on\|off]` | Toggle nameplate highlights for KILL / SWAP targets |
 | `/acc test` | Arena 7-beat UI demo (full HUD) |
 | `/acc test bg` | Battleground walk-through |
@@ -207,7 +207,7 @@ MIT. Free to use, fork, modify, redistribute.
 
 CurseForge lets you upload up to 10 screenshots. Suggested set:
 
-1. **HUD in action** — `/acc test` showing mode label + target stats + edge glow + nameplate border
+1. **HUD in action** — `/acc test` showing mode label + target stats + nameplate border + optional thin edge cue
 2. **BG mode** — frame in WSG showing flag-carrier priority
 3. **DEFEND alert** — blue mode with steady defensive cue
 4. **Comp badge** — `RMP (confirmed Disc Priest)` after spec inference

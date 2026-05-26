@@ -935,14 +935,15 @@ local function handleSlash(input)
         chatPrint("ArenaCoachTBC enabled. The frame will appear when you enter a PvP context.")
         Core:Evaluate()
     elseif cmd == "glow" then
-        -- v2.2.0: toggle the mode-coloured screen-edge glow.
+        -- v2.8.2: this is now a thin static edge cue, not the old big
+        -- pulsing screen-edge band.
         db.alerts = db.alerts or {}
         local arg = (rest or ""):lower()
         if arg == "off" then db.alerts.edgeGlow = false
         elseif arg == "on" then db.alerts.edgeGlow = true
         else db.alerts.edgeGlow = not db.alerts.edgeGlow end
         if not db.alerts.edgeGlow and ns.ScreenEdgeGlow then ns.ScreenEdgeGlow:Hide() end
-        chatPrint(string.format("edge glow: %s", db.alerts.edgeGlow and "on" or "off"))
+        chatPrint(string.format("thin edge cue: %s", db.alerts.edgeGlow and "on" or "off"))
     elseif cmd == "nameplate" then
         -- v2.2.0: toggle nameplate highlighting for kill / swap targets.
         db.alerts = db.alerts or {}

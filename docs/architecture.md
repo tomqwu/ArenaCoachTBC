@@ -132,11 +132,11 @@ Pre-v2.1.6 this module referenced `Sound/Voice/*.ogg` paths that were never bund
 
 将提示键和模式名映射到 WoW 客户端内置的数字 SoundKit ID。`UI:Apply` 在新顶层提示和模式切换时触发一次性音效（受 `db.alerts.sound` 控制，仅竞技场触发）。v2.1.6 前引用的 `Sound/Voice/*.ogg` 路径并未打包进插件，所以历史版本的音效从未真正发出。
 
-### ScreenEdgeGlow.lua (v2.2.0)
+### ScreenEdgeGlow.lua (v2.2.0, softened in v2.8.2)
 
-A full-screen frame with four edge bands (top / bottom / left / right). Each band's color follows the current recommendation mode (KILL=red, SWAP=orange, DEFEND=blue, OPEN=yellow). An `OnUpdate` script breathes the alpha between 0.18 and 0.42 over a 1.6 s cycle. `RESET` and `nil` mode hide the frame so between-fight downtime is dark. Toggle via `db.alerts.edgeGlow` / `/acc glow on|off`. Driven from `UI:Apply` after the recommendation is rendered.
+A full-screen frame with four very thin edge lines (top / bottom / left / right). Each line's color follows the current recommendation mode (KILL=red, SWAP=orange, DEFEND=blue, OPEN=yellow). v2.8.2 removed the old pulsing 96px band; the cue is now 18px, low-alpha, and static so it does not flash around the screen. `RESET` and `nil` mode hide the frame so between-fight downtime is dark. Toggle via `db.alerts.edgeGlow` / `/acc glow on|off`. Driven from `UI:Apply` after the recommendation is rendered.
 
-全屏框、四条边带（上/下/左/右）。每条带颜色随当前模式（KILL 红、SWAP 橙、DEFEND 蓝、OPEN 黄）。`OnUpdate` 让透明度在 0.18-0.42 间以 1.6 秒周期呼吸。`RESET` 和 `nil` 隐藏。通过 `db.alerts.edgeGlow` / `/acc glow on|off` 控制。
+全屏框、四条很细的边缘线（上/下/左/右）。每条线颜色随当前模式（KILL 红、SWAP 橙、DEFEND 蓝、OPEN 黄）。v2.8.2 移除了旧的 96px 脉冲边带；现在是 18px、低透明度、静态显示，不会在屏幕周围闪烁。`RESET` 和 `nil` 隐藏。通过 `db.alerts.edgeGlow` / `/acc glow on|off` 控制。
 
 ### Nameplate.lua (v2.2.0)
 
@@ -150,7 +150,7 @@ BG/world enemy state is intentionally opportunistic. `Core:RefreshEnemiesNonAren
 
 ### Auto-hide gate + master switch (v2.2.5)
 
-`UI:Apply` checks `Core.state.pvpContext` and hides the frame + screen-edge glow + nameplate overlays when the context is explicitly `"none"` or `"world_idle"`. This stops the engine from drawing a stale rec on screen between fights and stops `onNameplateChange` from re-evaluating in cities (where the firehose of nameplate add/remove events was a major frame-rate hit before v2.2.5).
+`UI:Apply` checks `Core.state.pvpContext` and hides the frame + thin edge cue + nameplate overlays when the context is explicitly `"none"` or `"world_idle"`. This stops the engine from drawing a stale rec on screen between fights and stops `onNameplateChange` from re-evaluating in cities (where the firehose of nameplate add/remove events was a major frame-rate hit before v2.2.5).
 
 `/acc off` and `/acc on` (aliases `/acc disable` / `/acc enable`) toggle `db.enabled`. When off, `Core:Evaluate` short-circuits at the top — no event handlers, no engine work, all visual layers hidden. Persists across `/reload`. The `/acc test` demo bypasses both gates via a per-beat `recommendation._forceShow` flag so the walk-through paints the full HUD outside arena.
 

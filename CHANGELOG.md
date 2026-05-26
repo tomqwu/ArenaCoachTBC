@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.2] - 2026-05-26
+
+### Changed
+- **Removed the big flashing screen-edge feel.** The optional edge visual is no longer a 96px pulsing band around the screen. Even if an older SavedVariables file has `alerts.edgeGlow = true`, it now renders as a thin 18px, low-alpha, static edge cue.
+- **HUD + docs now treat the arcade plate/nameplate as the primary visual warning.** `/acc glow on|off` remains for users who want a subtle peripheral cue, but the default and documented experience avoids big screen-border motion.
+
+### Notes
+- Added regression coverage that locks the edge cue to thin, low-alpha, and non-pulsing.
+- Tests 635 -> 636. Locale parity green at 144 keys per locale. Local luacov total coverage: 99.10%.
+
 ## [2.8.1] - 2026-05-26
 
 ### Added

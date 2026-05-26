@@ -39,9 +39,9 @@ The addon stores SavedVariables in `ArenaCoachTBCDB`.
 | `/acc toggle` | show / hide the recommendation frame | 显示 / 隐藏提示框 |
 | `/acc lock` / `/acc unlock` | lock or unlock the frame for dragging | 锁定 / 解锁框体 |
 | `/acc off` / `/acc on` (aliases `/acc disable` / `/acc enable`) | **master switch.** Stops the engine + hides every visual layer. Persists across `/reload`. | **主开关**。停止引擎并隐藏所有视觉层，`/reload` 后保持。 |
-| `/acc glow on\|off` | toggle the mode-coloured screen-edge glow (v2.2.0) | 切换屏幕边缘模式着色光晕（v2.2.0） |
+| `/acc glow on\|off` | toggle the optional thin mode-coloured edge cue | 切换可选的细边缘提示 |
 | `/acc nameplate on\|off` | toggle the KILL / SWAP target nameplate highlights (v2.2.0) | 切换击杀/换火目标的铭牌高亮（v2.2.0） |
-| `/acc test` | arena 7-beat UI demo — paints the full HUD (arcade warning plate, mode label, target stats, edge glow, nameplate, audio cues) | 竞技场 7 节拍 UI 演示——完整 HUD（街机警示牌、模式、信息行、边缘光晕、铭牌、音效） |
+| `/acc test` | arena 7-beat UI demo — paints the full HUD (arcade warning plate, mode label, target stats, nameplate, audio cues, optional thin edge cue) | 竞技场 7 节拍 UI 演示——完整 HUD（街机警示牌、模式、信息行、铭牌、音效、可选细边缘提示） |
 | `/acc test bg` | battleground walk-through (flag carrier + low-HP straggler) | 战场演示（夺旗者 + 低血单位） |
 | `/acc test world` | world PvP walk-through (single-target focus) | 户外 PvP 演示（单目标聚焦） |
 | `/acc test print` | legacy chat-only summary of 5 sample comps | 仅文字摘要（旧行为） |
@@ -193,7 +193,7 @@ The addon publishes its current recommendation and full state through the global
 | `GetFriendlies()` | full friendlies map / 完整己方表 |
 | `GetEnemyByGUID(guid)` | one enemy / 单个敌方 |
 | `GetCombatPhase()` | "PRE" / "ACTIVE" / "POST" |
-| `GetVersion()` | "2.8.1" |
+| `GetVersion()` | "2.8.2" |
 
 ### Sample custom trigger / 自定义触发器示例
 
