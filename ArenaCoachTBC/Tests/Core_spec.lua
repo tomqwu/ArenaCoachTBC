@@ -1128,6 +1128,28 @@ H.it(g, "RefreshEnemiesNonArena populates from nameplate scan", function()
     H.assertEq(Core.state.enemies[stubGuid].class, "ROGUE")
 end)
 
+H.it(g, "RefreshEnemiesNonArena handles sparse nameplate unit ids", function()
+    Core.state = Core.state or {}
+    Core.state.enemies = {}
+    local stubGuid = "guid-sparse-nameplate"
+    _G.UnitExists  = function(u) return u == "nameplate2" end
+    _G.UnitIsEnemy = function(_, u) return u == "nameplate2" end
+    _G.UnitIsPlayer = function(u) return u == "nameplate2" end
+    _G.UnitGUID    = function(u) return u == "nameplate2" and stubGuid or nil end
+    _G.UnitName    = function(u) return u == "nameplate2" and "Sparse" or nil end
+    _G.UnitClass   = function(u) return u == "nameplate2" and "Mage", "MAGE" or nil, nil end
+    _G.UnitHealth  = function(u) return u == "nameplate2" and 5000 or 0 end
+    _G.UnitHealthMax = function(u) return u == "nameplate2" and 10000 or 0 end
+    _G.UnitPower   = function() return 0 end
+    _G.UnitPowerMax = function() return 0 end
+    _G.UnitIsDeadOrGhost = function() return false end
+    H._gameTime = 1000
+    Core:RefreshEnemiesNonArena()
+    H.assertNotNil(Core.state.enemies[stubGuid],
+        "nameplate scan must continue past a missing nameplate1")
+    H.assertEq(Core.state.enemies[stubGuid].class, "MAGE")
+end)
+
 H.it(g, "RefreshEnemiesNonArena skips friendly nameplates", function()
     Core.state.enemies = {}
     _G.UnitExists   = function(u) return u == "nameplate1" end
@@ -1153,6 +1175,29 @@ H.it(g, "_NonArenaCLEUStub does not overwrite an existing entry", function()
     Core:_NonArenaCLEUStub("guid-known", "DontOverwrite")
     H.assertEq(Core.state.enemies["guid-known"].name, "Real",
         "must not overwrite existing enemy with stub")
+end)
+
+H.it(g, "CLEU creates non-arena enemy stubs only when hostile damage hits us", function()
+    rebootForEvents()
+    clearWoWApis()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    Core.state.pvpContext = "world"
+    Core.state.enemies = {}
+    Core._friendlyGUIDs = { ["guid-player"] = { class = "WARRIOR", alive = true } }
+    _G.UnitExists = function() return false end
+    H._gameTime = 1000
+
+    H.fireCLEU(1000, "SPELL_CAST_SUCCESS", false, "guid-enemy", "Enemy",
+               nil, nil, "guid-other", "Other", nil, nil, H.ns.Spells.POLYMORPH, "Polymorph")
+    EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
+    H.assertNil(Core.state.enemies["guid-enemy"],
+        "unrelated world CLEU casts should not create phantom enemies")
+
+    H.fireCLEU(1001, "SPELL_DAMAGE", false, "guid-enemy", "Enemy",
+               nil, nil, "guid-player", "Player", nil, nil, H.ns.Spells.PYROBLAST, "Pyroblast")
+    EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
+    H.assertNotNil(Core.state.enemies["guid-enemy"],
+        "damage to a friendly should create a combat stub when no nameplate is visible")
 end)
 
 H.it(g, "RefreshEnemiesNonArena TTL-prunes stale entries (>30s)", function()

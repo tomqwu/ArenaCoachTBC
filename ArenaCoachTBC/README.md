@@ -4,9 +4,9 @@ A strategy coach addon for **TBC Classic / TBC Anniversary** arena. Watches your
 
 **TBC 怀旧服 / TBC 周年服**竞技场战术教练插件。监视战斗、推断己方能力和敌方阵容、实时打分敌方目标，并告知你开打谁、何时切换、何时爆发、何时防御。
 
-**Adapts dynamically to any team comp** — capability inference (Mortal Strike? Bloodlust? Mass Dispel? Freedom? Cleanse?) drives the strategy, not class hardcodes.
+**Adapts dynamically to any team comp and PvP context** — capability inference (Mortal Strike? Bloodlust? Mass Dispel? Freedom? Cleanse?) drives the strategy, not class hardcodes. Arena uses full comp/chain/profile logic; BG and world PvP use opportunistic nameplate plus hostile-damage discovery, skip brittle comp matching, and keep defensive calls available when the player or a healer-capable friendly is low.
 
-**自适应任意队伍组合**——通过能力推理驱动战术（致死打击？嗜血？群驱散？自由祝福？驱散？），而非职业硬编码。
+**自适应任意队伍组合与 PvP 场景**——通过能力推理驱动战术（致死打击？嗜血？群驱散？自由祝福？驱散？），而非职业硬编码。竞技场启用完整阵容/控制链/对手档案逻辑；战场与户外 PvP 使用铭牌与受击事件探测敌人，跳过不稳定的阵容匹配，并在玩家或可治疗队友低血量时保留防御建议。
 
 > ⚠️ **This addon never automates gameplay.** It does not cast spells, does not target enemies for you, does not click protected buttons, and does not edit secure macros in combat. Everything it does is visual / audio / text suggestions.
 >
@@ -123,6 +123,9 @@ Entries can also carry an optional `specs = { CLASS = "SPEC" }` map. A spec-keye
   ownCapabilities     = { hasMortalStrike=true, hasBloodlust=true, ... },
   burstAllowed        = true,
   burstBlockedBy      = nil,
+  burstDecision       = { allowed=true, gates={ target_vulnerable={}, ms_active={}, windfury={}, melee_uptime={}, kill_prob={}, chain_ready={} } },
+  primaryTargetHp     = 0.37,
+  killProb            = 0.82,
 }
 ```
 
@@ -187,7 +190,7 @@ The addon publishes its current recommendation and full state through the global
 | `GetFriendlies()` | full friendlies map / 完整己方表 |
 | `GetEnemyByGUID(guid)` | one enemy / 单个敌方 |
 | `GetCombatPhase()` | "PRE" / "ACTIVE" / "POST" |
-| `GetVersion()` | "2.7.3" |
+| `GetVersion()` | "2.7.4" |
 
 ### Sample custom trigger / 自定义触发器示例
 

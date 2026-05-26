@@ -167,6 +167,12 @@ H.it(g, "Burst KILL with no MS/WF requirement appends BURST_NOW callout", functi
     state.config.strategy.callBurstOnlyWhenMSActive = false
     state.config.strategy.requireWindfuryNearby     = false
     state.lastPrimaryGUID = nil
+    for _, e in pairs(state.enemies) do
+        if e.class == "PRIEST" then
+            e.healthPct = 10
+            e.hasTrinket = false
+        end
+    end
     local rec = SE:Evaluate(state)
     if rec.mode == "KILL" then
         local hasBurst = false

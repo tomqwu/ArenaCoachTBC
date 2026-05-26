@@ -106,9 +106,9 @@ Sum clamped to `[0..1]`. Weights exposed via `SE.KILL_PROB_WEIGHTS`. WeakAuraBri
 
 ### BurstDecision (M11)
 
-`SE:BurstDecision(state, target, chain) -> { allowed, blockedBy, gates }` with four named gates: `kill_prob` (threshold scales with aggression — greedy 0.35, balanced 0.45, safe 0.55), `chain_ready`, `incoming_pressure`, `rating_aware`. Engine populates `rec.burstDecision` on KILL recommendations.
+`SE:BurstDecision(state, target, chain) -> { allowed, blockedBy, gates }` is the single source of truth for `BURST_NOW`. It includes target/setup prerequisite gates (`target_vulnerable`, `ms_active`, `windfury`, `melee_uptime`), the calibrated `kill_prob` gate (threshold scales with aggression: greedy 0.35, balanced 0.45, safe 0.55), `chain_ready`, `incoming_pressure`, and `rating_aware`. `chain_ready` is advisory by default so BG/world fights and sparse arena catalog entries can still recommend a clean burst window; set `db.strategy.requireChainForBurst = true` to make a positive chain mandatory. Engine populates `rec.burstDecision` and mirrors the first failing gate into `rec.burstBlockedBy` (`target_immune`, `no_ms`, `no_windfury`, `melee_root`, `kill_prob`, `chain_ready`, etc.).
 
-四个命名门禁：`kill_prob`（阈值随侵略性变化——greedy 0.35、balanced 0.45、safe 0.55）、`chain_ready`、`incoming_pressure`、`rating_aware`。引擎在 KILL 建议上填充 `rec.burstDecision`。
+爆发判断现在统一在 `BurstDecision` 内完成：目标是否免疫、MS 是否在目标上、风怒是否就位、近战是否能贴住、击杀概率、控制链、敌方压力与分数侵略性都会进入同一个 `gates` 表。默认情况下 `chain_ready` 只做审计提示；只有 `db.strategy.requireChainForBurst = true` 时才会阻止爆发。
 
 ### Rating-aware aggression (M11 — Core / 分数感知侵略性)
 
@@ -144,6 +144,10 @@ Iterates `nameplate1..nameplate40` to resolve the current frame for a given enem
 
 遍历 `nameplate1..nameplate40` 找到指定敌方 GUID 对应的当前铭牌，挂上一个含四条彩带的子覆盖框。击杀目标得红色边框，换火候选得橙色。`UI:Apply` 每次都清空重绘。从不修改铭牌原生的血条/施法条/姓名，与 Plater/KuiNameplates/TidyPlates 共存。
 
+### Non-arena discovery (Unreleased)
+
+BG/world enemy state is intentionally opportunistic. `Core:RefreshEnemiesNonArena()` scans all `nameplate1..nameplate40` slots without stopping at the first gap because nameplate unit IDs can be sparse. CLEU fallback stubs are only created when a hostile source damages the player or a known friendly, which avoids phantom enemies from unrelated world combat nearby. World PvP defensive mode uses healer-capable friendlies when present and falls back to the lowest alive friendly in solo play, so a low-HP non-healer player still gets `DEFEND` instead of a forced `KILL`.
+
 ### Auto-hide gate + master switch (v2.2.5)
 
 `UI:Apply` checks `Core.state.pvpContext` and hides the frame + screen-edge glow + nameplate overlays when the context is explicitly `"none"` or `"world_idle"`. This stops the engine from drawing a stale rec on screen between fights and stops `onNameplateChange` from re-evaluating in cities (where the firehose of nameplate add/remove events was a major frame-rate hit before v2.2.5).
@@ -175,8 +179,10 @@ The engine's `Evaluate` returns roughly this / 引擎 `Evaluate` 返回大致结
   compSpecConfirmed  = bool,
   ownArchetype       = "MELEE_CLEAVE",
   burstAllowed       = bool,
-  burstDecision      = { allowed, blockedBy, gates = {kill_prob, chain_ready, ...} },
+  burstDecision      = { allowed, blockedBy, gates = {target_vulnerable, ms_active, windfury, melee_uptime, kill_prob, chain_ready, ...} },
   chain              = { id, label, labelKey, steps, links, expectedProb, expectedValue },
+  primaryTargetHp    = 0..1,
+  killProb           = 0..1,
   profileContrib     = "trinketsFear=0.82,kicksFirstHeal=0.71",
   opponentSignature  = "<class_set>#<hash>",
   aggression         = "greedy|balanced|safe",

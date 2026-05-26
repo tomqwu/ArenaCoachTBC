@@ -128,6 +128,27 @@ H.it(g, "Evaluate with no enemies returns RESET", function()
     H.assertNil(rec.primaryTarget)
 end)
 
+H.it(g, "Evaluate resets when the only target is not actionable", function()
+    local state = SE:BuildTestState({"MAGE"})
+    state.combatPhase = "ACTIVE"
+    local mage = findEnemyByClass(state, "MAGE")
+    mage.importantBuffs[H.ns.Spells.ICE_BLOCK] = true
+    mage.unreachable = true
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.mode, "RESET", "immune unreachable target should not receive a KILL call")
+end)
+
+H.it(g, "Evaluate exposes primaryTargetHp from healthPct as a 0..1 fraction", function()
+    local state = SE:BuildTestState({"PRIEST","MAGE"})
+    state.combatPhase = "ACTIVE"
+    local priest = findEnemyByClass(state, "PRIEST")
+    priest.healthPct = 37
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.primaryTargetClass, "PRIEST")
+    H.assertTrue(math.abs((rec.primaryTargetHp or 0) - 0.37) < 0.0001,
+        "expected healthPct=37 to publish primaryTargetHp=0.37, got " .. tostring(rec.primaryTargetHp))
+end)
+
 H.it(g, "Evaluate exposes ownArchetype from default friendlies", function()
     local state = SE:BuildTestState({"WARRIOR","MAGE","PRIEST","ROGUE","DRUID"})
     local rec = SE:Evaluate(state)
@@ -553,6 +574,8 @@ H.it(g, "Evaluate pushes CALL_SAVE_TREMOR_HOJ when trinketsFear >= 0.7 with enou
         if c == "CALL_SAVE_TREMOR_HOJ" then found = true; break end
     end
     H.assertTrue(found, "expected CALL_SAVE_TREMOR_HOJ in callouts")
+    local _, count = (rec.profileContrib or ""):gsub("trinketsFear", "")
+    H.assertEq(count, 1, "profileContrib should list trinketsFear once")
 end)
 
 H.it(g, "Evaluate pushes CALL_BURST_BLOCK_INCOMING when iceBlockBelow30 >= 0.7", function()
@@ -607,7 +630,7 @@ end)
 -- M11 #73: Multi-reason burst gate
 -- =================================================================
 
-H.it(g, "BurstDecision returns 4 named gates", function()
+H.it(g, "BurstDecision returns named gates for probability, setup, pressure, and prerequisites", function()
     local state = SE:BuildTestState({"PRIEST","MAGE"})
     state.combatPhase = "ACTIVE"
     local target = {}
@@ -617,6 +640,10 @@ H.it(g, "BurstDecision returns 4 named gates", function()
     H.assertNotNil(out.gates.chain_ready)
     H.assertNotNil(out.gates.incoming_pressure)
     H.assertNotNil(out.gates.rating_aware)
+    H.assertNotNil(out.gates.ms_active)
+    H.assertNotNil(out.gates.windfury)
+    H.assertNotNil(out.gates.target_vulnerable)
+    H.assertNotNil(out.gates.melee_uptime)
 end)
 
 H.it(g, "BurstDecision blocks on kill_prob when target is high HP", function()
@@ -664,6 +691,55 @@ H.it(g, "BurstDecision allows when all gates pass", function()
     H.assertTrue(out.gates.chain_ready.allowed)
     H.assertTrue(out.gates.incoming_pressure.allowed)
     H.assertTrue(out.allowed, "all gates passed; burst should be allowed")
+end)
+
+H.it(g, "BurstDecision folds MS and Windfury prerequisites into blockedBy", function()
+    local state = SE:BuildTestState({"PRIEST","MAGE"})
+    state.combatPhase = "ACTIVE"
+    state.config.strategy.callBurstOnlyWhenMSActive = true
+    state.config.strategy.requireWindfuryNearby = true
+    state.observations = { windfuryActive = false }
+    local target = { healthPct = 5, hasTrinket = false, importantBuffs = {}, guid = "g1" }
+    local out = SE:BurstDecision(state, target, { expectedProb = 0.8 })
+    H.assertFalse(out.allowed)
+    H.assertEq(out.blockedBy, "no_ms")
+
+    state.observations.msActiveOn = "g1"
+    out = SE:BurstDecision(state, target, { expectedProb = 0.8 })
+    H.assertFalse(out.allowed)
+    H.assertEq(out.blockedBy, "no_windfury")
+end)
+
+H.it(g, "BurstDecision does not treat rooted healers as failed melee uptime", function()
+    local state = SE:BuildTestState({"PRIEST","MAGE"})
+    state.combatPhase = "ACTIVE"
+    state.aggression = "greedy"
+    state.config.strategy.callBurstOnlyWhenMSActive = false
+    state.config.strategy.requireWindfuryNearby = false
+    state.friendlies.player.debuffs = nil
+    state.friendlies.party4.debuffs = { rooted = true } -- priest healer/support, not melee uptime
+    local target = { healthPct = 5, hasTrinket = false, importantBuffs = {}, guid = "g1" }
+    local out = SE:BurstDecision(state, target, nil)
+    H.assertTrue(out.gates.melee_uptime.allowed,
+        "a rooted priest should not block burst as if the melee were rooted")
+    H.assertTrue(out.allowed)
+end)
+
+H.it(g, "BurstDecision only requires a chain when configured strictly", function()
+    local state = SE:BuildTestState({"PRIEST","MAGE"})
+    state.combatPhase = "ACTIVE"
+    state.aggression = "greedy"
+    state.config.strategy.callBurstOnlyWhenMSActive = false
+    state.config.strategy.requireWindfuryNearby = false
+    local target = { healthPct = 5, hasTrinket = false, importantBuffs = {}, guid = "g1" }
+    local out = SE:BurstDecision(state, target, nil)
+    H.assertTrue(out.gates.chain_ready.allowed,
+        "missing chain should be advisory by default so BG/world and sparse catalog entries can still burst")
+
+    state.config.strategy.requireChainForBurst = true
+    out = SE:BurstDecision(state, target, nil)
+    H.assertFalse(out.gates.chain_ready.allowed)
+    H.assertEq(out.blockedBy, "chain_ready")
 end)
 
 H.it(g, "Evaluate populates rec.burstDecision when mode is KILL", function()
@@ -987,6 +1063,34 @@ H.it(g, "World mode: DEFEND fires when player HP <30% via shouldDefend lowestHea
     for _, f in pairs(state.friendlies) do f.healthPct = 22 end
     local rec = SE:Evaluate(state)
     H.assertEq(rec.mode, "DEFEND", "low player HP should trigger DEFEND in world")
+end)
+
+H.it(g, "World mode: solo non-healer player low HP still DEFENDs", function()
+    local state = SE:BuildTestState({"ROGUE"})
+    state.combatPhase = "ACTIVE"
+    state.pvpContext  = "world"
+    state.friendlies = {
+        player = { unit = "player", class = "WARRIOR", spec = "ARMS", alive = true, healthPct = 22 },
+    }
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.mode, "DEFEND",
+        "solo world PvP must defend on low player HP even without a healer class")
+end)
+
+H.it(g, "Support-capable Paladin/Shaman friendlies count for low-healer DEFEND", function()
+    local state = SE:BuildTestState({"WARRIOR","MAGE","PRIEST"})
+    state.combatPhase = "ACTIVE"
+    state.friendlies = {
+        player = { unit = "player", class = "WARRIOR", spec = "ARMS", alive = true, healthPct = 100 },
+        party1 = { unit = "party1", class = "PALADIN", alive = true, healthPct = 25 },
+        party2 = { unit = "party2", class = "ROGUE", alive = true, healthPct = 100 },
+    }
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.mode, "DEFEND", "low healer-capable paladin should trigger DEFEND")
+
+    state.friendlies.party1.class = "SHAMAN"
+    rec = SE:Evaluate(state)
+    H.assertEq(rec.mode, "DEFEND", "low healer-capable shaman should trigger DEFEND")
 end)
 
 H.it(g, "BG mode: PRE phase also skips OPEN (same as world)", function()

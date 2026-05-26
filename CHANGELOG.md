@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.7.4] - 2026-05-26
+
+### Fixed
+- **Strategy logic pass for real PvP contexts.** `BurstDecision` is now the single source of truth for `BURST_NOW`: target immunity, configured MS, Windfury, melee uptime, kill probability, chain readiness, and incoming pressure all land in the auditable gate table. The old separate burst prerequisite path was removed so HUD callouts and bridge API cannot disagree. Chain readiness is advisory by default and can be made strict with `strategy.requireChainForBurst = true`.
+- **DEFEND now works for support-capable teams and solo world PvP.** Low Paladin/Shaman support friendlies count as defensive anchors, healer CC checks use healer/support capability instead of Priest/Druid-only checks, and solo world PvP falls back to the lowest alive friendly so a dying non-healer player can still get `DEFEND`.
+- **Non-arena enemy discovery is less noisy and less brittle.** BG/world nameplate scanning no longer stops at a missing `nameplate1`, and CLEU fallback stubs are only created when a hostile source damages the player or a known friendly.
+- **Target and comp edge cases are safer.** Immune/unreachable-only targets now produce `RESET` instead of a bad KILL call, `primaryTargetHp` publishes correctly from `healthPct`, low-mana healer kill probability works without `roleGuess`, and `TRIPLE_DPS` no longer matches 2-player double-DPS states.
+- **Profile contribution traces no longer duplicate `trinketsFear`.**
+
+### Changed
+- Updated the strategy/architecture docs to describe arena, BG, world PvP, burst gates, non-arena discovery, and the narrower dynamic `TRIPLE_DPS` fallback.
+
+### Notes
+- Tests 614 → 624 (+10 focused regressions). Locale parity green at 112 keys per locale. Full syntax check green.
+- Coverage was not run locally because `luacov` is not installed in this WSL environment; the CI coverage gate remains unchanged.
+
 ## [2.7.3] - 2026-05-26
 
 ### Fixed

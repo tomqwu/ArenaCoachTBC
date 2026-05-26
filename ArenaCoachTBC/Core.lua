@@ -46,6 +46,7 @@ local DEFAULTS = {
         allowDpsSwap = true,
         callBurstOnlyWhenMSActive = true,
         requireWindfuryNearby = true,
+        requireChainForBurst = false,
         peelTriggerWindow = 5,    -- seconds of sliding window for "trained" detection
         peelTriggerDamage = 3,    -- damage events in window to force DEFEND
         -- M11 #71: rating-aware aggression. "auto" reads
@@ -439,18 +440,19 @@ function Core:RefreshEnemiesNonArena()
     -- Walk nameplates. TBC supports up to 40; iterate defensively.
     for i = 1, 40 do
         local unit = "nameplate" .. i
-        if not UnitExists(unit) then break end
-        local isHostile = (type(UnitIsEnemy) == "function") and UnitIsEnemy("player", unit)
-        local isPlayer  = (type(UnitIsPlayer) == "function") and UnitIsPlayer(unit)
-        if isHostile and isPlayer then
-            local guid = (type(UnitGUID) == "function") and UnitGUID(unit) or nil
-            if guid then
-                local model = self.state.enemies[guid] or newEnemy(unit)
-                model.unit = unit
-                refreshUnit(model, unit)
-                model._lastSeen = now
-                self.state.enemies[guid] = model
-                seen[guid] = true
+        if UnitExists(unit) then
+            local isHostile = (type(UnitIsEnemy) == "function") and UnitIsEnemy("player", unit)
+            local isPlayer  = (type(UnitIsPlayer) == "function") and UnitIsPlayer(unit)
+            if isHostile and isPlayer then
+                local guid = (type(UnitGUID) == "function") and UnitGUID(unit) or nil
+                if guid then
+                    local model = self.state.enemies[guid] or newEnemy(unit)
+                    model.unit = unit
+                    refreshUnit(model, unit)
+                    model._lastSeen = now
+                    self.state.enemies[guid] = model
+                    seen[guid] = true
+                end
             end
         end
     end
@@ -558,8 +560,17 @@ end
 
 local function friendlyIsHealer(f)
     if not f then return false end
-    if ns.Classes and ns.Classes.IsHealer then return ns.Classes:IsHealer(f.class, f.spec) end
-    return f.class == "PRIEST" or f.class == "DRUID"
+    if f.roleGuess == "HEALER" or f.role == "HEALER" then return true end
+    if ns.Classes then
+        if f.spec and ns.Classes.IsHealer then return ns.Classes:IsHealer(f.class, f.spec) end
+        if ns.Classes.Info then
+            local info = ns.Classes:Info(f.class)
+            for _, role in ipairs(info.possibleRoles or {}) do
+                if role == "HEALER" then return true end
+            end
+        end
+    end
+    return false
 end
 
 local function markFriendlyDebuff(f, spellID, name)
@@ -751,12 +762,14 @@ local function onCLEU()
     if ctx == "bg" or ctx == "world" or ctx == "world_idle" then
         local playerHit = Core._friendlyGUIDs[destGUID]
             or (type(UnitGUID) == "function" and destGUID == UnitGUID("player"))
-        if playerHit and subEvent and (subEvent:find("_DAMAGE$") or subEvent == "SWING_DAMAGE") then
+        local isDamage = subEvent and (subEvent:find("_DAMAGE$") or subEvent == "SWING_DAMAGE")
+        if playerHit and isDamage then
             Core._lastWorldHostileTs = ts or 0
-        end
-        -- Stub-create an enemy from CLEU if we haven't seen them via nameplate yet.
-        if sourceGUID and Core._NonArenaCLEUStub then
-            Core:_NonArenaCLEUStub(sourceGUID, sourceName)
+            -- Stub-create an enemy from CLEU if a hostile player damages us
+            -- before their nameplate is visible.
+            if sourceGUID and sourceGUID ~= destGUID and Core._NonArenaCLEUStub then
+                Core:_NonArenaCLEUStub(sourceGUID, sourceName)
+            end
         end
     end
 

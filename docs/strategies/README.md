@@ -45,6 +45,8 @@ Other comps are catalogued in [`Data/Strategies.lua`](../../ArenaCoachTBC/Data/S
 4. `state.ownArchetype` is computed in parallel from your party's capabilities via `OwnComps:Infer` and `OwnComps:Identify`.
 5. If the matched comp has an `ownVariants` table for your archetype, the engine pulls overrides from there.
 
+Dynamic fallbacks are deliberately narrow. `TRIPLE_DPS` only applies when the live enemy side has at least three DPS and no healer; a 2v2 double-DPS team or a 3v3 where the healer died should not inherit the triple-DPS "survive opener" plan.
+
 ---
 
 ## Contributing a primer
