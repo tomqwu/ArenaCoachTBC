@@ -305,6 +305,30 @@ H.it(g, "comp openTarget biases PRE target selection", function()
     H.assertEq(rec.primaryTargetClass, "WARLOCK")
 end)
 
+H.it(g, "arena quality: 2v2 Warrior/Paladin pre-gates opens paladin instead of fake DEFEND", function()
+    local state = SE:BuildTestState({ "WARRIOR", "PALADIN" })
+    state.combatPhase = "PRE"
+    state.bracket = 2
+    state.pvpContext = "arena"
+
+    local rec = SE:Evaluate(state)
+
+    H.assertEq(rec.mode, "OPEN", "2v2 warrior/paladin should produce opener guidance")
+    H.assertEq(rec.primaryTargetClass, "PALADIN", "paladin is the planned opener target")
+end)
+
+H.it(g, "arena quality: 2v2 Hunter/Warrior pre-gates opens hunter instead of fake DEFEND", function()
+    local state = SE:BuildTestState({ "HUNTER", "WARRIOR" })
+    state.combatPhase = "PRE"
+    state.bracket = 2
+    state.pvpContext = "arena"
+
+    local rec = SE:Evaluate(state)
+
+    H.assertEq(rec.mode, "OPEN", "2v2 hunter/warrior should produce opener guidance")
+    H.assertEq(rec.primaryTargetClass, "HUNTER", "hunter is the planned opener target")
+end)
+
 H.it(g, "aggression setting changes swap threshold", function()
     local state = SE:BuildTestState({"PRIEST","MAGE"})
     state.combatPhase = "ACTIVE"
