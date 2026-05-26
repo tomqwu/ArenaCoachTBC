@@ -99,6 +99,7 @@ ns.locales.enUS = {
     -- UI labels
     UI_TITLE             = "Arena Coach",
     UI_NO_ARENA          = "Out of arena",
+    UI_TARGET_FALLBACK   = "target",
     -- v2.1.6: target stats row
     UI_HP_LABEL          = "HP",
     UI_KILL_PROB_LABEL   = "kill",

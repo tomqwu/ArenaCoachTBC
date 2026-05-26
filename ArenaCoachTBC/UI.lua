@@ -194,6 +194,19 @@ local function calloutIcon(key, size)
     return string.format("|T%s:%d:%d:0:0:64:64:5:59:5:59|t", tex, size, size)
 end
 
+local function calloutText(key, recommendation)
+    local text = L(key)
+    if key == "CALL_PURGE" then
+        local target = recommendation
+            and (recommendation.primaryTargetName or recommendation.primaryTargetClass)
+            or nil
+        target = target or L("UI_TARGET_FALLBACK")
+        local ok, formatted = pcall(string.format, text, target)
+        if ok then return formatted end
+    end
+    return (text:gsub("%%s", L("UI_TARGET_FALLBACK")))
+end
+
 function UI:Show()
     if self.frame then self.frame:Show() end
 end
@@ -333,7 +346,7 @@ function UI:Apply(recommendation)
             for _, key in ipairs(recommendation.callouts) do
                 if not recentlyShown(key) then
                     table.insert(subParts,
-                        string.format("%s  %s", calloutIcon(key, 18), L(key)))
+                        string.format("%s  %s", calloutIcon(key, 18), calloutText(key, recommendation)))
                     self._calloutLastShown[key] = nowTs
                 end
             end
@@ -344,7 +357,7 @@ function UI:Apply(recommendation)
             local top = recommendation.callouts[1]
             if not recentlyShown(top) then
                 table.insert(subParts,
-                    string.format("%s  %s", calloutIcon(top, 18), L(top)))
+                    string.format("%s  %s", calloutIcon(top, 18), calloutText(top, recommendation)))
                 self._calloutLastShown[top] = nowTs
             end
         end
