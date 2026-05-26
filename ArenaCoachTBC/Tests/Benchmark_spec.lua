@@ -218,7 +218,7 @@ H.it(g, "benchmark suite contains at least 20 scenarios", function()
     H.assertTrue(#scenarios >= 20, "expected >= 20 scenarios, got " .. #scenarios)
 end)
 
-H.it(g, "benchmark agreement rate is reported and meets the soft floor", function()
+H.it(g, "benchmark agreement rate is reported and meets the rated-arena floor", function()
     local agreed, total = 0, 0
     local report = {}
     for _, sc in ipairs(scenarios) do
@@ -246,8 +246,8 @@ H.it(g, "benchmark agreement rate is reported and meets the soft floor", functio
     print(string.format("[BENCHMARK] agreement: %d / %d = %.0f%%",
         agreed, total, rate * 100))
     for _, line in ipairs(report) do print("[BENCHMARK] " .. line) end
-    -- Soft floor: 50% so this is informational, not a hard gate. M12's
-    -- calibration / tuning work is what raises the engine's score.
-    H.assertTrue(rate >= 0.50,
-        string.format("benchmark agreement %.0f%% is below the 50%% soft floor", rate * 100))
+    -- Rated-arena trust floor. The benchmark is still not a complete
+    -- labelled dataset, but known obvious arena misses should now fail CI.
+    H.assertTrue(rate >= 0.85,
+        string.format("benchmark agreement %.0f%% is below the 85%% rated-arena floor", rate * 100))
 end)
