@@ -144,6 +144,53 @@ local modeColorsHighContrast = {
     RESET  = {1.0, 1.0, 1.0},   -- white instead of grey
 }
 
+-- v2.7.0: each callout key maps to a representative spell whose in-game
+-- icon best illustrates the action. The HUD renders the icon inline via
+-- WoW's |T<texture>:<size>|t escape so the user sees the *spell* to use,
+-- not just the words. Mapping intentionally picks the spell the engine
+-- expects the role to cast (HoJ for the paladin's incoming stun, Tremor
+-- Totem for the shaman's fear cleanse, Bloodlust for the burst window).
+-- When `GetSpellTexture` returns nil (very first call on an unknown
+-- spell ID), the row degrades gracefully to "▸ <text>" without the icon.
+UI.calloutIcons = {
+    CALL_HOJ_KILL              = 10308,   -- Hammer of Justice
+    CALL_TREMOR_FEAR           = 8143,    -- Tremor Totem
+    CALL_SAVE_TREMOR_HOJ       = 8143,    -- Tremor Totem
+    CALL_GROUND_POLY           = 8177,    -- Grounding Totem
+    CALL_PURGE                 = 370,     -- Purge
+    CALL_DISP_FROST            = 988,     -- Dispel Magic
+    CALL_PAIN_SUP_READY        = 33206,   -- Pain Suppression
+    CALL_BOP_READY             = 10278,   -- Blessing of Protection
+    CALL_PEEL_DRUID            = 33786,   -- Cyclone
+    CALL_PEEL_PRIEST           = 10890,   -- Psychic Scream
+    CALL_LOW_MANA_PUSH         = 10876,   -- Mana Burn
+    CALL_BURST_BLOCK_INCOMING  = 27619,   -- Ice Block (warn icon)
+    CALL_FAKE_KICK_2           = 27090,   -- Counterspell
+    CALL_FLAG_CARRIER_LOW      = 23335,   -- Warsong Flag (warning)
+    CALL_INCOMING_PLAYERS      = 22751,   -- Generic PvP warning
+    CALL_BASE_UNDER_ATTACK     = 22751,
+    CALL_BG_DEFEND             = 642,     -- Divine Shield
+    CALL_BG_RES_TIMER          = 22751,
+    CALL_HEALER_CC             = 605,     -- Mind Control
+    CALL_CYCLONE_OFF           = 33786,   -- Cyclone
+    CALL_FEAR_KILL             = 10890,   -- Psychic Scream
+    CALL_MANA_BURN             = 10876,   -- Mana Burn
+    BURST_NOW                  = 2825,    -- Bloodlust / Heroism
+}
+
+-- v2.7.0: render an inline icon for a callout key. Falls back to the
+-- bullet sigil when the texture isn't resolvable (headless tests or
+-- unknown spell IDs).
+local function calloutIcon(key, size)
+    size = size or 16
+    local spellID = UI.calloutIcons and UI.calloutIcons[key]
+    if not spellID then return "▸" end
+    if type(GetSpellTexture) ~= "function" then return "▸" end
+    local tex = GetSpellTexture(spellID)
+    if not tex or tex == "" then return "▸" end
+    return string.format("|T%s:%d:%d:0:0:64:64:5:59:5:59|t", tex, size, size)
+end
+
 function UI:Show()
     if self.frame then self.frame:Show() end
 end
@@ -277,23 +324,24 @@ function UI:Apply(recommendation)
         end
 
         if verbose then
-            local labels = {}
+            -- v2.7.0: each callout renders as `<icon>  <text>` on its
+            -- own line, so the verbose mode reads as an action list
+            -- instead of a pipe-separated text blob.
             for _, key in ipairs(recommendation.callouts) do
                 if not recentlyShown(key) then
-                    table.insert(labels, L(key))
+                    table.insert(subParts,
+                        string.format("%s  %s", calloutIcon(key, 18), L(key)))
                     self._calloutLastShown[key] = nowTs
                 end
             end
-            if #labels > 0 then
-                table.insert(subParts, table.concat(labels, " | "))
-            end
         else
-            -- Default: just the top one. BURST_NOW (v2.4.0 locale fix)
-            -- is now properly translated. If the top callout was just
-            -- shown, skip the line entirely rather than repeat it.
+            -- Default: just the top one with its icon prefix. BURST_NOW
+            -- (v2.4.0 locale fix) is properly translated; v2.7.0 also
+            -- shows the Bloodlust icon next to it.
             local top = recommendation.callouts[1]
             if not recentlyShown(top) then
-                table.insert(subParts, "▸ " .. L(top))
+                table.insert(subParts,
+                    string.format("%s  %s", calloutIcon(top, 18), L(top)))
                 self._calloutLastShown[top] = nowTs
             end
         end

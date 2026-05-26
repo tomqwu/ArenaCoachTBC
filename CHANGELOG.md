@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.7.0] - 2026-05-25
+
+**Visual hierarchy pass driven by user feedback.** *"Whole-screen glow doesn't help, you should add which role does what in the HUD, can you add some ICONs?"* Two changes:
+
+### Changed
+- **Edge glow flipped from default-on to default-off.** The full-screen pulsing band was more distraction than information per real-use feedback. Still available via `/acc glow on` if you want it back. Nameplate highlight stays default-on — that one's anchored to the actual kill / swap target so it carries role information, not just mode colour.
+- **Callouts now show their spell icon inline.** Pre-v2.7 every callout rendered as `▸ HoJ kill target` — text only, leaving you to translate "HoJ" → "the paladin's Hammer of Justice" → "which icon is that on my bars" in your head mid-fight. Now: `|TInterface/Icons/Spell_Holy_HammerOfJustice|t  HoJ kill target` — the spell's actual in-game icon renders inline as a 18px texture, so you see the action visually. Mapping covers all current callouts (HoJ, Tremor, Grounding Totem, Purge, Dispel Magic, Pain Suppression, BoP, Cyclone, Psychic Scream, Mana Burn, Ice Block warning, Counterspell, BG flag carrier, Divine Shield, Bloodlust for BURST NOW, …). When `GetSpellTexture` returns nil (very first call on an unknown spell ID), the row degrades gracefully to the previous `▸ <text>` bullet.
+
+### Notes
+- This makes verbose mode (`/acc verbose on`) much more useful too — each callout in the list now reads as a stacked action menu with icons + text, not a pipe-separated text blob.
+- Existing `db.alerts.edgeGlow` setting respected: users who explicitly turned it ON (or never edited it pre-v2.7) keep their current state. Only fresh installs see edge glow off.
+- 609 tests still passing. Locale parity 111/111. Bridge API unchanged.
+
 ## [2.6.0] - 2026-05-25
 
 **True closure of the v1 roadmap, plus user-feedback polish.** Picks up the last 3 deferred-but-doable items (per-callout cooldown already shipped in v2.5.0, public wiki, LuaJIT CI matrix) plus two new user reports from v2.5.0 testing (demo too fast to read, HUD still feels cluttered).

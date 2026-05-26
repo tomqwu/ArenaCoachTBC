@@ -33,9 +33,13 @@ local DEFAULTS = {
     frame    = { point = "CENTER", x = 0, y = 120, scale = 1.0,
                  verbose = false, highContrast = false },
     alerts   = { sound = true, raidWarning = false, partyChat = false, screenFlash = true,
-                 -- v2.2.0: visual layers on top of the base frame. Both
-                 -- default on; toggle via /acc glow off and /acc nameplate off.
-                 edgeGlow = true, nameplate = true },
+                 -- v2.2.0: peripheral-vision visual layers.
+                 -- v2.7.0: edgeGlow flipped from default-on to default-off.
+                 -- User feedback: the full-screen pulsing band was more
+                 -- distraction than information. Nameplate highlight stays
+                 -- default-on — it's anchored to the actual kill target
+                 -- and conveys role/target identity, not just mode colour.
+                 edgeGlow = false, nameplate = true },
     strategy = {
         aggression = "balanced",
         preferHealerOpen = true,
