@@ -329,6 +329,24 @@ H.it(g, "arena quality: 2v2 Hunter/Warrior pre-gates opens hunter instead of fak
     H.assertEq(rec.primaryTargetClass, "HUNTER", "hunter is the planned opener target")
 end)
 
+H.it(g, "arena quality: 2v2 shatter kills the low mage over generic priest bias", function()
+    local state = SE:BuildTestState({ "MAGE", "PRIEST" })
+    state.combatPhase = "ACTIVE"
+    state.bracket = 2
+    state.pvpContext = "arena"
+
+    for _, enemy in pairs(state.enemies) do
+        if enemy.class == "MAGE" then
+            enemy.healthPct = 25
+        end
+    end
+
+    local rec = SE:Evaluate(state)
+
+    H.assertEq(rec.mode, "KILL")
+    H.assertEq(rec.primaryTargetClass, "MAGE", "low mage should be the kill window")
+end)
+
 H.it(g, "aggression setting changes swap threshold", function()
     local state = SE:BuildTestState({"PRIEST","MAGE"})
     state.combatPhase = "ACTIVE"

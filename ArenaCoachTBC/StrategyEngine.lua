@@ -78,7 +78,7 @@ SE.BG_FLAG_AURAS = { [23333] = true, [23335] = true }
 -- 3v3: swap targets matter; healer slightly less unique.
 -- 5v5: defaults are tuned for 5v5 cleave; no overrides needed.
 SE.bracketWeights = {
-    [2] = { role_healer = 40, role_cloth_dps = 18 },
+    [2] = { role_healer = 40, role_cloth_dps = 18, health_below_50 = 40 },
     [3] = { role_healer = 30 },
     [5] = {},
 }
