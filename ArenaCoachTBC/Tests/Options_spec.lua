@@ -60,6 +60,41 @@ H.it(g, "Checkbox onclick handlers persist to DB", function()
     H.assertTrue(_G.ArenaCoachTBCDB.enabled)
 end)
 
+H.it(g, "Enabled checkbox hides visual layers when switched off", function()
+    local stopped, hidden, glowHidden, nameplatesCleared, evaluated = false, false, false, false, false
+    local oldSimulator = H.ns.Simulator
+    local oldUI = H.ns.UI
+    local oldScreenEdgeGlow = H.ns.ScreenEdgeGlow
+    local oldNameplate = H.ns.Nameplate
+    local oldCore = H.ns.Core
+    H.ns.Simulator = { Stop = function() stopped = true end }
+    H.ns.UI = { Hide = function() hidden = true end }
+    H.ns.ScreenEdgeGlow = { Hide = function() glowHidden = true end }
+    H.ns.Nameplate = { ClearAll = function() nameplatesCleared = true end }
+    H.ns.Core = { Evaluate = function() evaluated = true end }
+    OPT:BuildPanel()
+    local cb = _G.ACCEnabledCheck
+    H.assertNotNil(cb)
+
+    cb._checked = false
+    cb._scripts.OnClick(cb)
+    H.assertFalse(_G.ArenaCoachTBCDB.enabled)
+    H.assertTrue(stopped, "turning off from options should stop simulations")
+    H.assertTrue(hidden, "turning off from options should hide the HUD")
+    H.assertTrue(glowHidden, "turning off from options should hide edge cues")
+    H.assertTrue(nameplatesCleared, "turning off from options should clear nameplates")
+
+    cb._checked = true
+    cb._scripts.OnClick(cb)
+    H.assertTrue(_G.ArenaCoachTBCDB.enabled)
+    H.assertTrue(evaluated, "turning on from options should run one evaluation")
+    H.ns.Simulator = oldSimulator
+    H.ns.UI = oldUI
+    H.ns.ScreenEdgeGlow = oldScreenEdgeGlow
+    H.ns.Nameplate = oldNameplate
+    H.ns.Core = oldCore
+end)
+
 H.it(g, "All checkbox OnClicks fire without error", function()
     OPT:BuildPanel()
     for _, name in ipairs({"ACCEnabledCheck","ACCLockCheck","ACCSoundCheck","ACCDebugCheck","ACCPartyChatCheck"}) do

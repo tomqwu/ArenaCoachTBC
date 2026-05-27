@@ -16,6 +16,8 @@ behaviour is what tests can't see.
 - [ ] `/acc toggle` hides and shows the frame
 - [ ] `/acc lock` / `/acc unlock` toggles drag-lock; frame can be repositioned and resized from the lower-right grip when unlocked
 - [ ] `/acc off` (alias `/acc disable`) hides the frame + thin edge cue + nameplate paint and short-circuits the engine; persists across `/reload`
+- [ ] While `/acc off` is active, `/acc toggle` and any remaining `/acc test` timer beat do not reopen the HUD
+- [ ] Turning off the AddOns options-panel "Enabled" checkbox hides the same visual layers as `/acc off`
 - [ ] `/acc on` (alias `/acc enable`) re-enables; the frame returns once you enter a PvP context
 - [ ] `/acc glow on|off` toggles the optional thin edge cue independently of the master switch
 - [ ] `/acc nameplate on|off` toggles nameplate highlighting (KILL = red border, SWAP = orange) independently

@@ -1030,6 +1030,7 @@ local function handleSlash(input)
         -- short-circuits Evaluate() at the top, and hides the frame +
         -- glow + nameplate paint immediately. Persists across /reload.
         db.enabled = false
+        if ns.Simulator and ns.Simulator.Stop then ns.Simulator:Stop() end
         if ns.UI and ns.UI.Hide then ns.UI:Hide() end
         if ns.ScreenEdgeGlow then ns.ScreenEdgeGlow:Hide() end
         if ns.Nameplate then ns.Nameplate:ClearAll() end

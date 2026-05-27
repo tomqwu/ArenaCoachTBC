@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.21] - 2026-05-27
+
+### Fixed
+- **Master off now wins over every HUD path.** `/acc off` keeps newly-created frames hidden, prevents `UI:Show` / `/acc toggle` from reopening the HUD, and blocks forced test/simulator recommendations from painting the GUI while disabled.
+- **Manual simulations stop on disable.** `/acc off` now cancels active simulator callbacks so a running `/acc test` or `/acc simulate` cannot keep feeding stale visual beats after the user turns the addon off.
+- **Options-panel disable matches slash disable.** Turning off the Enabled checkbox now hides the HUD, edge cue, and nameplate paint immediately instead of only flipping the SavedVariables flag.
+
 ## [2.8.20] - 2026-05-27
 
 ### Changed

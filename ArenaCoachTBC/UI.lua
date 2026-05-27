@@ -14,7 +14,7 @@ ns.UI = ns.UI or {}
 local UI = ns.UI
 UI.frame = nil
 
-local ADDON_VERSION = "2.8.20"
+local ADDON_VERSION = "2.8.21"
 local STALE_FADE_START = 2.5
 local STALE_FADE_SECONDS = 1.5
 local COMPACT_WIDTH = 460
@@ -221,6 +221,10 @@ end
 
 local function waitingAssignmentText()
     return moduleHeader("UI_ACTIONS_HEADER") .. "\n" .. waitingValue()
+end
+
+local function addonEnabled()
+    return not (ArenaCoachTBCDB and ArenaCoachTBCDB.enabled == false)
 end
 
 local function layoutScaffoldActive(recommendation)
@@ -600,6 +604,7 @@ function UI:CreateFrame()
     self:CreateUnitStripFrame()
     self:CreateCueRailFrame()
     self:CreateAssignmentsFrame()
+    if not addonEnabled() then self:Hide() end
     return f
 end
 
@@ -1039,6 +1044,10 @@ function calloutText(key, recommendation)
 end
 
 function UI:Show()
+    if not addonEnabled() then
+        self:Hide()
+        return
+    end
     if self.frame then self.frame:Show() end
     if self.unitFrame and self.unitFrame._hasUnits then self.unitFrame:Show() end
     if self.railFrame and self.railFrame._hasCues then self.railFrame:Show() end
@@ -1052,6 +1061,10 @@ function UI:Hide()
 end
 function UI:Toggle()
     if not self.frame then return end
+    if not addonEnabled() then
+        self:Hide()
+        return
+    end
     if self.frame:IsShown() then
         self:Hide()
     else
@@ -1061,6 +1074,12 @@ end
 
 function UI:Apply(recommendation)
     local f = self.frame; if not f or not recommendation then return end
+    if not addonEnabled() then
+        self:Hide()
+        if ns.ScreenEdgeGlow then ns.ScreenEdgeGlow:Hide() end
+        if ns.Nameplate then ns.Nameplate:ClearAll() end
+        return
+    end
 
     -- v2.2.5: hide the frame + visual layers when explicitly idle
     -- (in cities / quest hubs the engine was painting a stale rec and

@@ -37,6 +37,14 @@ function OPT:BuildPanel()
     enabled:SetScript("OnClick", function(self)
         if ArenaCoachTBCDB then
             ArenaCoachTBCDB.enabled = self:GetChecked() and true or false
+            if ArenaCoachTBCDB.enabled then
+                if ns.Core and ns.Core.Evaluate then ns.Core:Evaluate() end
+            else
+                if ns.Simulator and ns.Simulator.Stop then ns.Simulator:Stop() end
+                if ns.UI and ns.UI.Hide then ns.UI:Hide() end
+                if ns.ScreenEdgeGlow then ns.ScreenEdgeGlow:Hide() end
+                if ns.Nameplate then ns.Nameplate:ClearAll() end
+            end
         end
     end)
 

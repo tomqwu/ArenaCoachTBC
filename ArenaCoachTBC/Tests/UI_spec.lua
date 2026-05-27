@@ -116,6 +116,32 @@ H.it(g, "CreateFrame restores and saves resized prototype-A board dimensions", f
     H.assertTrue(f.centerPanel._width > 210, "layout should recompute after resize")
 end)
 
+H.it(g, "master off keeps the HUD hidden even when a frame or forced beat exists", function()
+    _G.ArenaCoachTBCDB = {
+        enabled = false, locked = false, language = "auto",
+        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0 },
+        alerts = { sound = false, screenFlash = false, edgeGlow = false, nameplate = false },
+        strategy = {}, debug = false,
+    }
+    UI.frame = nil
+    UI.assignFrame = nil
+    UI.unitFrame = nil
+    UI.railFrame = nil
+    local f = UI:CreateFrame()
+    H.assertFalse(f:IsShown(), "disabled addon should not leave a freshly-created HUD visible")
+
+    UI:Show()
+    H.assertFalse(f:IsShown(), "UI:Show should respect the master off switch")
+
+    f:Show()
+    UI:Apply({ mode = "KILL", primaryTargetName = "Holyman", _forceShow = true })
+    H.assertFalse(f:IsShown(), "forced test/simulator beats should not override /acc off")
+
+    UI:Toggle()
+    H.assertFalse(f:IsShown(), "UI:Toggle should not reopen the HUD while disabled")
+    _G.ArenaCoachTBCDB.enabled = true
+end)
+
 H.it(g, "CreateFrame shows addon version in the HUD", function()
     local savedAPI = _G.ArenaCoachTBC
     UI.frame = nil
