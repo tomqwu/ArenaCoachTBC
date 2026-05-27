@@ -25,6 +25,7 @@ H.load("Core.lua")
 local SIM  = H.ns.Simulator
 local Core = H.ns.Core
 local S    = H.ns.Spells
+local UI   = H.ns.UI
 
 -- Make Run() use the synchronous path (no C_Timer required) by removing
 -- any C_Timer global the harness might have leaked.
@@ -171,9 +172,9 @@ end
 H.it(g, "real-arena scenario exercises opener, defensive, kill, and reset modes", function()
     resetState()
     local modes = {}
-    local origEvaluate = Core.Evaluate
-    Core.Evaluate = function(self)
-        local rec = origEvaluate(self)
+    local origEvaluate = SIM._evaluate
+    SIM._evaluate = function(self, ...)
+        local rec = origEvaluate(self, ...)
         if rec and rec.mode then table.insert(modes, rec.mode) end
         return rec
     end
@@ -181,7 +182,7 @@ H.it(g, "real-arena scenario exercises opener, defensive, kill, and reset modes"
         local ran, runErr = SIM:Run("real-arena", { printEvents = false })
         H.assertTrue(ran, "Run failed: " .. tostring(runErr))
     end)
-    Core.Evaluate = origEvaluate
+    SIM._evaluate = origEvaluate
     if not ok then error(err) end
 
     local seen = {}
@@ -192,6 +193,22 @@ H.it(g, "real-arena scenario exercises opener, defensive, kill, and reset modes"
     H.assertTrue(seen.RESET, "real arena sim should end with RESET")
     H.assertEq(Core.state.pvpContext, "arena")
     H.assertEq(Core.state.bracket, 3)
+end)
+
+H.it(g, "timed simulator callbacks repaint the HUD from engine recommendations", function()
+    resetState()
+    UI.frame = nil
+    local pending = {}
+    _G.C_Timer = { After = function(_, fn) table.insert(pending, fn) end }
+    local ran, err = SIM:Run("real-arena", { printEvents = false })
+    H.assertTrue(ran, "Run failed: " .. tostring(err))
+    H.assertNotNil(UI.frame)
+    H.assertTrue((UI.frame.bigText._text or ""):find("Holyman", 1, true) ~= nil,
+        "initial timed simulation state should paint the opener target")
+    for _, fn in ipairs(pending) do fn() end
+    H.assertTrue((UI.frame.bigText._text or "") ~= (Core.L("REASON_DEFAULT") or "Awaiting opener..."),
+        "scheduled callbacks should not leave the HUD stuck on the waiting text")
+    _G.C_Timer = nil
 end)
 
 H.it(g, "real-arena scenario schedules over a readable fight window", function()

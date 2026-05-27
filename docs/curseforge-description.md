@@ -155,6 +155,7 @@ The repository includes `docs/weakaura-pack.md` with trigger snippets for hand-b
 Useful commands are built in:
 
 - `/acc selftest verbose` validates the addon in-game
+- `/acc test` runs a timed arena replay and repaints the HUD from engine recommendations on every beat
 - `/acc trace dump` shows recent decisions and why they happened
 - `/acc record on` records local combat-log events for offline replay
 - `/acc whatif skip <i>` replays a local recording with one event skipped

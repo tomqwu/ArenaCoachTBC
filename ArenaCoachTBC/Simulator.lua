@@ -2,8 +2,8 @@
 --
 -- Drives the engine over time with a canned event script. Lets you validate
 -- the live UI without queueing an arena: `/acc simulate rmp` sets up the
--- enemy team, schedules each event via C_Timer.After, and the existing
--- Core:Evaluate() pipeline animates the UI second-by-second.
+-- enemy team, schedules each event via C_Timer.After, and an engine-backed
+-- simulator tick animates the UI second-by-second.
 --
 -- Pure data + a small dispatch loop. No protected actions.
 
@@ -253,6 +253,55 @@ local function maxEventTime(scenario)
     return maxT
 end
 
+function SIM:_evaluate(label)
+    local Core = ns.Core
+    local state = Core and Core.state
+    if not (Core and state and ns.StrategyEngine and ns.StrategyEngine.Evaluate) then
+        chatPrint("simulation evaluation skipped: engine is not loaded")
+        return nil
+    end
+
+    state.config = _G.ArenaCoachTBCDB or state.config or {}
+    state.pvpContext = state.pvpContext or "arena"
+    state.simulatorActive = true
+    if Core.CurrentAggression then
+        state.aggression = Core:CurrentAggression(state)
+    end
+    if ns.OpponentProfile and _G.ArenaCoachTBCDB and state.enemies then
+        local sig = ns.OpponentProfile:Signature(state.enemies)
+        if sig then
+            state.opponentSignature = sig
+            state.opponentProfile = ns.OpponentProfile:Get(sig, _G.ArenaCoachTBCDB)
+        end
+    end
+
+    local ok, rec = pcall(ns.StrategyEngine.Evaluate, ns.StrategyEngine, state)
+    if not ok then
+        chatPrint("simulation evaluation failed"
+            .. (label and (" after " .. tostring(label)) or "")
+            .. ": " .. tostring(rec))
+        return nil
+    end
+    if not rec then return nil end
+
+    -- Simulator runs outside a real arena instance, so force the HUD path
+    -- visible while keeping the recommendation itself engine-generated.
+    rec._forceShow = true
+    state.lastPrimaryGUID = rec.primaryTarget
+
+    if ns.UI then
+        if ns.UI.CreateFrame and not ns.UI.frame then ns.UI:CreateFrame() end
+        if ns.UI.Apply then
+            local uiOK, uiErr = pcall(ns.UI.Apply, ns.UI, rec)
+            if not uiOK then chatPrint("simulation HUD failed: " .. tostring(uiErr)) end
+        end
+    end
+    if ns.WeakAuraBridge and ns.WeakAuraBridge.Publish then
+        pcall(ns.WeakAuraBridge.Publish, ns.WeakAuraBridge, rec, state)
+    end
+    return rec
+end
+
 -- Internal: schedule the events on a real timer when available, otherwise
 -- apply them synchronously. Returns the table of "fired" events for tests.
 function SIM:_dispatch(scenario, opts)
@@ -270,7 +319,7 @@ function SIM:_dispatch(scenario, opts)
                 ev.t or 0,
                 ev.label or (ev.type .. " " .. tostring(ev.spell or ev.unit or ""))))
         end
-        if not ev.noEvaluate and ns.Core and ns.Core.Evaluate then ns.Core:Evaluate() end
+        if not ev.noEvaluate then self:_evaluate(ev.label or ev.type) end
     end
 
     local haveTimer = (type(_G.C_Timer) == "table" and type(_G.C_Timer.After) == "function")
@@ -294,7 +343,7 @@ function SIM:Run(key, opts)
     self:Stop()  -- cancel any prior simulation
     setupEnemies(scenario)
     setupFriendlies(scenario)
-    if ns.Core and ns.Core.Evaluate then ns.Core:Evaluate() end  -- show initial state
+    self:_evaluate("initial state")  -- show initial state
 
     opts.printEvents = opts.printEvents ~= false
     if opts.printEvents then

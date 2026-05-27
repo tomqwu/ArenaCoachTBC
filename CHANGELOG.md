@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.18] - 2026-05-27
+
+### Fixed
+- **Timed `/acc test` now repaints the HUD on every scheduled beat.** The simulator now drives a simulator-owned engine tick that calls `StrategyEngine:Evaluate`, force-shows the HUD for out-of-arena tests, publishes the WeakAura payload, and reports any simulation/HUD error to chat. This prevents the live `C_Timer.After` replay from printing scenario lines while the board remains stuck on waiting placeholders.
+
 ## [2.8.17] - 2026-05-27
 
 ### Fixed
