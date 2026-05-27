@@ -6,7 +6,7 @@ Obsidian Signal is ArenaCoachTBC's compact tactical HUD language. It exists to m
 
 - **Signal over decoration.** Every line, marker, and colour must help locate, rank, or read tactical information.
 - **Compact command deck.** The HUD stays small enough for arena frames, cast bars, nameplates, action bars, WeakAuras, chat, and damage meters to remain usable.
-- **Obsidian field.** Surfaces are warm almost-black with enough transparency to preserve world visibility.
+- **Obsidian field.** Surfaces are warm almost-black reading plates; preserve the world, but never let it overpower the text.
 - **Brass structure.** Borders, dividers, rulers, reticles, and labels use muted brass so the board reads as one deliberate instrument.
 - **Cyan intelligence.** Cyan marks tactical data, secondary roles, and cool-state information.
 - **Crimson consequence.** Crimson is reserved for committed kill signal or real urgency; it should never become wallpaper.
@@ -26,6 +26,8 @@ Obsidian Signal is ArenaCoachTBC's compact tactical HUD language. It exists to m
 
 - The HUD must remain readable on light and dark map backgrounds.
 - The board must be visible enough to drag, but not dark enough to hide the playfield.
+- Side-rail headers must not wrap in the default compact board.
+- DEFEND and RESET must hide inactive target-health instruments.
 - Text must stay inside its panel at default size and after resizing.
 - 2v2, 3v3, and 5v5 assignment slots must keep stable positions.
 - Stale advice must fade away instead of sitting on screen.

@@ -14,7 +14,7 @@ ns.UI = ns.UI or {}
 local UI = ns.UI
 UI.frame = nil
 
-local ADDON_VERSION = "2.8.26"
+local ADDON_VERSION = "2.8.27"
 local STALE_FADE_START = 2.5
 local STALE_FADE_SECONDS = 1.5
 local COMPACT_WIDTH = 540
@@ -235,7 +235,7 @@ local function layoutAssignmentSlots(frame, slots)
             clearPoints(bg)
             size(bg, cardW, cardH)
             point(bg, "TOPLEFT", panel, "TOPLEFT", x, cardY)
-            colorTexture(bg, OBSIDIAN_WARM_R, OBSIDIAN_WARM_G, OBSIDIAN_WARM_B, 0.24)
+            colorTexture(bg, OBSIDIAN_WARM_R, OBSIDIAN_WARM_G, OBSIDIAN_WARM_B, 0.42)
             if bg.Show then bg:Show() end
             if text then
                 clearPoints(text)
@@ -298,7 +298,7 @@ local function createChildPanel(parent, key, width, height, pointA, relativePoin
     panel:ClearAllPoints()
     panel:SetPoint(pointA, parent, relativePoint or pointA, x or 0, y or 0)
     if panel.EnableMouse then panel:EnableMouse(false) end
-    skinPanel(panel, alpha or 0.32, 0.36)
+    skinPanel(panel, alpha or 0.36, 0.54)
     return panel
 end
 
@@ -600,7 +600,7 @@ function UI:CreateFrame()
 
     -- Backdrop (TBC client uses Backdrop trait built-in for Frame)
     setBackdrop(f, 0.22, 12)
-    skinPanel(f, 0.32, 0.72)
+    skinPanel(f, 0.40, 0.78)
 
     -- Title: small identity marker, not a full header row.
     f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -619,7 +619,7 @@ function UI:CreateFrame()
     f.metaText:SetText("O B S I D I A N  /  S I G N A L  /  L I V E")
     improveTextContrast(f.metaText, 0.85)
 
-    local dragBar = solidTexture(f, "dragBar", "BACKGROUND", OBSIDIAN_WARM_R, OBSIDIAN_WARM_G, OBSIDIAN_WARM_B, 0.40)
+    local dragBar = solidTexture(f, "dragBar", "BACKGROUND", OBSIDIAN_WARM_R, OBSIDIAN_WARM_G, OBSIDIAN_WARM_B, 0.56)
     if dragBar then
         clearPoints(dragBar)
         point(dragBar, "TOPLEFT", f, "TOPLEFT", 2, -2)
@@ -630,13 +630,13 @@ function UI:CreateFrame()
     local m = boardMetrics(f)
 
     local leftPanel = createChildPanel(f, "leftPanel", m.leftW, m.actionH,
-        "TOPLEFT", "TOPLEFT", m.leftX, m.bodyY, 0.16)
+        "TOPLEFT", "TOPLEFT", m.leftX, m.bodyY, 0.34)
     local centerPanel = createChildPanel(f, "centerPanel", m.centerW, m.actionH,
-        "TOPLEFT", "TOPLEFT", m.centerX, m.bodyY, 0.14)
+        "TOPLEFT", "TOPLEFT", m.centerX, m.bodyY, 0.36)
     local rightPanel = createChildPanel(f, "rightPanel", m.rightW, m.actionH,
-        "TOPLEFT", "TOPLEFT", m.rightX, m.bodyY, 0.16)
+        "TOPLEFT", "TOPLEFT", m.rightX, m.bodyY, 0.34)
     local assignPanel = createChildPanel(f, "assignPanel", m.contentW, m.assignH,
-        "TOPLEFT", "TOPLEFT", m.leftX, m.assignY, 0.16)
+        "TOPLEFT", "TOPLEFT", m.leftX, m.assignY, 0.34)
 
     placeLine(f, "leftDivider", 1, m.actionH, m.centerX - math.floor(PANEL_GUTTER / 2), m.bodyY, 0.42)
     placeLine(f, "rightDivider", 1, m.actionH, m.rightX - math.floor(PANEL_GUTTER / 2), m.bodyY, 0.42)
@@ -1245,7 +1245,7 @@ local function formatUnitStrip(recommendation, scaffold)
         if teamLine then table.insert(lines, teamLine) end
     end
     if #lines == 0 then return "" end
-    table.insert(lines, 1, consoleHeader("UI_MODULE_FOCUS", "F O C U S · T A R G E T S", "01"))
+    table.insert(lines, 1, consoleHeader("UI_MODULE_FOCUS", "T A R G E T S", "01"))
     return table.concat(lines, "\n")
 end
 
@@ -1270,7 +1270,7 @@ local function formatCueRail(recommendation, scaffold)
     if #lines == 0 then
         return scaffold and waitingCueText() or ""
     end
-    table.insert(lines, 1, consoleHeader("UI_MODULE_CUES", "T A C T I C A L · B R I E F", "02"))
+    table.insert(lines, 1, consoleHeader("UI_MODULE_CUES", "B R I E F", "02"))
     return table.concat(lines, "\n")
 end
 
@@ -1473,10 +1473,9 @@ function UI:Apply(recommendation)
     -- the primary kill target so a glance at the HUD tells the player
     -- "how close is he to dead".
     --
-    -- v2.6.0: each segment is now colour-coded inline via WoW colour
-    -- escapes so the eye picks out the action-relevant value (high HP
-    -- = green/yellow/red kill prob, BURST READY = gold). Pre-v2.6 the
-    -- whole line was one yellow-ish blob that ran together.
+    -- v2.6.0: each segment is colour-coded inline via WoW colour
+    -- escapes so the eye picks out the action-relevant value. v2.8.26
+    -- retuned this into the Obsidian Signal cyan/brass/crimson palette.
     if f.statsText then
         local parts = {}
         local function tag(hex, body)
@@ -1526,19 +1525,23 @@ function UI:Apply(recommendation)
             else
                 colorTexture(f.healthBarFill, CYAN_R, CYAN_G, CYAN_B, 0.92)
             end
+            if f.healthBarBg and f.healthBarBg.Show then f.healthBarBg:Show() end
             if f.healthBarFill.Show then f.healthBarFill:Show() end
         else
             f._accHealthBarFillWidth = 1
             size(f.healthBarFill, 1, 8)
             if f.healthBarFill.Hide then f.healthBarFill:Hide() end
+            if f.healthBarBg and f.healthBarBg.Hide then f.healthBarBg:Hide() end
         end
     end
     if f.healthLabel then
         local hp = showTarget and pct(recommendation.primaryTargetHp) or nil
         if hp then
             f.healthLabel:SetText(string.format("H E A L T H  ·  P O O L       C U R R E N T  %d%%", hp))
+            if f.healthLabel.Show then f.healthLabel:Show() end
         else
-            f.healthLabel:SetText("H E A L T H  ·  P O O L")
+            f.healthLabel:SetText("")
+            if f.healthLabel.Hide then f.healthLabel:Hide() end
         end
     end
 

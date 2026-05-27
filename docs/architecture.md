@@ -132,9 +132,11 @@ Pre-v2.1.6 this module referenced `Sound/Voice/*.ogg` paths that were never bund
 
 将提示键和模式名映射到 WoW 客户端内置的数字 SoundKit ID。`UI:Apply` 在新顶层提示和模式切换时触发一次性音效（受 `db.alerts.sound` 控制，仅竞技场触发）。v2.1.6 前引用的 `Sound/Voice/*.ogg` 路径并未打包进插件，所以历史版本的音效从未真正发出。
 
-### UI.lua (integrated prototype-A board, v2.8.26)
+### UI.lua (integrated prototype-A board, v2.8.27)
 
 The built-in HUD follows the agreed prototype-A layout as one compact texture-backed board. The board defaults to 540x212, clamps no smaller than 500x196, and keeps the left status stack, center action panel, bottom player-info/assignment strip, and right cue rail together when dragged or resized.
+
+v2.8.27 is a readability correction after in-game screenshots on a busy hub background: the main shell, child panels, drag strip, and assignment cards now use stronger obsidian reading plates; side-rail subtitles are shortened so compact headers do not wrap; and the center target health strip hides in DEFEND/RESET instead of sitting behind defensive advice.
 
 v2.8.26 adopts the **Obsidian Signal** visual language: warmed obsidian fields, burnished brass rules, bone-white primary data, cyan intelligence accents, and crimson reserved for committed/urgent signal. The metadata strip now carries `OBSIDIAN / SIGNAL`, and the shell adds compact surveyor-style corner reticles so the board reads as one machined tactical instrument rather than loose game text.
 
@@ -146,7 +148,7 @@ v2.8.23 reshaped the board toward the original cockpit sketch: the left and righ
 
 v2.8.22 added the text safety rules that still apply: visible detail is capped by the current board height so center copy, cue lines, and assignment lines cannot collide. Resizing the board taller/wider allows the full five-player review layout without overlap. Waiting/pre-gate states render structural placeholders in all zones so the HUD does not collapse back into floating text before live combat data exists. `/acc unlock` drags and resizes the integrated board; `/acc lock` locks it.
 
-内置 HUD 现在按 A 方案做成一个紧凑的贴图背景面板。左侧状态栈、中央行动区、底部分工条、右侧提示轨会一起移动/缩放；默认 540x212，最小 500x196。v2.8.26 采用 Obsidian Signal 视觉语言：暖黑曜石底色、黄铜细线、骨白数据、青色信息强调，以及克制使用的深红信号色；元信息条显示 `OBSIDIAN / SIGNAL`，外框增加测绘式角标，让整体像一个战术仪表。v2.8.25 的底部分工条会按当前动作、存活友方或竞技场人数切成 1/2/3/5 个固定小格，2v2、3v3、5v5 都有稳定位置。v2.8.24 加入顶部信号条、标尺刻度、控制台式分区标题、行背景，以及中央目标血量条，让它更像战术仪表盘而不是普通表格。文字仍会按当前面板高度裁剪，避免互相覆盖；需要完整五人复盘时可把面板拉高/拉宽。`/acc unlock` 拖动并缩放整块面板，`/acc lock` 锁定。
+内置 HUD 现在按 A 方案做成一个紧凑的贴图背景面板。左侧状态栈、中央行动区、底部分工条、右侧提示轨会一起移动/缩放；默认 540x212，最小 500x196。v2.8.27 针对复杂背景提高可读性：主框、子面板、拖动条和分工卡片使用更强的黑曜石阅读底；左右栏标题缩短避免换行；DEFEND/RESET 会隐藏无目标血量条，避免与防御文字重叠。v2.8.26 采用 Obsidian Signal 视觉语言：暖黑曜石底色、黄铜细线、骨白数据、青色信息强调，以及克制使用的深红信号色；元信息条显示 `OBSIDIAN / SIGNAL`，外框增加测绘式角标，让整体像一个战术仪表。v2.8.25 的底部分工条会按当前动作、存活友方或竞技场人数切成 1/2/3/5 个固定小格，2v2、3v3、5v5 都有稳定位置。v2.8.24 加入顶部信号条、标尺刻度、控制台式分区标题、行背景，以及中央目标血量条，让它更像战术仪表盘而不是普通表格。文字仍会按当前面板高度裁剪，避免互相覆盖；需要完整五人复盘时可把面板拉高/拉宽。`/acc unlock` 拖动并缩放整块面板，`/acc lock` 锁定。
 
 ### ScreenEdgeGlow.lua (v2.2.0, softened in v2.8.2)
 

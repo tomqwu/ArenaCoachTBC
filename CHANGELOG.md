@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.27] - 2026-05-27
+
+### Fixed
+- **HUD readability on busy backgrounds.** Strengthened the main shell, child-panel reading plates, drag strip, and assignment cards so text no longer fights dense world geometry.
+- **Side rail headers no longer wrap.** Shortened focus and cue subtitles to fit compact rails without splitting words across lines.
+- **DEFEND/RESET no longer show an inactive health strip.** The center health bar and label now hide whenever the current mode is not target-attached, preventing overlap with defensive advice.
+
 ## [2.8.26] - 2026-05-27
 
 ### Changed

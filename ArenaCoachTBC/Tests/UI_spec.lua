@@ -91,13 +91,17 @@ H.it(g, "CreateFrame builds prototype-A module set", function()
     H.assertNotNil(f.bottomTick1)
     H.assertTrue((f.subText._height or 999) <= f.centerPanel._height,
         "center extra text should be bounded inside the action section")
-    H.assertTrue((f._accBg._color and f._accBg._color[4] or 1) <= 0.35,
-        "main board obsidian field should stay translucent enough to see the fight")
+    H.assertTrue((f._accBg._color and f._accBg._color[4] or 0) >= 0.38,
+        "main board obsidian field should be strong enough for readability")
+    H.assertTrue((f._accBg._color and f._accBg._color[4] or 1) <= 0.45,
+        "main board obsidian field should still preserve some world visibility")
     H.assertTrue((f._accBg._color and f._accBg._color[1] or 0) > 0,
         "main board background should be warm obsidian, not flat black")
+    H.assertTrue((f.leftPanel._accBg._color and f.leftPanel._accBg._color[4] or 0) >= 0.30,
+        "module reading plates should be opaque enough on busy scenes")
     H.assertTrue((f._accTop._color and f._accTop._color[1] or 0) >= 0.70,
         "board rules should use burnished brass")
-    H.assertTrue((f.dragBar._color and f.dragBar._color[4] or 1) <= 0.45,
+    H.assertTrue((f.dragBar._color and f.dragBar._color[4] or 1) <= 0.60,
         "drag strip should identify the handle without darkening the screen")
     H.assertTrue((f.bigText._shadowColor and f.bigText._shadowColor[4] or 0) >= 0.95,
         "main text should carry readability through shadow/outline instead of a dark board")
@@ -273,6 +277,29 @@ H.it(g, "Apply with KILL recommendation sets big text & subtext", function()
     })
 end)
 
+H.it(g, "Apply hides target health instrument when the mode has no enemy target", function()
+    UI:CreateFrame()
+    UI:Apply({
+        mode = "KILL",
+        primaryTargetName = "Holyman",
+        primaryTargetHp = 0.50,
+        callouts = {},
+        priority = "HIGH",
+    })
+    H.assertTrue(UI.frame.healthBarBg:IsShown(), "kill target should show the health bar background")
+    H.assertTrue(UI.frame.healthLabel:IsShown(), "kill target should show the health label")
+
+    UI:Apply({
+        mode = "DEFEND",
+        reasonKey = "REASON_DEFEND_TRAINED",
+        callouts = {},
+        priority = "HIGH",
+    })
+    H.assertFalse(UI.frame.healthBarBg:IsShown(), "DEFEND should hide inactive target health bar background")
+    H.assertFalse(UI.frame.healthLabel:IsShown(), "DEFEND should hide inactive target health label")
+    H.assertEq(UI.frame.healthLabel._text, "")
+end)
+
 H.it(g, "Apply renders DBM-style player action assignments", function()
     UI:CreateFrame()
     UI:Apply({
@@ -319,11 +346,17 @@ H.it(g, "Apply renders left focus strip and right cue rail", function()
     local focus = UI.frame and UI.frame.unitText and UI.frame.unitText._text or ""
     local rail = UI.frame and UI.frame.railText and UI.frame.railText._text or ""
     H.assertTrue(focus:find("Focus", 1, true) ~= nil, "focus strip header missing: " .. focus)
+    H.assertTrue(focus:find("T A R G E T S", 1, true) ~= nil, "short focus subtitle missing: " .. focus)
+    H.assertTrue(focus:find("F O C U S · T A R G E T S", 1, true) == nil,
+        "long focus subtitle should not wrap in the side rail: " .. focus)
     H.assertTrue(focus:find("Holyman", 1, true) ~= nil, "primary target missing: " .. focus)
     H.assertTrue(focus:find("42", 1, true) ~= nil, "primary target hp missing: " .. focus)
     H.assertTrue(focus:find("Frostbiter", 1, true) ~= nil, "secondary target missing: " .. focus)
     H.assertTrue(focus:find("Leaves", 1, true) ~= nil, "lowest friendly missing: " .. focus)
     H.assertTrue(rail:find("Cues", 1, true) ~= nil, "cue rail header missing: " .. rail)
+    H.assertTrue(rail:find("B R I E F", 1, true) ~= nil, "short cue subtitle missing: " .. rail)
+    H.assertTrue(rail:find("T A C T I C A L", 1, true) == nil,
+        "long cue subtitle should not wrap in the side rail: " .. rail)
     H.assertTrue(rail:find("Holyman", 1, true) ~= nil, "cue rail should render target-aware callout: " .. rail)
     H.assertTrue((UI.frame.healthBarFill._width or 0) > 1, "target health bar should fill from primaryTargetHp")
     H.assertTrue((UI.frame.healthBarFill._width or 999) < (UI.frame._accHealthBarWidth or 0),
