@@ -583,6 +583,29 @@ H.it(g, "fresh recommendations restore full opacity after stale fade", function(
     H.ns.Core.state.pvpContext = nil
 end)
 
+H.it(g, "empty live RESET recommendations stay hidden instead of pop-fading", function()
+    H.ns.Core = H.ns.Core or {}
+    H.ns.Core.state = H.ns.Core.state or {}
+    H.ns.Core.state.pvpContext = "world"
+    UI:CreateFrame()
+    UI:Apply({ mode = "RESET", callouts = {}, priority = "LOW" })
+    H.assertFalse(UI.frame:IsShown(), "targetless RESET should not pop the HUD in live world context")
+    H.assertFalse(UI._staleFadeActive, "hidden targetless RESET should not arm stale fade")
+
+    UI:Apply({ mode = "RESET", callouts = {}, priority = "LOW" })
+    H.assertFalse(UI.frame:IsShown(), "repeated targetless RESET should remain quiet")
+
+    UI:Apply({
+        mode = "KILL",
+        primaryTargetName = "Rogue",
+        callouts = {},
+        priority = "HIGH",
+    })
+    H.assertTrue(UI.frame:IsShown(), "real target recommendations should still show after quiet RESET")
+    H.assertEq(UI.frame._accAlpha, 1)
+    H.ns.Core.state.pvpContext = nil
+end)
+
 H.it(g, "pre-gates OPEN plan does not fade just because the room is quiet", function()
     H.ns.Core = H.ns.Core or {}
     H.ns.Core.state = H.ns.Core.state or {}

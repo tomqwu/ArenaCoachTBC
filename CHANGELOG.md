@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.30] - 2026-05-27
+
+### Fixed
+- **Targetless RESET no longer pop/fades the HUD.** Live arena/BG/world contexts now keep the frame hidden when the engine has no actionable target, instead of briefly showing a low-value RESET frame and letting stale fade remove it.
+
 ## [2.8.29] - 2026-05-27
 
 ### Fixed

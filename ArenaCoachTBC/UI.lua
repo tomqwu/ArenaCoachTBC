@@ -14,7 +14,7 @@ ns.UI = ns.UI or {}
 local UI = ns.UI
 UI.frame = nil
 
-local ADDON_VERSION = "2.8.29"
+local ADDON_VERSION = "2.8.30"
 local STALE_FADE_START = 2.5
 local STALE_FADE_SECONDS = 1.5
 local COMPACT_WIDTH = 540
@@ -1357,6 +1357,26 @@ local function detachedModulesEnabled()
        and ArenaCoachTBCDB.frame.detachedModules == true
 end
 
+local function recommendationHasTarget(recommendation)
+    return recommendation
+       and (recommendation.primaryTarget
+            or recommendation.primaryTargetName
+            or recommendation.primaryTargetClass
+            or recommendation.secondaryTarget
+            or recommendation.secondaryTargetName
+            or recommendation.secondaryTargetClass)
+end
+
+local function shouldHideQuietRecommendation(recommendation, ctx, forceShow)
+    if forceShow then return false end
+    if not recommendation then return true end
+    local mode = recommendation.mode or "RESET"
+    if mode == "RESET" and not recommendationHasTarget(recommendation) then
+        return ctx == "arena" or ctx == "bg" or ctx == "world"
+    end
+    return false
+end
+
 function UI:_SetFrameAlpha(alpha)
     local frames = { self.frame, self.unitFrame, self.railFrame, self.assignFrame }
     for i = 1, 4 do
@@ -1477,6 +1497,15 @@ function UI:Apply(recommendation)
         if self.assignFrame then self.assignFrame:Hide() end
         if ns.ScreenEdgeGlow then ns.ScreenEdgeGlow:Hide() end
         if ns.Nameplate then ns.Nameplate:ClearAll() end
+        return
+    end
+    -- v2.8.30: avoid the visible pop/fade loop for empty RESET beats.
+    -- A RESET with no primary/secondary target means "nothing actionable
+    -- is known"; in live PvP contexts the calm answer is to stay hidden
+    -- until a real target/contact arrives, rather than briefly showing a
+    -- low-value frame and letting stale fade take it away.
+    if shouldHideQuietRecommendation(recommendation, ctx, forceShow) then
+        self:_HideStaleFrame()
         return
     end
     if not f:IsShown() then f:Show() end

@@ -74,7 +74,7 @@ The central HUD updates as the fight changes:
 - **BURST READY** only when the burst gates pass
 - **Assignments** showing your own compact action first with a bright YOU marker, then teammate jobs such as Warrior MS, Shaman purge, Paladin HoJ, Priest dispel, or Druid Cyclone
 
-The text fades out if the fight state stops refreshing, so stale instructions do not sit on the screen after the situation has moved on. Before gates open, the integrated prototype-A board stays visible with waiting placeholders so the display reads as a real layout before target/cue/assignment data exists.
+The text fades out if the fight state stops refreshing, so stale instructions do not sit on the screen after the situation has moved on. Empty RESET beats with no target stay hidden instead of repeatedly popping and fading. Before gates open, the integrated prototype-A board stays visible with waiting placeholders so the display reads as a real layout before target/cue/assignment data exists.
 
 ### In Battlegrounds
 
@@ -223,8 +223,8 @@ Both locales are parity-checked in CI. Current locale parity is **154 keys per l
 
 The addon is developed as a pure Lua 5.1 project with headless tests for the strategy engine and WoW API stubs for UI/core behavior. Current local release validation:
 
-- **682 tests passing**
-- **99.65% coverage**
+- **683 tests passing**
+- **99.66% coverage**
 - Locale parity check
 - Lua syntax check
 - GitHub Actions on push and release tags

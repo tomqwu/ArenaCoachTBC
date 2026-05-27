@@ -54,6 +54,7 @@ behaviour is what tests can't see.
 - [ ] Left status stack shows current primary target, swap target, and a pressured friendly when known
 - [ ] Right cue rail shows callout icons/text for burst, purge, HoJ, peel, dispel, or other top cues
 - [ ] If no fresh evaluation arrives for a few seconds, the HUD text fades away and clears stale nameplate/edge cues
+- [ ] Empty `RESET` beats with no primary/swap target stay hidden instead of repeatedly popping and fading
 - [ ] Optional edge cue is thin, static, low-alpha, and dark on RESET; it must not pulse or flash around the screen
 - [ ] DEFEND/URGENT does not create a full-screen red flash; use HUD colour, nameplate, arcade cue, and sound cues instead
 - [ ] Nameplate of the kill target gets a red border; swap target gets orange (when in SWAP mode)
