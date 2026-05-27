@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.15] - 2026-05-27
+
+### Fixed
+- **Prototype-A is now visibly one board.** The HUD no longer depends on detached satellite frames to communicate the design. The main frame itself contains a texture-backed left focus panel, center action panel, right cue panel, and lower assignment panel, so moving the HUD cannot leave the design pieces behind.
+- **Backdrop-independent panels.** The board and panels now use explicit texture backgrounds/borders instead of relying only on `SetBackdrop`, making the layout visible on clients where the old backdrop path renders as plain floating text.
+
 ## [2.8.14] - 2026-05-27
 
 ### Fixed

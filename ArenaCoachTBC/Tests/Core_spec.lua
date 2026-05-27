@@ -76,7 +76,7 @@ H.it(g, "InitDB migrates only untouched prototype-A side positions", function()
     local db = Core:InitDB()
     H.assertEq(db.unitFrame.x, -230)
     H.assertEq(db.railFrame.x, 230)
-    H.assertEq(db.layoutVersion, 2814)
+    H.assertEq(db.layoutVersion, 2815)
 
     _G.ArenaCoachTBCDB = {
         unitFrame = { point = "CENTER", x = -180, y = 96, scale = 1.0 },

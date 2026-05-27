@@ -14,11 +14,11 @@ ns.UI = ns.UI or {}
 local UI = ns.UI
 UI.frame = nil
 
-local ADDON_VERSION = "2.8.14"
+local ADDON_VERSION = "2.8.15"
 local STALE_FADE_START = 2.5
 local STALE_FADE_SECONDS = 1.5
-local COMPACT_WIDTH = 300
-local COMPACT_HEIGHT = 118
+local COMPACT_WIDTH = 460
+local COMPACT_HEIGHT = 168
 local UNIT_WIDTH = 150
 local UNIT_HEIGHT = 96
 local RAIL_WIDTH = 150
@@ -66,6 +66,82 @@ local function setBackdrop(frame, alpha, edgeSize)
         insets = { left = 3, right = 3, top = 3, bottom = 3 },
     })
     frame:SetBackdropColor(0, 0, 0, alpha or 0.30)
+end
+
+local function colorTexture(tex, r, g, b, a)
+    if not tex then return end
+    local ok = false
+    if tex.SetColorTexture then
+        ok = pcall(tex.SetColorTexture, tex, r, g, b, a)
+    end
+    if not ok and tex.SetTexture then
+        pcall(tex.SetTexture, tex, r, g, b, a)
+    end
+end
+
+local function clearPoints(region)
+    if region and region.ClearAllPoints then pcall(region.ClearAllPoints, region) end
+end
+
+local function point(region, ...)
+    if region and region.SetPoint then pcall(region.SetPoint, region, ...) end
+end
+
+local function size(region, w, h)
+    if not region then return end
+    if region.SetSize then
+        pcall(region.SetSize, region, w, h)
+    else
+        if region.SetWidth then pcall(region.SetWidth, region, w) end
+        if region.SetHeight then pcall(region.SetHeight, region, h) end
+    end
+end
+
+local function skinPanel(frame, alpha, borderAlpha)
+    if not (frame and frame.CreateTexture) then return end
+    frame._accBg = frame._accBg or frame:CreateTexture(nil, "BACKGROUND")
+    clearPoints(frame._accBg)
+    if frame._accBg.SetAllPoints then
+        pcall(frame._accBg.SetAllPoints, frame._accBg, frame)
+    else
+        point(frame._accBg, "TOPLEFT", frame, "TOPLEFT", 0, 0)
+        point(frame._accBg, "BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
+    end
+    colorTexture(frame._accBg, 0, 0, 0, alpha or 0.44)
+
+    local border = borderAlpha or 0.50
+    local bars = {
+        { "_accTop", "TOPLEFT", "TOPRIGHT", 0, -1, 0, -1, true },
+        { "_accBottom", "BOTTOMLEFT", "BOTTOMRIGHT", 0, 1, 0, 1, true },
+        { "_accLeft", "TOPLEFT", "BOTTOMLEFT", 1, 0, 1, 0, false },
+        { "_accRight", "TOPRIGHT", "BOTTOMRIGHT", -1, 0, -1, 0, false },
+    }
+    for i = 1, #bars do
+        local b = bars[i]
+        local tex = frame[b[1]] or frame:CreateTexture(nil, "BORDER")
+        frame[b[1]] = tex
+        clearPoints(tex)
+        point(tex, b[2], frame, b[2], b[4], b[5])
+        point(tex, b[3], frame, b[3], b[6], b[7])
+        if b[8] then
+            if tex.SetHeight then pcall(tex.SetHeight, tex, 1) end
+        else
+            if tex.SetWidth then pcall(tex.SetWidth, tex, 1) end
+        end
+        colorTexture(tex, 0.78, 0.62, 0.34, border)
+    end
+end
+
+local function createChildPanel(parent, key, width, height, pointA, relativePoint, x, y, alpha)
+    if not (parent and type(CreateFrame) == "function") then return nil end
+    local panel = parent[key] or CreateFrame("Frame", nil, parent)
+    parent[key] = panel
+    panel:SetSize(width, height)
+    panel:ClearAllPoints()
+    panel:SetPoint(pointA, parent, relativePoint or pointA, x or 0, y or 0)
+    if panel.EnableMouse then panel:EnableMouse(false) end
+    skinPanel(panel, alpha or 0.32, 0.36)
+    return panel
 end
 
 local function moduleHeader(key)
@@ -145,10 +221,11 @@ function UI:CreateFrame()
     local fcfg = db.frame or { point = "CENTER", x = 0, y = 120, scale = 1.0 }
 
     local f = CreateFrame("Frame", "ArenaCoachTBCFrame", UIParent)
-    -- v2.8.14: live-combat "prototype A" compact toast. Keep the
-    -- center callout readable without blocking player frames, Gladius,
-    -- action bars, cast bars, Details, or WeakAura clusters. Player
-    -- assignments live in their own movable module below.
+    -- v2.8.15: prototype-A is now a single visible board. Earlier
+    -- releases used separate satellite frames; if the user moved the
+    -- center frame, those satellites could sit elsewhere and the HUD
+    -- still looked like plain floating text. The board keeps the agreed
+    -- left/center/right/bottom structure together.
     f:SetSize(COMPACT_WIDTH, COMPACT_HEIGHT)
     f:SetPoint(fcfg.point or "CENTER", UIParent, fcfg.point or "CENTER",
                fcfg.x or 0, fcfg.y or 120)
@@ -156,9 +233,12 @@ function UI:CreateFrame()
     f:SetMovable(true)
     f:SetClampedToScreen(true)
     f:EnableMouse(true)
+    if f.SetFrameStrata then pcall(f.SetFrameStrata, f, "HIGH") end
+    if f.SetFrameLevel then pcall(f.SetFrameLevel, f, 20) end
 
     -- Backdrop (TBC client uses Backdrop trait built-in for Frame)
     setBackdrop(f, 0.42, 12)
+    skinPanel(f, 0.44, 0.62)
 
     -- Title: small identity marker, not a full header row.
     f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -166,6 +246,10 @@ function UI:CreateFrame()
     f.title:SetJustifyH("LEFT")
     f.title:SetWidth(190)
     f.title:SetText(L("UI_TITLE"))
+
+    local leftPanel = createChildPanel(f, "leftPanel", 126, 74, "TOPLEFT", "TOPLEFT", 8, -30, 0.34)
+    local rightPanel = createChildPanel(f, "rightPanel", 126, 74, "TOPRIGHT", "TOPRIGHT", -8, -30, 0.34)
+    local assignPanel = createChildPanel(f, "assignPanel", COMPACT_WIDTH - 16, 52, "BOTTOMLEFT", "BOTTOMLEFT", 8, 8, 0.34)
 
     -- Small build marker for rapid local-copy/release verification.
     f.versionText = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -178,14 +262,14 @@ function UI:CreateFrame()
     -- v2.8.1: Japanese-arcade-style warning plate. This is just a big,
     -- passive text cue inside the HUD, never a fullscreen flash.
     f.arcadeText = f:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
-    f.arcadeText:SetPoint("TOP", f, "TOP", 0, -22)
+    f.arcadeText:SetPoint("TOP", f, "TOP", 0, -28)
     if f.arcadeText.SetFont then
         local fontPath = (f.arcadeText.GetFont and select(1, f.arcadeText:GetFont()))
             or "Fonts\\FRIZQT__.TTF"
         pcall(f.arcadeText.SetFont, f.arcadeText, fontPath, 18, "THICKOUTLINE")
     end
     f.arcadeText:SetJustifyH("CENTER")
-    f.arcadeText:SetWidth(COMPACT_WIDTH - 20)
+    f.arcadeText:SetWidth(190)
     f.arcadeText:SetText(string.format("!! %s !!", L("UI_ARCADE_READY")))
 
     -- Main recommendation line ("KILL: Warlock"). This remains the
@@ -198,7 +282,7 @@ function UI:CreateFrame()
         pcall(f.bigText.SetFont, f.bigText, fontPath, 22, "OUTLINE")
     end
     f.bigText:SetJustifyH("CENTER")
-    f.bigText:SetWidth(COMPACT_WIDTH - 20)
+    f.bigText:SetWidth(206)
     f.bigText:SetText(L("REASON_DEFAULT"))
 
     -- Target stats row (HP% + kill prob%) under the mode line. Kept
@@ -211,7 +295,7 @@ function UI:CreateFrame()
         pcall(f.statsText.SetFont, f.statsText, fontPath, 12, "OUTLINE")
     end
     f.statsText:SetJustifyH("CENTER")
-    f.statsText:SetWidth(COMPACT_WIDTH - 20)
+    f.statsText:SetWidth(206)
     f.statsText:SetText("")
 
     -- Reason / top callout text. Default mode shows one line; verbose
@@ -220,8 +304,50 @@ function UI:CreateFrame()
     f.subText:SetPoint("TOP", f.statsText, "BOTTOM", 0, -5)
     if f.subText.SetSpacing then pcall(f.subText.SetSpacing, f.subText, 2) end
     f.subText:SetJustifyH("CENTER")
-    f.subText:SetWidth(COMPACT_WIDTH - 20)
+    f.subText:SetWidth(206)
     f.subText:SetText("")
+
+    if leftPanel then
+        f.unitText = leftPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        f.unitText:SetPoint("TOPLEFT", leftPanel, "TOPLEFT", 8, -7)
+        if f.unitText.SetFont then
+            local fontPath = (f.unitText.GetFont and select(1, f.unitText:GetFont()))
+                or "Fonts\\FRIZQT__.TTF"
+            pcall(f.unitText.SetFont, f.unitText, fontPath, 10, "OUTLINE")
+        end
+        if f.unitText.SetSpacing then pcall(f.unitText.SetSpacing, f.unitText, 1) end
+        f.unitText:SetJustifyH("LEFT")
+        f.unitText:SetWidth(110)
+        f.unitText:SetText(waitingUnitText())
+    end
+
+    if rightPanel then
+        f.railText = rightPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        f.railText:SetPoint("TOPLEFT", rightPanel, "TOPLEFT", 8, -7)
+        if f.railText.SetFont then
+            local fontPath = (f.railText.GetFont and select(1, f.railText:GetFont()))
+                or "Fonts\\FRIZQT__.TTF"
+            pcall(f.railText.SetFont, f.railText, fontPath, 10, "OUTLINE")
+        end
+        if f.railText.SetSpacing then pcall(f.railText.SetSpacing, f.railText, 1) end
+        f.railText:SetJustifyH("LEFT")
+        f.railText:SetWidth(110)
+        f.railText:SetText(waitingCueText())
+    end
+
+    if assignPanel then
+        f.assignText = assignPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        f.assignText:SetPoint("TOPLEFT", assignPanel, "TOPLEFT", 10, -7)
+        if f.assignText.SetFont then
+            local fontPath = (f.assignText.GetFont and select(1, f.assignText:GetFont()))
+                or "Fonts\\FRIZQT__.TTF"
+            pcall(f.assignText.SetFont, f.assignText, fontPath, 10, "OUTLINE")
+        end
+        if f.assignText.SetSpacing then pcall(f.assignText.SetSpacing, f.assignText, 1) end
+        f.assignText:SetJustifyH("LEFT")
+        f.assignText:SetWidth(COMPACT_WIDTH - 36)
+        f.assignText:SetText(waitingAssignmentText())
+    end
 
     installDrag(f, "frame")
     f:SetScript("OnUpdate", function(_, dt)
@@ -249,7 +375,9 @@ function UI:CreateUnitStripFrame()
     uf:SetMovable(true)
     uf:SetClampedToScreen(true)
     uf:EnableMouse(true)
+    if uf.SetFrameStrata then pcall(uf.SetFrameStrata, uf, "HIGH") end
     setBackdrop(uf, 0.34, 10)
+    skinPanel(uf, 0.34, 0.42)
 
     uf.text = uf:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     uf.text:SetPoint("TOPLEFT", uf, "TOPLEFT", 8, -8)
@@ -264,7 +392,8 @@ function UI:CreateUnitStripFrame()
     uf.text:SetText(waitingUnitText())
 
     installDrag(uf, "unitFrame")
-    uf._hasUnits = true
+    uf._hasUnits = false
+    uf:Hide()
     self.unitFrame = uf
     return uf
 end
@@ -283,7 +412,9 @@ function UI:CreateCueRailFrame()
     rf:SetMovable(true)
     rf:SetClampedToScreen(true)
     rf:EnableMouse(true)
+    if rf.SetFrameStrata then pcall(rf.SetFrameStrata, rf, "HIGH") end
     setBackdrop(rf, 0.34, 10)
+    skinPanel(rf, 0.34, 0.42)
 
     rf.text = rf:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     rf.text:SetPoint("TOPLEFT", rf, "TOPLEFT", 8, -8)
@@ -298,7 +429,8 @@ function UI:CreateCueRailFrame()
     rf.text:SetText(waitingCueText())
 
     installDrag(rf, "railFrame")
-    rf._hasCues = true
+    rf._hasCues = false
+    rf:Hide()
     self.railFrame = rf
     return rf
 end
@@ -317,8 +449,10 @@ function UI:CreateAssignmentsFrame()
     af:SetMovable(true)
     af:SetClampedToScreen(true)
     af:EnableMouse(true)
+    if af.SetFrameStrata then pcall(af.SetFrameStrata, af, "HIGH") end
 
     setBackdrop(af, 0.30, 10)
+    skinPanel(af, 0.30, 0.42)
 
     af.actionText = af:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     af.actionText:SetPoint("TOPLEFT", af, "TOPLEFT", 10, -8)
@@ -333,7 +467,8 @@ function UI:CreateAssignmentsFrame()
     af.actionText:SetText(waitingAssignmentText())
 
     installDrag(af, "assignmentFrame")
-    af._hasAssignments = true
+    af._hasAssignments = false
+    af:Hide()
     self.assignFrame = af
     return af
 end
@@ -582,6 +717,15 @@ local function setModuleText(frame, fieldName, text, shownFlag)
     else
         frame:Hide()
     end
+end
+
+local function setFontStringText(fs, text)
+    if fs then fs:SetText(text or "") end
+end
+
+local function detachedModulesEnabled()
+    return ArenaCoachTBCDB and ArenaCoachTBCDB.frame
+       and ArenaCoachTBCDB.frame.detachedModules == true
 end
 
 function UI:_SetFrameAlpha(alpha)
@@ -876,9 +1020,22 @@ function UI:Apply(recommendation)
     end
     f.subText:SetText(table.concat(subParts, "\n"))
     local scaffold = layoutScaffoldActive(recommendation)
-    setModuleText(self.unitFrame, "text", formatUnitStrip(recommendation, scaffold), "_hasUnits")
-    setModuleText(self.railFrame, "text", formatCueRail(recommendation, scaffold), "_hasCues")
-    setModuleText(self.assignFrame, "actionText", formatPlayerActions(recommendation.playerActions, scaffold), "_hasAssignments")
+    local integratedUnitText = formatUnitStrip(recommendation, true)
+    local integratedRailText = formatCueRail(recommendation, true)
+    local integratedAssignText = formatPlayerActions(recommendation.playerActions, true)
+    setFontStringText(f.unitText, integratedUnitText)
+    setFontStringText(f.railText, integratedRailText)
+    setFontStringText(f.assignText, integratedAssignText)
+
+    if detachedModulesEnabled() then
+        setModuleText(self.unitFrame, "text", formatUnitStrip(recommendation, scaffold), "_hasUnits")
+        setModuleText(self.railFrame, "text", formatCueRail(recommendation, scaffold), "_hasCues")
+        setModuleText(self.assignFrame, "actionText", formatPlayerActions(recommendation.playerActions, scaffold), "_hasAssignments")
+    else
+        setModuleText(self.unitFrame, "text", "", "_hasUnits")
+        setModuleText(self.railFrame, "text", "", "_hasCues")
+        setModuleText(self.assignFrame, "actionText", "", "_hasAssignments")
+    end
 
     -- v2.0.2 / v2.1: PvP-context gate. The aggressive alerts (screen
     -- flash, voice cue) should only fire in actual arena. Outside

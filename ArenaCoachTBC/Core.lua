@@ -32,13 +32,12 @@ local DEFAULTS = {
     -- saturated primaries. Toggle via /acc highcontrast on|off.
     frame    = { point = "CENTER", x = 0, y = 120, scale = 1.0,
                  verbose = false, highContrast = false },
-    -- v2.8.14: prototype-A modules default close enough to fit a
-    -- 640-wide arena capture: left focus, center action, right cue rail,
-    -- lower assignments.
+    -- v2.8.15: prototype-A is integrated into the main board; the old
+    -- satellite-frame defaults are kept for optional/manual detached use.
     assignmentFrame = { point = "CENTER", x = 0, y = 16, scale = 1.0 },
     unitFrame = { point = "CENTER", x = -230, y = 120, scale = 1.0 },
     railFrame = { point = "CENTER", x = 230, y = 120, scale = 1.0 },
-    layoutVersion = 2814,
+    layoutVersion = 2815,
     alerts   = { sound = true, raidWarning = false, partyChat = false, screenFlash = false,
                  -- v2.2.0: peripheral-vision visual layers.
                  -- v2.7.0: edgeGlow flipped from default-on to default-off.
@@ -137,7 +136,7 @@ end
 local function migrateLayoutDefaults(db, previousVersion)
     if not db then return end
     local current = tonumber(previousVersion ~= nil and previousVersion or 0) or 0
-    if current >= 2814 then return end
+    if current >= 2815 then return end
 
     local function moveOldDefault(key, oldX, oldY, newX, newY)
         local cfg = db[key]
@@ -155,7 +154,7 @@ local function migrateLayoutDefaults(db, previousVersion)
     -- player already dragged a module, preserve their position.
     moveOldDefault("unitFrame", -258, 120, -230, 120)
     moveOldDefault("railFrame", 258, 120, 230, 120)
-    db.layoutVersion = 2814
+    db.layoutVersion = 2815
 end
 
 function Core:InitDB()

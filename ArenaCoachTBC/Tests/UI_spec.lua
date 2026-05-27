@@ -31,23 +31,31 @@ H.it(g, "CreateFrame builds prototype-A module set", function()
     H.assertNotNil(UI.assignFrame)
     H.assertNotNil(f.arcadeText)
     H.assertNotNil(f.versionText)
+    H.assertNotNil(f.leftPanel)
+    H.assertNotNil(f.rightPanel)
+    H.assertNotNil(f.assignPanel)
+    H.assertNotNil(f.unitText)
+    H.assertNotNil(f.railText)
+    H.assertNotNil(f.assignText)
     H.assertNotNil(UI.unitFrame.text)
     H.assertNotNil(UI.railFrame.text)
     H.assertNotNil(UI.assignFrame.actionText)
-    H.assertTrue((f._width or 999) <= 330, "main HUD width should stay compact")
-    H.assertTrue((f._height or 999) <= 130, "main HUD height should stay compact")
+    H.assertTrue((f._width or 999) <= 480, "main board width should stay compact")
+    H.assertTrue((f._height or 999) <= 180, "main board height should stay compact")
     H.assertTrue((UI.unitFrame._width or 999) <= 190, "left focus strip should stay compact")
     H.assertTrue((UI.railFrame._width or 999) <= 190, "right cue rail should stay compact")
     H.assertTrue((UI.assignFrame._height or 999) <= 90, "assignment module should stay compact")
     H.assertTrue((f.arcadeText._fontSize or 999) <= 20, "arcade cue should not be raid-warning sized")
     H.assertTrue((f.bigText._fontSize or 999) <= 24, "main action text should fit a compact toast")
-    H.assertTrue(UI.unitFrame:IsShown(), "left focus strip should be visible in the waiting scaffold")
-    H.assertTrue(UI.railFrame:IsShown(), "right cue rail should be visible in the waiting scaffold")
-    H.assertTrue(UI.assignFrame:IsShown(), "assignment module should be visible in the waiting scaffold")
-    H.assertTrue((UI.unitFrame.text._text or ""):find("Target", 1, true) ~= nil,
+    H.assertFalse(UI.unitFrame:IsShown(), "detached left focus strip should start dormant")
+    H.assertFalse(UI.railFrame:IsShown(), "detached right cue rail should start dormant")
+    H.assertFalse(UI.assignFrame:IsShown(), "detached assignment module should start dormant")
+    H.assertTrue((f.unitText._text or ""):find("Target", 1, true) ~= nil,
         "waiting focus strip should show structural labels")
-    H.assertTrue((UI.railFrame.text._text or ""):find("Burst", 1, true) ~= nil,
+    H.assertTrue((f.railText._text or ""):find("Burst", 1, true) ~= nil,
         "waiting cue rail should show structural labels")
+    H.assertTrue((f.assignText._text or ""):find("Assignments", 1, true) ~= nil,
+        "waiting assignment panel should show structural labels")
 end)
 
 H.it(g, "CreateFrame shows addon version in the HUD", function()
@@ -101,12 +109,12 @@ H.it(g, "Apply renders DBM-style player action assignments", function()
             { unit = "party1", name = "Shaman", actionKey = "ACTION_SHAMAN_PURGE", targetName = "Holyman" },
         },
     })
-    local txt = UI.assignFrame and UI.assignFrame.actionText and UI.assignFrame.actionText._text or ""
+    local txt = UI.frame and UI.frame.assignText and UI.frame.assignText._text or ""
     H.assertTrue(txt:find("Assignments", 1, true) ~= nil, "assignment header missing: " .. txt)
     H.assertTrue(txt:find("Warrior:", 1, true) ~= nil, "player assignment missing: " .. txt)
     H.assertTrue(txt:find("Shaman:", 1, true) ~= nil, "party assignment missing: " .. txt)
     H.assertTrue(txt:find("Holyman", 1, true) ~= nil, "assignment target missing: " .. txt)
-    H.assertTrue(UI.assignFrame:IsShown(), "assignment module should show when assignments exist")
+    H.assertTrue(UI.frame:IsShown(), "integrated assignment board should show when assignments exist")
 end)
 
 H.it(g, "Apply renders left focus strip and right cue rail", function()
@@ -126,8 +134,8 @@ H.it(g, "Apply renders left focus strip and right cue rail", function()
         callouts = { "CALL_PURGE" },
         priority = "HIGH",
     })
-    local focus = UI.unitFrame and UI.unitFrame.text and UI.unitFrame.text._text or ""
-    local rail = UI.railFrame and UI.railFrame.text and UI.railFrame.text._text or ""
+    local focus = UI.frame and UI.frame.unitText and UI.frame.unitText._text or ""
+    local rail = UI.frame and UI.frame.railText and UI.frame.railText._text or ""
     H.assertTrue(focus:find("Focus", 1, true) ~= nil, "focus strip header missing: " .. focus)
     H.assertTrue(focus:find("Holyman", 1, true) ~= nil, "primary target missing: " .. focus)
     H.assertTrue(focus:find("42", 1, true) ~= nil, "primary target hp missing: " .. focus)
@@ -135,8 +143,7 @@ H.it(g, "Apply renders left focus strip and right cue rail", function()
     H.assertTrue(focus:find("Leaves", 1, true) ~= nil, "lowest friendly missing: " .. focus)
     H.assertTrue(rail:find("Cues", 1, true) ~= nil, "cue rail header missing: " .. rail)
     H.assertTrue(rail:find("Holyman", 1, true) ~= nil, "cue rail should render target-aware callout: " .. rail)
-    H.assertTrue(UI.unitFrame:IsShown(), "focus strip should show when it has content")
-    H.assertTrue(UI.railFrame:IsShown(), "cue rail should show when it has content")
+    H.assertTrue(UI.frame:IsShown(), "integrated board should show when focus and cue content exists")
     H.ns.Core.state.pvpContext = nil
     H.ns.Core.state.friendlies = nil
 end)
@@ -154,14 +161,14 @@ H.it(g, "Apply force-show keeps prototype-A scaffold visible without live data",
         _forceShow = true,
     })
     H.assertTrue(UI.frame:IsShown(), "force-show should keep the center toast visible")
-    H.assertTrue(UI.unitFrame:IsShown(), "force-show should keep the left module visible")
-    H.assertTrue(UI.railFrame:IsShown(), "force-show should keep the right module visible")
-    H.assertTrue(UI.assignFrame:IsShown(), "force-show should keep the assignment module visible")
-    H.assertTrue((UI.unitFrame.text._text or ""):find("waiting", 1, true) ~= nil,
+    H.assertNotNil(UI.frame.unitText)
+    H.assertNotNil(UI.frame.railText)
+    H.assertNotNil(UI.frame.assignText)
+    H.assertTrue((UI.frame.unitText._text or ""):find("waiting", 1, true) ~= nil,
         "force-show focus scaffold should include placeholders")
-    H.assertTrue((UI.railFrame.text._text or ""):find("Burst", 1, true) ~= nil,
+    H.assertTrue((UI.frame.railText._text or ""):find("Burst", 1, true) ~= nil,
         "force-show cue scaffold should include burst placeholder")
-    H.assertTrue((UI.assignFrame.actionText._text or ""):find("Assignments", 1, true) ~= nil,
+    H.assertTrue((UI.frame.assignText._text or ""):find("Assignments", 1, true) ~= nil,
         "force-show assignments scaffold should include header")
     H.ns.Core.state.pvpContext = nil
     H.ns.Core.state.combatPhase = nil
@@ -183,14 +190,14 @@ H.it(g, "Apply caps default assignments but verbose mode shows the full team", f
         { name = "Priest", actionKey = "ACTION_PRIEST_DEFEND", targetName = "Warrior" },
     }
     UI:Apply({ mode = "KILL", primaryTargetName = "Holyman", callouts = {}, priority = "HIGH", playerActions = actions })
-    local compact = UI.assignFrame and UI.assignFrame.actionText and UI.assignFrame.actionText._text or ""
+    local compact = UI.frame and UI.frame.assignText and UI.frame.assignText._text or ""
     H.assertTrue(compact:find("Warrior:", 1, true) ~= nil, "first assignment missing: " .. compact)
     H.assertTrue(compact:find("Paladin:", 1, true) ~= nil, "third assignment missing: " .. compact)
     H.assertTrue(compact:find("Druid:", 1, true) == nil, "compact HUD should cap after three assignments: " .. compact)
 
     _G.ArenaCoachTBCDB.frame.verbose = true
     UI:Apply({ mode = "KILL", primaryTargetName = "Holyman", callouts = {}, priority = "HIGH", playerActions = actions })
-    local verbose = UI.assignFrame and UI.assignFrame.actionText and UI.assignFrame.actionText._text or ""
+    local verbose = UI.frame and UI.frame.assignText and UI.frame.assignText._text or ""
     H.assertTrue(verbose:find("Druid:", 1, true) ~= nil, "verbose HUD should show fourth assignment: " .. verbose)
     H.assertTrue(verbose:find("Priest:", 1, true) ~= nil, "verbose HUD should show fifth assignment: " .. verbose)
 end)
@@ -323,9 +330,12 @@ H.it(g, "pre-gates OPEN plan does not fade just because the room is quiet", func
     local on = UI.frame._scripts.OnUpdate
     on(UI.frame, UI.staleFadeStart + UI.staleFadeSeconds + 5)
     H.assertTrue(UI.frame:IsShown(), "stable pre-gates opener plan should remain visible")
-    H.assertTrue(UI.unitFrame:IsShown(), "pre-gates opener should keep the left module visible")
-    H.assertTrue(UI.railFrame:IsShown(), "pre-gates opener should keep the right module visible")
-    H.assertTrue(UI.assignFrame:IsShown(), "pre-gates opener should keep assignments scaffold visible")
+    H.assertTrue((UI.frame.unitText._text or ""):find("Priest", 1, true) ~= nil,
+        "pre-gates opener should render in the integrated focus panel")
+    H.assertTrue((UI.frame.railText._text or ""):find("Burst", 1, true) ~= nil,
+        "pre-gates opener should keep the integrated cue scaffold visible")
+    H.assertTrue((UI.frame.assignText._text or ""):find("Assignments", 1, true) ~= nil,
+        "pre-gates opener should keep integrated assignments scaffold visible")
     H.assertEq(UI.frame._accAlpha, 1)
     H.ns.Core.state.pvpContext = nil
     H.ns.Core.state.combatPhase = nil
