@@ -209,6 +209,44 @@ H.it(g, "RunTestMode (default) runs the realistic arena simulator", function()
     H.assertEq(Core.state.bracket, 3)
 end)
 
+H.it(g, "RunTestMode re-enables the addon so the HUD does not stick on waiting", function()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    _G.ArenaCoachTBCDB.enabled = false
+    _G.C_Timer = nil
+    H.ns.UI.frame = nil
+    H.ns.UI.assignFrame = nil
+    H.ns.UI.unitFrame = nil
+    H.ns.UI.railFrame = nil
+    H.ns.UI:CreateFrame()
+    startCapture()
+    Core:RunTestMode()
+    stopCapture()
+    local sawEnabled = false
+    for _, ln in ipairs(captured) do
+        if ln:find("enabled for /acc test", 1, true) then sawEnabled = true end
+    end
+    H.assertTrue(sawEnabled, "manual test should explain that it re-enabled the addon")
+    H.assertTrue(_G.ArenaCoachTBCDB.enabled, "manual test should re-enable evaluation")
+    local big = H.ns.UI.frame.bigText and H.ns.UI.frame.bigText._text or ""
+    H.assertTrue(big ~= "Awaiting opener...",
+        "HUD should not stay on the CreateFrame waiting text when /acc test runs disabled")
+end)
+
+H.it(g, "RunSimulator re-enables the addon before replaying scenarios", function()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    _G.ArenaCoachTBCDB.enabled = false
+    _G.C_Timer = nil
+    startCapture()
+    Core:RunSimulator("rmp")
+    stopCapture()
+    local sawEnabled = false
+    for _, ln in ipairs(captured) do
+        if ln:find("enabled for /acc simulate", 1, true) then sawEnabled = true end
+    end
+    H.assertTrue(sawEnabled, "manual simulator should explain that it re-enabled the addon")
+    H.assertTrue(_G.ArenaCoachTBCDB.enabled, "manual simulator should re-enable evaluation")
+end)
+
 H.it(g, "RunTestMode 'print' triggers the legacy chat-only summary", function()
     _G.ArenaCoachTBCDB = nil; Core:InitDB()
     startCapture()

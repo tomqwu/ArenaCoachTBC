@@ -22,6 +22,7 @@ behaviour is what tests can't see.
 - [ ] `/acc reset` wipes SavedVariables; `/reload` restores defaults
 - [ ] `/acc debug` toggles debug printing
 - [ ] `/acc test` runs the readable ~1-minute realistic 3v3 arena replay through the engine: starts OPEN before gates, shows defensive pressure when the healer is CCed/trained, returns to an offensive kill/swap call, then resets without rapid flicker.
+- [ ] With `/acc off` active, `/acc test` prints an enabled-for-test line and the HUD still advances instead of staying on the initial waiting text.
 - [ ] `/acc test hud` runs the visual-only prototype-A HUD demo: integrated board with left focus panel, center action, right cue panel, lower assignments, nameplate border on any visible enemy, and the thin edge cue only if `/acc glow on` is enabled. The first/waiting beat already shows all four zones with placeholders.
 - [ ] `/acc test bg` runs the battleground walk-through (flag carrier priority, low-HP straggler, CALL_BG_DEFEND)
 - [ ] `/acc test world` runs the world-PvP walk-through (single-target focus)

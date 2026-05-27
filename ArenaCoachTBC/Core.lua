@@ -1314,6 +1314,15 @@ function Core:HandleTrace(rest)
     end
 end
 
+function Core:EnsureEnabledForManualRun(label)
+    local db = _G.ArenaCoachTBCDB
+    if not db then Core:InitDB(); db = _G.ArenaCoachTBCDB end
+    if db and db.enabled == false then
+        db.enabled = true
+        chatPrint(string.format("enabled for %s", label or "manual run"))
+    end
+end
+
 function Core:RunSimulator(rest)
     local SIM = ns.Simulator
     if not SIM then chatPrint("Simulator module not loaded"); return end
@@ -1332,6 +1341,7 @@ function Core:RunSimulator(rest)
         chatPrint(Core.L("SIMULATE_STOPPED") or "simulation stopped")
         return
     end
+    Core:EnsureEnabledForManualRun("/acc simulate")
     local ok, err = SIM:Run(arg)
     if not ok then chatPrint(err or "simulation failed") end
 end
@@ -1604,6 +1614,7 @@ local WORLD_DEMO_BEATS = {
 }
 
 function Core:RunTestMode(rest)
+    Core:EnsureEnabledForManualRun("/acc test")
     rest = (rest or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
     if rest == "print" then
         return Core:_RunTestPrintMode()

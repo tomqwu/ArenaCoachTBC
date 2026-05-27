@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.16] - 2026-05-27
+
+### Fixed
+- **Manual tests cannot silently run while disabled.** `/acc test` and `/acc simulate <scenario>` now turn the master switch back on before replaying. Previously, if `ArenaCoachTBCDB.enabled=false`, chat scenario events continued but `Core:Evaluate()` returned early, leaving the HUD stuck on the initial waiting text.
+
 ## [2.8.15] - 2026-05-27
 
 ### Fixed
