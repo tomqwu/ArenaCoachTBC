@@ -132,11 +132,11 @@ Pre-v2.1.6 this module referenced `Sound/Voice/*.ogg` paths that were never bund
 
 将提示键和模式名映射到 WoW 客户端内置的数字 SoundKit ID。`UI:Apply` 在新顶层提示和模式切换时触发一次性音效（受 `db.alerts.sound` 控制，仅竞技场触发）。v2.1.6 前引用的 `Sound/Voice/*.ogg` 路径并未打包进插件，所以历史版本的音效从未真正发出。
 
-### UI.lua (compact movable modules, v2.8.12)
+### UI.lua (prototype-A movable modules, v2.8.13)
 
-The built-in HUD is split into compact movable modules by default. The main action toast is 320x118 and is designed to coexist with party frames, arena frames, action bars, cast bars, damage meters, nameplates, DBM bars, and WeakAura clusters. The assignment module is a separate 320x76 frame that can be dragged independently with `/acc unlock`; its position is saved under `db.assignmentFrame`. The hierarchy is: small title/version, arcade cue, main action (`KILL` / `SWAP` / `DEFEND`), target stats, one top callout/reason, then up to three player assignments in normal mode. `/acc verbose on` keeps the full five-player assignment list and diagnostic detail for reviews.
+The built-in HUD now follows the agreed prototype-A layout as compact movable modules. The center action toast is 320x118 and is designed to coexist with party frames, arena frames, action bars, cast bars, damage meters, nameplates, DBM bars, and WeakAura clusters. A left focus strip (`db.unitFrame`) summarizes the current kill/swap focus and lowest friendly pressure. A right cue rail (`db.railFrame`) shows callout icons/text such as burst, purge, HoJ, peel, or dispel cues. The lower assignment module (`db.assignmentFrame`) shows up to three player jobs in normal mode, while `/acc verbose on` keeps the full five-player assignment list and diagnostic detail for reviews. `/acc unlock` makes all four modules independently draggable; `/acc lock` locks them.
 
-内置 HUD 默认拆成紧凑、可分别移动的模块。主行动提示为 320x118，按默认 WoW 框体、竞技场框体、动作条、施法条、伤害统计、铭牌、DBM 条和 WeakAura 组合同时存在来设计。分工模块是独立的 320x76 框体，可在 `/acc unlock` 后单独拖动，位置保存到 `db.assignmentFrame`。层级为：小标题/版本、街机提示词、主行动（`KILL` / `SWAP` / `DEFEND`）、目标信息、一个顶层原因/提示，然后普通模式最多显示三条玩家分工。`/acc verbose on` 保留完整五人分工和诊断细节，供复盘使用。
+内置 HUD 现在按已确认的 A 方案拆成紧凑、可分别移动的模块。中间主行动提示为 320x118，按默认 WoW 框体、竞技场框体、动作条、施法条、伤害统计、铭牌、DBM 条和 WeakAura 组合同时存在来设计。左侧焦点条（`db.unitFrame`）显示当前击杀/换火目标和最低血量友方压力；右侧提示轨（`db.railFrame`）显示爆发、驱散、制裁、保护、解控等图标/文字提示；下方分工模块（`db.assignmentFrame`）普通模式最多显示三条玩家任务。`/acc verbose on` 保留完整五人分工和诊断细节。`/acc unlock` 可分别拖动四个模块，`/acc lock` 锁定它们。
 
 ### ScreenEdgeGlow.lua (v2.2.0, softened in v2.8.2)
 
@@ -160,7 +160,7 @@ BG/world enemy state is intentionally opportunistic. `Core:RefreshEnemiesNonAren
 
 v2.8.3 adds a stale-recommendation fade timer on the HUD frame; v2.8.11 tightens it. Each fresh `UI:Apply` resets opacity to 1.0. If no fresh recommendation refreshes the frame after 2.5 seconds, opacity fades over 1.5 seconds; at the end the frame hides and clears nameplate / edge cues. This handles the "situation out of sync" case without flashing or forcing the user to manually toggle the frame.
 
-`/acc off` and `/acc on` (aliases `/acc disable` / `/acc enable`) toggle `db.enabled`. When off, `Core:Evaluate` short-circuits at the top — no event handlers, no engine work, all visual layers hidden. Persists across `/reload`. The default `/acc test` path runs the simulator with `state.simulatorActive` and `pvpContext="arena"` so the real engine/UI pipeline can be exercised outside a queue. The visual-only `/acc test hud` demo bypasses both gates via a per-beat `recommendation._forceShow` flag so the walk-through paints the compact HUD outside arena.
+`/acc off` and `/acc on` (aliases `/acc disable` / `/acc enable`) toggle `db.enabled`. When off, `Core:Evaluate` short-circuits at the top — no event handlers, no engine work, all visual layers hidden. Persists across `/reload`. The default `/acc test` path runs the simulator with `state.simulatorActive` and `pvpContext="arena"` so the real engine/UI pipeline can be exercised outside a queue. The visual-only `/acc test hud` demo bypasses both gates via a per-beat `recommendation._forceShow` flag so the walk-through paints the prototype-A modules outside arena.
 
 `UI:Apply` 检查 `Core.state.pvpContext`，当上下文为 `"none"` 或 `"world_idle"` 时隐藏所有视觉层。`/acc off` / `/acc on` 切换 `db.enabled`，全局开关。默认 `/acc test` 使用 `state.simulatorActive` 与 `pvpContext="arena"` 在不排队的情况下跑真实引擎/UI 链路；`/acc test hud` 视觉演示则通过 `_forceShow` 标志绕过这些门禁。
 

@@ -19,17 +19,25 @@ _G.ArenaCoachTBCDB = {
 }
 
 
-H.it(g, "CreateFrame builds compact prototype-A action toast", function()
+H.it(g, "CreateFrame builds prototype-A module set", function()
     UI.frame = nil
     UI.assignFrame = nil
+    UI.unitFrame = nil
+    UI.railFrame = nil
     local f = UI:CreateFrame()
     H.assertNotNil(f)
+    H.assertNotNil(UI.unitFrame)
+    H.assertNotNil(UI.railFrame)
     H.assertNotNil(UI.assignFrame)
     H.assertNotNil(f.arcadeText)
     H.assertNotNil(f.versionText)
+    H.assertNotNil(UI.unitFrame.text)
+    H.assertNotNil(UI.railFrame.text)
     H.assertNotNil(UI.assignFrame.actionText)
     H.assertTrue((f._width or 999) <= 330, "main HUD width should stay compact")
     H.assertTrue((f._height or 999) <= 130, "main HUD height should stay compact")
+    H.assertTrue((UI.unitFrame._width or 999) <= 190, "left focus strip should stay compact")
+    H.assertTrue((UI.railFrame._width or 999) <= 190, "right cue rail should stay compact")
     H.assertTrue((UI.assignFrame._height or 999) <= 90, "assignment module should stay compact")
     H.assertTrue((f.arcadeText._fontSize or 999) <= 20, "arcade cue should not be raid-warning sized")
     H.assertTrue((f.bigText._fontSize or 999) <= 24, "main action text should fit a compact toast")
@@ -94,6 +102,38 @@ H.it(g, "Apply renders DBM-style player action assignments", function()
     H.assertTrue(UI.assignFrame:IsShown(), "assignment module should show when assignments exist")
 end)
 
+H.it(g, "Apply renders left focus strip and right cue rail", function()
+    H.ns.Core = H.ns.Core or {}
+    H.ns.Core.state = H.ns.Core.state or {}
+    H.ns.Core.state.pvpContext = "arena"
+    H.ns.Core.state.friendlies = {
+        player = { unit = "player", name = "You", class = "WARRIOR", alive = true, healthPct = 0.88 },
+        party1 = { unit = "party1", name = "Leaves", class = "DRUID", alive = true, healthPct = 0.41 },
+    }
+    UI:CreateFrame()
+    UI:Apply({
+        mode = "KILL",
+        primaryTargetName = "Holyman",
+        primaryTargetHp = 0.42,
+        secondaryTargetName = "Frostbiter",
+        callouts = { "CALL_PURGE" },
+        priority = "HIGH",
+    })
+    local focus = UI.unitFrame and UI.unitFrame.text and UI.unitFrame.text._text or ""
+    local rail = UI.railFrame and UI.railFrame.text and UI.railFrame.text._text or ""
+    H.assertTrue(focus:find("Focus", 1, true) ~= nil, "focus strip header missing: " .. focus)
+    H.assertTrue(focus:find("Holyman", 1, true) ~= nil, "primary target missing: " .. focus)
+    H.assertTrue(focus:find("42", 1, true) ~= nil, "primary target hp missing: " .. focus)
+    H.assertTrue(focus:find("Frostbiter", 1, true) ~= nil, "secondary target missing: " .. focus)
+    H.assertTrue(focus:find("Leaves", 1, true) ~= nil, "lowest friendly missing: " .. focus)
+    H.assertTrue(rail:find("Cues", 1, true) ~= nil, "cue rail header missing: " .. rail)
+    H.assertTrue(rail:find("Holyman", 1, true) ~= nil, "cue rail should render target-aware callout: " .. rail)
+    H.assertTrue(UI.unitFrame:IsShown(), "focus strip should show when it has content")
+    H.assertTrue(UI.railFrame:IsShown(), "cue rail should show when it has content")
+    H.ns.Core.state.pvpContext = nil
+    H.ns.Core.state.friendlies = nil
+end)
+
 H.it(g, "Apply caps default assignments but verbose mode shows the full team", function()
     _G.ArenaCoachTBCDB = {
         enabled = true, locked = false, language = "auto",
@@ -122,21 +162,36 @@ H.it(g, "Apply caps default assignments but verbose mode shows the full team", f
     H.assertTrue(verbose:find("Priest:", 1, true) ~= nil, "verbose HUD should show fifth assignment: " .. verbose)
 end)
 
-H.it(g, "assignment module has its own movable saved position", function()
+H.it(g, "prototype-A modules have independent movable saved positions", function()
     _G.ArenaCoachTBCDB = {
         enabled = true, locked = false, language = "auto",
         frame = { point = "CENTER", x = 0, y = 120, scale = 1.0 },
         assignmentFrame = { point = "CENTER", x = 0, y = 16, scale = 1.0 },
+        unitFrame = { point = "CENTER", x = -258, y = 120, scale = 1.0 },
+        railFrame = { point = "CENTER", x = 258, y = 120, scale = 1.0 },
         alerts = { sound = false, screenFlash = false, edgeGlow = false, nameplate = false },
         strategy = {}, debug = false,
     }
     UI.frame = nil
     UI.assignFrame = nil
+    UI.unitFrame = nil
+    UI.railFrame = nil
     UI:CreateFrame()
     H.assertNotNil(UI.assignFrame)
+    H.assertNotNil(UI.unitFrame)
+    H.assertNotNil(UI.railFrame)
+    UI.frame._scripts.OnMouseDown(UI.frame, "LeftButton")
+    UI.frame._scripts.OnMouseUp(UI.frame)
+    UI.unitFrame._scripts.OnMouseDown(UI.unitFrame, "LeftButton")
+    UI.unitFrame._scripts.OnMouseUp(UI.unitFrame)
+    UI.railFrame._scripts.OnMouseDown(UI.railFrame, "LeftButton")
+    UI.railFrame._scripts.OnMouseUp(UI.railFrame)
     UI.assignFrame._scripts.OnMouseDown(UI.assignFrame, "LeftButton")
     UI.assignFrame._scripts.OnMouseUp(UI.assignFrame)
+    H.assertEq(_G.ArenaCoachTBCDB.frame.point, "CENTER")
     H.assertEq(_G.ArenaCoachTBCDB.assignmentFrame.point, "CENTER")
+    H.assertEq(_G.ArenaCoachTBCDB.unitFrame.point, "CENTER")
+    H.assertEq(_G.ArenaCoachTBCDB.railFrame.point, "CENTER")
     H.assertEq(_G.ArenaCoachTBCDB.assignmentFrame.x, 0)
     H.assertEq(_G.ArenaCoachTBCDB.assignmentFrame.y, 0)
 end)

@@ -14,11 +14,15 @@ ns.UI = ns.UI or {}
 local UI = ns.UI
 UI.frame = nil
 
-local ADDON_VERSION = "2.8.12"
+local ADDON_VERSION = "2.8.13"
 local STALE_FADE_START = 2.5
 local STALE_FADE_SECONDS = 1.5
 local COMPACT_WIDTH = 320
 local COMPACT_HEIGHT = 118
+local UNIT_WIDTH = 174
+local UNIT_HEIGHT = 92
+local RAIL_WIDTH = 174
+local RAIL_HEIGHT = 118
 local ASSIGN_WIDTH = 320
 local ASSIGN_HEIGHT = 76
 local DEFAULT_ACTION_LINES = 3
@@ -53,6 +57,17 @@ function UI:RefreshVersionText()
     end
 end
 
+local function setBackdrop(frame, alpha, edgeSize)
+    if not (frame and frame.SetBackdrop) then return end
+    frame:SetBackdrop({
+        bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile = true, tileSize = 16, edgeSize = edgeSize or 10,
+        insets = { left = 3, right = 3, top = 3, bottom = 3 },
+    })
+    frame:SetBackdropColor(0, 0, 0, alpha or 0.30)
+end
+
 local function saveFramePosition(key, frame)
     if not (ArenaCoachTBCDB and frame and frame.GetPoint) then return end
     ArenaCoachTBCDB[key] = ArenaCoachTBCDB[key] or {}
@@ -81,6 +96,8 @@ end
 function UI:CreateFrame()
     if self.frame then
         if not self.assignFrame then self:CreateAssignmentsFrame() end
+        if not self.unitFrame then self:CreateUnitStripFrame() end
+        if not self.railFrame then self:CreateCueRailFrame() end
         return self.frame
     end
     if type(CreateFrame) ~= "function" then return nil end
@@ -89,7 +106,7 @@ function UI:CreateFrame()
     local fcfg = db.frame or { point = "CENTER", x = 0, y = 120, scale = 1.0 }
 
     local f = CreateFrame("Frame", "ArenaCoachTBCFrame", UIParent)
-    -- v2.8.12: live-combat "prototype A" compact toast. Keep the
+    -- v2.8.13: live-combat "prototype A" compact toast. Keep the
     -- center callout readable without blocking player frames, Gladius,
     -- action bars, cast bars, Details, or WeakAura clusters. Player
     -- assignments live in their own movable module below.
@@ -102,15 +119,7 @@ function UI:CreateFrame()
     f:EnableMouse(true)
 
     -- Backdrop (TBC client uses Backdrop trait built-in for Frame)
-    if f.SetBackdrop then
-        f:SetBackdrop({
-            bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
-            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-            tile = true, tileSize = 16, edgeSize = 12,
-            insets = { left = 3, right = 3, top = 3, bottom = 3 },
-        })
-        f:SetBackdropColor(0, 0, 0, 0.36)
-    end
+    setBackdrop(f, 0.36, 12)
 
     -- Title: small identity marker, not a full header row.
     f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -181,8 +190,78 @@ function UI:CreateFrame()
     end)
 
     self.frame = f
+    self:CreateUnitStripFrame()
+    self:CreateCueRailFrame()
     self:CreateAssignmentsFrame()
     return f
+end
+
+function UI:CreateUnitStripFrame()
+    if self.unitFrame then return self.unitFrame end
+    if type(CreateFrame) ~= "function" then return nil end
+
+    local db = ArenaCoachTBCDB or {}
+    local ucfg = db.unitFrame or { point = "CENTER", x = -258, y = 120, scale = 1.0 }
+    local uf = CreateFrame("Frame", "ArenaCoachTBCUnitStripFrame", UIParent)
+    uf:SetSize(UNIT_WIDTH, UNIT_HEIGHT)
+    uf:SetPoint(ucfg.point or "CENTER", UIParent, ucfg.point or "CENTER",
+                ucfg.x or -258, ucfg.y or 120)
+    uf:SetScale(ucfg.scale or 1.0)
+    uf:SetMovable(true)
+    uf:SetClampedToScreen(true)
+    uf:EnableMouse(true)
+    setBackdrop(uf, 0.26, 10)
+
+    uf.text = uf:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    uf.text:SetPoint("TOPLEFT", uf, "TOPLEFT", 8, -8)
+    if uf.text.SetFont then
+        local fontPath = (uf.text.GetFont and select(1, uf.text:GetFont()))
+            or "Fonts\\FRIZQT__.TTF"
+        pcall(uf.text.SetFont, uf.text, fontPath, 11, "OUTLINE")
+    end
+    if uf.text.SetSpacing then pcall(uf.text.SetSpacing, uf.text, 1) end
+    uf.text:SetJustifyH("LEFT")
+    uf.text:SetWidth(UNIT_WIDTH - 16)
+    uf.text:SetText("")
+
+    installDrag(uf, "unitFrame")
+    uf:Hide()
+    self.unitFrame = uf
+    return uf
+end
+
+function UI:CreateCueRailFrame()
+    if self.railFrame then return self.railFrame end
+    if type(CreateFrame) ~= "function" then return nil end
+
+    local db = ArenaCoachTBCDB or {}
+    local rcfg = db.railFrame or { point = "CENTER", x = 258, y = 120, scale = 1.0 }
+    local rf = CreateFrame("Frame", "ArenaCoachTBCCueRailFrame", UIParent)
+    rf:SetSize(RAIL_WIDTH, RAIL_HEIGHT)
+    rf:SetPoint(rcfg.point or "CENTER", UIParent, rcfg.point or "CENTER",
+                rcfg.x or 258, rcfg.y or 120)
+    rf:SetScale(rcfg.scale or 1.0)
+    rf:SetMovable(true)
+    rf:SetClampedToScreen(true)
+    rf:EnableMouse(true)
+    setBackdrop(rf, 0.26, 10)
+
+    rf.text = rf:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    rf.text:SetPoint("TOPLEFT", rf, "TOPLEFT", 8, -8)
+    if rf.text.SetFont then
+        local fontPath = (rf.text.GetFont and select(1, rf.text:GetFont()))
+            or "Fonts\\FRIZQT__.TTF"
+        pcall(rf.text.SetFont, rf.text, fontPath, 11, "OUTLINE")
+    end
+    if rf.text.SetSpacing then pcall(rf.text.SetSpacing, rf.text, 2) end
+    rf.text:SetJustifyH("LEFT")
+    rf.text:SetWidth(RAIL_WIDTH - 16)
+    rf.text:SetText("")
+
+    installDrag(rf, "railFrame")
+    rf:Hide()
+    self.railFrame = rf
+    return rf
 end
 
 function UI:CreateAssignmentsFrame()
@@ -200,15 +279,7 @@ function UI:CreateAssignmentsFrame()
     af:SetClampedToScreen(true)
     af:EnableMouse(true)
 
-    if af.SetBackdrop then
-        af:SetBackdrop({
-            bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
-            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-            tile = true, tileSize = 16, edgeSize = 10,
-            insets = { left = 3, right = 3, top = 3, bottom = 3 },
-        })
-        af:SetBackdropColor(0, 0, 0, 0.30)
-    end
+    setBackdrop(af, 0.30, 10)
 
     af.actionText = af:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     af.actionText:SetPoint("TOPLEFT", af, "TOPLEFT", 10, -8)
@@ -352,6 +423,8 @@ local function calloutIcon(key, size)
     return string.format("|T%s:%d:%d:0:0:64:64:5:59:5:59|t", tex, size, size)
 end
 
+local calloutText
+
 local function formatPlayerActions(actions)
     if not actions or #actions == 0 then return "" end
     local lines = { "|cffc8a86b" .. L("UI_ACTIONS_HEADER") .. "|r" }
@@ -371,16 +444,99 @@ local function formatPlayerActions(actions)
     return table.concat(lines, "\n")
 end
 
-function UI:_SetFrameAlpha(alpha)
-    local f = self.frame
-    if f then
-        f._accAlpha = alpha
-        if f.SetAlpha then f:SetAlpha(alpha) end
+local function pct(value)
+    if not value then return nil end
+    local n = tonumber(value)
+    if not n then return nil end
+    if n <= 1 then n = n * 100 end
+    return math.floor(n + 0.5)
+end
+
+local function lowestFriendly(state)
+    local best
+    for _, friendly in pairs((state and state.friendlies) or {}) do
+        if friendly and friendly.alive ~= false then
+            local hp = pct(friendly.healthPct or friendly.hpPct)
+            if hp and (not best or hp < best.hp) then
+                best = {
+                    hp = hp,
+                    name = friendly.name or friendly.unit or friendly.class or "?",
+                }
+            end
+        end
     end
-    local af = self.assignFrame
-    if af then
-        af._accAlpha = alpha
-        if af.SetAlpha then af:SetAlpha(alpha) end
+    return best
+end
+
+local function formatUnitStrip(recommendation)
+    if not recommendation then return "" end
+    local lines = {}
+    local mode = recommendation.mode or "RESET"
+    local showTarget = (mode == "OPEN" or mode == "KILL" or mode == "SWAP")
+    local target = recommendation.primaryTargetName
+                or recommendation.primaryTargetClass
+                or nil
+    if showTarget and target and target ~= "" then
+        local hp = pct(recommendation.primaryTargetHp)
+        local suffix = hp and string.format(" %d%%", hp) or ""
+        table.insert(lines, string.format("%s: %s%s", L(mode), target, suffix))
+    end
+    local secondary = recommendation.secondaryTargetName
+                   or recommendation.secondaryTargetClass
+                   or nil
+    if secondary and secondary ~= "" and secondary ~= target then
+        table.insert(lines, string.format("%s: %s", L("SWAP"), secondary))
+    end
+    local low = lowestFriendly(ns.Core and ns.Core.state)
+    if low then
+        table.insert(lines, string.format("Team: %s %d%%", low.name, low.hp))
+    end
+    if #lines == 0 then return "" end
+    table.insert(lines, 1, "|cffc8a86bFocus|r")
+    return table.concat(lines, "\n")
+end
+
+local function formatCueRail(recommendation)
+    if not recommendation then return "" end
+    local lines = {}
+    if recommendation.burstAllowed and recommendation.mode == "KILL" then
+        table.insert(lines, "★ " .. L("UI_BURST_READY"))
+    end
+    local verbose = (ArenaCoachTBCDB and ArenaCoachTBCDB.frame
+                     and ArenaCoachTBCDB.frame.verbose) or false
+    local maxLines = verbose and VERBOSE_ACTION_LINES or DEFAULT_ACTION_LINES
+    if recommendation.callouts then
+        for i = 1, math.min(#recommendation.callouts, maxLines) do
+            local key = recommendation.callouts[i]
+            table.insert(lines,
+                string.format("%s  %s", calloutIcon(key, 14), calloutText(key, recommendation)))
+        end
+    end
+    if #lines == 0 then return "" end
+    table.insert(lines, 1, "|cffc8a86bCues|r")
+    return table.concat(lines, "\n")
+end
+
+local function setModuleText(frame, fieldName, text, shownFlag)
+    if not frame then return end
+    local fs = frame[fieldName or "text"]
+    if fs then fs:SetText(text or "") end
+    frame[shownFlag or "_hasContent"] = (text and text ~= "") or false
+    if text and text ~= "" then
+        if not frame:IsShown() then frame:Show() end
+    else
+        frame:Hide()
+    end
+end
+
+function UI:_SetFrameAlpha(alpha)
+    local frames = { self.frame, self.unitFrame, self.railFrame, self.assignFrame }
+    for i = 1, 4 do
+        local f = frames[i]
+        if f then
+            f._accAlpha = alpha
+            if f.SetAlpha then f:SetAlpha(alpha) end
+        end
     end
 end
 
@@ -403,6 +559,8 @@ function UI:_HideStaleFrame()
         self:_SetFrameAlpha(0)
         self.frame:Hide()
     end
+    if self.unitFrame then self.unitFrame:Hide() end
+    if self.railFrame then self.railFrame:Hide() end
     if self.assignFrame then self.assignFrame:Hide() end
     self._staleFadeActive = false
     if ns.ScreenEdgeGlow then ns.ScreenEdgeGlow:Hide() end
@@ -423,7 +581,7 @@ function UI:_UpdateStaleFade(dt)
     self:_SetFrameAlpha(1 - t)
 end
 
-local function calloutText(key, recommendation)
+function calloutText(key, recommendation)
     local text = L(key)
     if key == "CALL_PURGE" then
         local target = recommendation
@@ -438,10 +596,14 @@ end
 
 function UI:Show()
     if self.frame then self.frame:Show() end
+    if self.unitFrame and self.unitFrame._hasUnits then self.unitFrame:Show() end
+    if self.railFrame and self.railFrame._hasCues then self.railFrame:Show() end
     if self.assignFrame and self.assignFrame._hasAssignments then self.assignFrame:Show() end
 end
 function UI:Hide()
     if self.frame then self.frame:Hide() end
+    if self.unitFrame then self.unitFrame:Hide() end
+    if self.railFrame then self.railFrame:Hide() end
     if self.assignFrame then self.assignFrame:Hide() end
 end
 function UI:Toggle()
@@ -468,12 +630,16 @@ function UI:Apply(recommendation)
     local forceShow = recommendation._forceShow   -- set by /acc test demo
     if (ctx == "none" or ctx == "world_idle") and not forceShow then
         f:Hide()
+        if self.unitFrame then self.unitFrame:Hide() end
+        if self.railFrame then self.railFrame:Hide() end
         if self.assignFrame then self.assignFrame:Hide() end
         if ns.ScreenEdgeGlow then ns.ScreenEdgeGlow:Hide() end
         if ns.Nameplate then ns.Nameplate:ClearAll() end
         return
     end
     if not f:IsShown() then f:Show() end
+    if not self.unitFrame and self.CreateUnitStripFrame then self:CreateUnitStripFrame() end
+    if not self.railFrame and self.CreateCueRailFrame then self:CreateCueRailFrame() end
     if not self.assignFrame and self.CreateAssignmentsFrame then self:CreateAssignmentsFrame() end
 
     local mode = recommendation.mode or "RESET"
@@ -654,17 +820,9 @@ function UI:Apply(recommendation)
         end
     end
     f.subText:SetText(table.concat(subParts, "\n"))
-    local actionText = formatPlayerActions(recommendation.playerActions)
-    local af = self.assignFrame
-    if af and af.actionText then
-        af.actionText:SetText(actionText)
-        af._hasAssignments = (actionText ~= "")
-        if actionText ~= "" then
-            if not af:IsShown() then af:Show() end
-        else
-            af:Hide()
-        end
-    end
+    setModuleText(self.unitFrame, "text", formatUnitStrip(recommendation), "_hasUnits")
+    setModuleText(self.railFrame, "text", formatCueRail(recommendation), "_hasCues")
+    setModuleText(self.assignFrame, "actionText", formatPlayerActions(recommendation.playerActions), "_hasAssignments")
 
     -- v2.0.2 / v2.1: PvP-context gate. The aggressive alerts (screen
     -- flash, voice cue) should only fire in actual arena. Outside
@@ -724,7 +882,7 @@ function UI:Apply(recommendation)
     -- nameplate paint would be distracting noise.
     --
     -- v2.3.0: `forceShow` also bypasses the inPvP gate so /acc test
-    -- can demo the compact HUD (text + glow + nameplate) without being
+    -- can demo the prototype-A modules (text + glow + nameplate) without being
     -- in arena/BG/world. Pre-v2.3.0 the demo only painted the text.
     --
     -- edgeGlow: optional thin static mode-coloured cue around the edges.

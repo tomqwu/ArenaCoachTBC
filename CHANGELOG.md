@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.13] - 2026-05-27
+
+### Changed
+- **Prototype-A HUD module layout.** The built-in HUD now matches the agreed layout: left focus strip, center action toast, right cue/icon rail, and lower assignment module. `/acc unlock` makes all four modules independently draggable; `/acc lock` locks them.
+- **Focus and cue side modules.** The left strip summarizes the primary target, swap candidate, and lowest friendly pressure when known. The right rail renders callout icons/text for burst, purge, HoJ, peel, dispel, and other top cues.
+
 ## [2.8.12] - 2026-05-27
 
 ### Changed
