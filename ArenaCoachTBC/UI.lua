@@ -13,6 +13,7 @@ ns.UI = ns.UI or {}
 local UI = ns.UI
 UI.frame = nil
 
+local ADDON_VERSION = "2.8.7"
 local STALE_FADE_START = 3.0
 local STALE_FADE_SECONDS = 2.0
 
@@ -28,6 +29,21 @@ local function L(key, ...)
         return s
     end
     return key
+end
+
+local function addonVersion()
+    local api = _G.ArenaCoachTBC
+    if api and type(api.GetVersion) == "function" then
+        local ok, version = pcall(api.GetVersion)
+        if ok and version then return tostring(version) end
+    end
+    return ADDON_VERSION
+end
+
+function UI:RefreshVersionText()
+    if self.frame and self.frame.versionText then
+        self.frame.versionText:SetText("v" .. addonVersion())
+    end
 end
 
 -- ============================================================
@@ -65,6 +81,14 @@ function UI:CreateFrame()
     f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     f.title:SetPoint("TOP", f, "TOP", 0, -8)
     f.title:SetText(L("UI_TITLE"))
+
+    -- Small build marker for rapid local-copy/release verification.
+    f.versionText = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    f.versionText:SetPoint("TOPRIGHT", f, "TOPRIGHT", -8, -8)
+    f.versionText:SetJustifyH("RIGHT")
+    f.versionText:SetWidth(80)
+    f.versionText:SetTextColor(0.75, 0.75, 0.75)
+    f.versionText:SetText("v" .. addonVersion())
 
     -- v2.8.1: Japanese-arcade-style warning plate. This is just a big,
     -- passive text cue inside the HUD, never a fullscreen flash.

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.7] - 2026-05-27
+
+### Added
+- **HUD version marker.** The main ArenaCoachTBC frame now shows the loaded addon version in the top-right corner so rapid local-copy and release verification is visible in-game.
+
 ## [2.8.6] - 2026-05-26
 
 ### Fixed

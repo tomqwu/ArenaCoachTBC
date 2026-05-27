@@ -23,8 +23,19 @@ H.it(g, "CreateFrame builds a frame with icon rows", function()
     local f = UI:CreateFrame()
     H.assertNotNil(f)
     H.assertNotNil(f.arcadeText)
+    H.assertNotNil(f.versionText)
     H.assertNotNil(f.friendlyIconMap)
     H.assertNotNil(f.enemyIconMap)
+end)
+
+H.it(g, "CreateFrame shows addon version in the HUD", function()
+    local savedAPI = _G.ArenaCoachTBC
+    UI.frame = nil
+    _G.ArenaCoachTBC = { GetVersion = function() return "9.9.9-test" end }
+    local f = UI:CreateFrame()
+    local text = f.versionText:GetText()
+    _G.ArenaCoachTBC = savedAPI
+    H.assertEq(text, "v9.9.9-test")
 end)
 
 H.it(g, "CreateFrame is idempotent", function()
