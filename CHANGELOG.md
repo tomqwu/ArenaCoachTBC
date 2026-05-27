@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.24] - 2026-05-27
+
+### Changed
+- **Tactical-console visual pass.** Added a top signal strip, ruler ticks, health-pool bar, console-style section headers, and row/card text treatments inspired by the reference cockpit mockup.
+- **Center panel now reads as an instrument.** The action call keeps the target/stats text, while the health bar shows current target HP at a glance without adding flashing effects.
+- **Focus, cue, and assignment rows are more scannable.** Rows now use compact tags, muted subtitles, and priority-coloured target text instead of plain paragraph labels.
+
 ## [2.8.23] - 2026-05-27
 
 ### Changed

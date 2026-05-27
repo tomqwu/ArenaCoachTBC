@@ -14,15 +14,15 @@ ns.UI = ns.UI or {}
 local UI = ns.UI
 UI.frame = nil
 
-local ADDON_VERSION = "2.8.23"
+local ADDON_VERSION = "2.8.24"
 local STALE_FADE_START = 2.5
 local STALE_FADE_SECONDS = 1.5
-local COMPACT_WIDTH = 500
-local COMPACT_HEIGHT = 180
-local MIN_COMPACT_WIDTH = 430
-local MIN_COMPACT_HEIGHT = 176
-local MAX_COMPACT_WIDTH = 760
-local MAX_COMPACT_HEIGHT = 320
+local COMPACT_WIDTH = 540
+local COMPACT_HEIGHT = 212
+local MIN_COMPACT_WIDTH = 500
+local MIN_COMPACT_HEIGHT = 196
+local MAX_COMPACT_WIDTH = 820
+local MAX_COMPACT_HEIGHT = 360
 local GRID_PADDING = 8
 local PANEL_GUTTER = 8
 local BOARD_BOTTOM_PADDING = 8
@@ -202,6 +202,28 @@ local function layoutPanelSlots(panel, prefix, rows, topOffset)
     end
 end
 
+local function layoutRulers(frame, width, height)
+    if not frame then return end
+    local count = 14
+    local usable = math.max(80, width - (GRID_PADDING * 2))
+    local step = usable / (count + 1)
+    for i = 1, count do
+        local x = GRID_PADDING + math.floor(step * i)
+        local h = (i % 3 == 0) and 8 or 4
+        placeLine(frame, "topTick" .. i, 1, h, x, -HEADER_HEIGHT - 4, 0.58)
+        placeLine(frame, "bottomTick" .. i, 1, h, x, -(height - 9), 0.50)
+    end
+end
+
+local function consoleHeader(titleKey, subtitle, index)
+    local idx = index and ("  |cff5f5131// " .. index .. "|r") or ""
+    return string.format("|cffddd2ad%s|r  |cff9b7a3d%s|r%s", L(titleKey), subtitle or "", idx)
+end
+
+local function consoleTag(label, hex)
+    return string.format("|cff%s[%s]|r", hex or "c8a86b", label or "?")
+end
+
 local function createChildPanel(parent, key, width, height, pointA, relativePoint, x, y, alpha)
     if not (parent and type(CreateFrame) == "function") then return nil end
     local panel = parent[key] or CreateFrame("Frame", nil, parent)
@@ -354,6 +376,10 @@ local function layoutMainBoard(f)
     if f.title and f.title.SetWidth then
         pcall(f.title.SetWidth, f.title, math.max(120, m.width - 190))
     end
+    if f.metaText and f.metaText.SetWidth then
+        pcall(f.metaText.SetWidth, f.metaText, math.max(120, m.width - 260))
+    end
+    layoutRulers(f, m.width, m.height)
 
     if f.leftPanel then
         clearPoints(f.leftPanel)
@@ -388,17 +414,33 @@ local function layoutMainBoard(f)
         size(f.modeAccent, m.centerW - 8, 2)
         point(f.modeAccent, "TOP", f.centerPanel or f, "TOP", 0, -1)
     end
+    if f.healthBarBg then
+        clearPoints(f.healthBarBg)
+        size(f.healthBarBg, math.max(80, m.centerW - 24), 8)
+        point(f.healthBarBg, "BOTTOM", f.centerPanel or f, "BOTTOM", 0, 14)
+        f._accHealthBarWidth = math.max(80, m.centerW - 24)
+    end
+    if f.healthBarFill then
+        clearPoints(f.healthBarFill)
+        size(f.healthBarFill, f._accHealthBarFillWidth or 1, 8)
+        point(f.healthBarFill, "LEFT", f.healthBarBg or (f.centerPanel or f), "LEFT", 0, 0)
+    end
+    if f.healthLabel then
+        clearPoints(f.healthLabel)
+        point(f.healthLabel, "BOTTOM", f.healthBarBg or (f.centerPanel or f), "TOP", 0, 3)
+        if f.healthLabel.SetWidth then pcall(f.healthLabel.SetWidth, f.healthLabel, math.max(80, m.centerW - 24)) end
+    end
 
     local centerTextW = math.max(100, m.centerW - 10)
     if f.arcadeText then
         clearPoints(f.arcadeText)
-        point(f.arcadeText, "TOP", f.centerPanel or f, "TOP", 0, -4)
+        point(f.arcadeText, "TOP", f.centerPanel or f, "TOP", 0, -8)
         if f.arcadeText.SetWidth then pcall(f.arcadeText.SetWidth, f.arcadeText, centerTextW) end
-        height(f.arcadeText, 19)
+        height(f.arcadeText, 14)
     end
     if f.bigText then
         clearPoints(f.bigText)
-        point(f.bigText, "TOP", f.arcadeText or (f.centerPanel or f), f.arcadeText and "BOTTOM" or "TOP", 0, -1)
+        point(f.bigText, "TOP", f.arcadeText or (f.centerPanel or f), f.arcadeText and "BOTTOM" or "TOP", 0, -6)
         if f.bigText.SetWidth then pcall(f.bigText.SetWidth, f.bigText, centerTextW) end
         height(f.bigText, 22)
     end
@@ -412,7 +454,7 @@ local function layoutMainBoard(f)
         clearPoints(f.subText)
         point(f.subText, "TOP", f.statsText or (f.centerPanel or f), f.statsText and "BOTTOM" or "TOP", 0, -2)
         if f.subText.SetWidth then pcall(f.subText.SetWidth, f.subText, centerTextW) end
-        height(f.subText, math.max(14, m.actionH - 64))
+        height(f.subText, math.max(14, m.actionH - 88))
     end
     if f.unitText and f.unitText.SetWidth then pcall(f.unitText.SetWidth, f.unitText, math.max(76, m.leftW - 16)) end
     if f.railText and f.railText.SetWidth then pcall(f.railText.SetWidth, f.railText, math.max(76, m.rightW - 16)) end
@@ -460,7 +502,7 @@ function UI:CreateFrame()
     local fcfg = db.frame or { point = "CENTER", x = 0, y = 120, scale = 1.0 }
 
     local f = CreateFrame("Frame", "ArenaCoachTBCFrame", UIParent)
-    -- v2.8.23: prototype-A is now closer to the original cockpit sketch:
+    -- v2.8.24: prototype-A is now closer to the original cockpit sketch:
     -- a persistent left status stack, a center action/player-info column,
     -- and a right cue rail inside one movable shell. Earlier
     -- releases used separate satellite frames; if the user moved the
@@ -498,6 +540,14 @@ function UI:CreateFrame()
     f.title:SetText(L("UI_TITLE"))
     improveTextContrast(f.title, 1.0)
 
+    f.metaText = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    f.metaText:SetPoint("TOP", f, "TOP", 0, -7)
+    f.metaText:SetJustifyH("CENTER")
+    f.metaText:SetWidth(220)
+    f.metaText:SetTextColor(0.58, 0.48, 0.30)
+    f.metaText:SetText("A R E N A  /  C O A C H  /  L I V E")
+    improveTextContrast(f.metaText, 0.85)
+
     local dragBar = solidTexture(f, "dragBar", "BACKGROUND", 0.10, 0.08, 0.035, 0.34)
     if dragBar then
         clearPoints(dragBar)
@@ -523,6 +573,17 @@ function UI:CreateFrame()
     if centerPanel and centerPanel.CreateTexture then
         f.modeAccent = centerPanel:CreateTexture(nil, "ARTWORK")
         colorTexture(f.modeAccent, 1.0, 0.82, 0.26, 0.72)
+        f.healthBarBg = centerPanel:CreateTexture(nil, "BORDER")
+        colorTexture(f.healthBarBg, 0.10, 0.075, 0.035, 0.86)
+        f.healthBarFill = centerPanel:CreateTexture(nil, "ARTWORK")
+        colorTexture(f.healthBarFill, 0.85, 0.25, 0.25, 0.92)
+    end
+    f.healthLabel = centerPanel and centerPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall") or nil
+    if f.healthLabel then
+        f.healthLabel:SetJustifyH("CENTER")
+        f.healthLabel:SetTextColor(0.70, 0.60, 0.38)
+        f.healthLabel:SetText("H E A L T H  ·  P O O L")
+        improveTextContrast(f.healthLabel, 0.9)
     end
 
     -- Small build marker for rapid local-copy/release verification.
@@ -570,7 +631,7 @@ function UI:CreateFrame()
     if f.arcadeText.SetFont then
         local fontPath = (f.arcadeText.GetFont and select(1, f.arcadeText:GetFont()))
             or "Fonts\\FRIZQT__.TTF"
-        pcall(f.arcadeText.SetFont, f.arcadeText, fontPath, 17, "THICKOUTLINE")
+        pcall(f.arcadeText.SetFont, f.arcadeText, fontPath, 11, "OUTLINE")
     end
     f.arcadeText:SetJustifyH("CENTER")
     f.arcadeText:SetWidth(m.centerW - 10)
@@ -584,7 +645,7 @@ function UI:CreateFrame()
     if f.bigText.SetFont then
         local fontPath = (f.bigText.GetFont and select(1, f.bigText:GetFont()))
             or "Fonts\\FRIZQT__.TTF"
-        pcall(f.bigText.SetFont, f.bigText, fontPath, 20, "OUTLINE")
+        pcall(f.bigText.SetFont, f.bigText, fontPath, 22, "THICKOUTLINE")
     end
     f.bigText:SetJustifyH("CENTER")
     f.bigText:SetWidth(m.centerW - 10)
@@ -863,7 +924,7 @@ local function arcadeCueKey(recommendation, mode)
 end
 
 local function arcadeCueText(recommendation, mode)
-    return string.format("!! %s !!", L(arcadeCueKey(recommendation, mode)))
+    return string.format("S I G N A L  ·  %s  ·  L I V E", L(arcadeCueKey(recommendation, mode)))
 end
 
 -- v2.7.0: each callout key maps to a representative spell whose in-game
@@ -922,7 +983,7 @@ local function formatPlayerActions(actions, scaffold)
     if not actions or #actions == 0 then
         return scaffold and waitingAssignmentText() or ""
     end
-    local lines = { "|cffc8a86b" .. L("UI_ACTIONS_HEADER") .. "|r" }
+    local lines = { consoleHeader("UI_ACTIONS_HEADER", "R O L E · A S S I G N M E N T", "03") }
     local verbose = (ArenaCoachTBCDB and ArenaCoachTBCDB.frame
                      and ArenaCoachTBCDB.frame.verbose) or false
     local panelCap = (UI.frame and UI.frame._accAssignLines) or DEFAULT_ACTION_LINES
@@ -931,12 +992,14 @@ local function formatPlayerActions(actions, scaffold)
     for i = 1, math.min(#actions, maxLines) do
         local a = actions[i]
         local who = a.name or a.unit or a.class or "?"
+        local role = a.class or a.role or a.unit or ""
         local text = a.text or (a.actionKey and L(a.actionKey)) or a.actionKey or "?"
         local target = a.targetName or a.targetClass
         if target and target ~= "" then
-            text = text .. " -> " .. target
+            text = text .. "  |cff8f7b49->|r  |cffff6464" .. target .. "|r"
         end
-        table.insert(lines, string.format("%s: %s", who, text))
+        table.insert(lines, string.format("|cff8f7b49P·%02d|r |cffffffff%s:|r |cff5bc4d8%s|r  %s",
+            i, who, role ~= "" and string.upper(role) or "", text))
     end
     return table.concat(lines, "\n")
 end
@@ -977,19 +1040,21 @@ local function formatUnitStrip(recommendation, scaffold)
     if showTarget and target and target ~= "" then
         local hp = pct(recommendation.primaryTargetHp)
         local suffix = hp and string.format(" %d%%", hp) or ""
-        targetLine = string.format("%s: %s%s", L(mode), target, suffix)
+        targetLine = string.format("%s |cffffffff%s|r |cffddd2ad%s|r",
+            consoleTag(L(mode), mode == "SWAP" and "52c7df" or "e15b5b"), target, suffix)
     end
     local secondary = recommendation.secondaryTargetName
                    or recommendation.secondaryTargetClass
                    or nil
     local secondaryLine
     if secondary and secondary ~= "" and secondary ~= target then
-        secondaryLine = string.format("%s: %s", L("SWAP"), secondary)
+        secondaryLine = string.format("%s |cffffffff%s|r", consoleTag(L("SWAP"), "52c7df"), secondary)
     end
     local low = lowestFriendly(ns.Core and ns.Core.state)
     local teamLine
     if low then
-        teamLine = string.format("%s: %s %d%%", L("UI_MODULE_TEAM"), low.name, low.hp)
+        teamLine = string.format("%s |cffffffff%s|r |cffddd2ad%d%%|r",
+            consoleTag(L("UI_MODULE_TEAM"), "c8a86b"), low.name, low.hp)
     end
     if scaffold then
         table.insert(lines, targetLine or waitingLine("UI_MODULE_TARGET"))
@@ -1001,7 +1066,7 @@ local function formatUnitStrip(recommendation, scaffold)
         if teamLine then table.insert(lines, teamLine) end
     end
     if #lines == 0 then return "" end
-    table.insert(lines, 1, moduleHeader("UI_MODULE_FOCUS"))
+    table.insert(lines, 1, consoleHeader("UI_MODULE_FOCUS", "F O C U S · T A R G E T S", "01"))
     return table.concat(lines, "\n")
 end
 
@@ -1009,7 +1074,7 @@ local function formatCueRail(recommendation, scaffold)
     if not recommendation then return scaffold and waitingCueText() or "" end
     local lines = {}
     if recommendation.burstAllowed and recommendation.mode == "KILL" then
-        table.insert(lines, "★ " .. L("UI_BURST_READY"))
+        table.insert(lines, "|cffffd24a●|r " .. L("UI_BURST_READY") .. " |cffffd24aHI|r")
     end
     local verbose = (ArenaCoachTBCDB and ArenaCoachTBCDB.frame
                      and ArenaCoachTBCDB.frame.verbose) or false
@@ -1020,13 +1085,13 @@ local function formatCueRail(recommendation, scaffold)
         for i = 1, math.min(#recommendation.callouts, maxLines) do
             local key = recommendation.callouts[i]
             table.insert(lines,
-                string.format("%s  %s", calloutIcon(key, 14), calloutText(key, recommendation)))
+                string.format("%s  |cffffffff%s|r", calloutIcon(key, 14), calloutText(key, recommendation)))
         end
     end
     if #lines == 0 then
         return scaffold and waitingCueText() or ""
     end
-    table.insert(lines, 1, moduleHeader("UI_MODULE_CUES"))
+    table.insert(lines, 1, consoleHeader("UI_MODULE_CUES", "T A C T I C A L · B R I E F", "02"))
     return table.concat(lines, "\n")
 end
 
@@ -1200,6 +1265,10 @@ function UI:Apply(recommendation)
     local target = recommendation.primaryTargetName
                 or recommendation.primaryTargetClass
                 or ""
+    if f.metaText then
+        local bracket = (ns.Core and ns.Core.state and ns.Core.state.bracket) or "PvP"
+        f.metaText:SetText(string.format("A R E N A  /  %s  /  %s", tostring(bracket), mode))
+    end
     if f.modeAccent then
         colorTexture(f.modeAccent, color[1], color[2], color[3], 0.78)
     end
@@ -1261,6 +1330,38 @@ function UI:Apply(recommendation)
         -- Wider " · " separator + leading/trailing space so segments
         -- breathe instead of running together.
         f.statsText:SetText(table.concat(parts, "  ·  "))
+    end
+
+    if f.healthBarFill then
+        local hp = showTarget and recommendation.primaryTargetHp or nil
+        if hp then
+            local frac = tonumber(hp) or 0
+            if frac > 1 then frac = frac / 100 end
+            frac = clamp(frac, 0, 1)
+            local barW = f._accHealthBarWidth or 100
+            f._accHealthBarFillWidth = math.max(1, math.floor(barW * frac))
+            size(f.healthBarFill, f._accHealthBarFillWidth, 8)
+            if frac <= 0.35 then
+                colorTexture(f.healthBarFill, 1.0, 0.22, 0.22, 0.94)
+            elseif frac <= 0.65 then
+                colorTexture(f.healthBarFill, 0.95, 0.56, 0.18, 0.92)
+            else
+                colorTexture(f.healthBarFill, 0.85, 0.25, 0.25, 0.92)
+            end
+            if f.healthBarFill.Show then f.healthBarFill:Show() end
+        else
+            f._accHealthBarFillWidth = 1
+            size(f.healthBarFill, 1, 8)
+            if f.healthBarFill.Hide then f.healthBarFill:Hide() end
+        end
+    end
+    if f.healthLabel then
+        local hp = showTarget and pct(recommendation.primaryTargetHp) or nil
+        if hp then
+            f.healthLabel:SetText(string.format("H E A L T H  ·  P O O L       C U R R E N T  %d%%", hp))
+        else
+            f.healthLabel:SetText("H E A L T H  ·  P O O L")
+        end
     end
 
     local subParts = {}

@@ -132,13 +132,15 @@ Pre-v2.1.6 this module referenced `Sound/Voice/*.ogg` paths that were never bund
 
 将提示键和模式名映射到 WoW 客户端内置的数字 SoundKit ID。`UI:Apply` 在新顶层提示和模式切换时触发一次性音效（受 `db.alerts.sound` 控制，仅竞技场触发）。v2.1.6 前引用的 `Sound/Voice/*.ogg` 路径并未打包进插件，所以历史版本的音效从未真正发出。
 
-### UI.lua (integrated prototype-A board, v2.8.23)
+### UI.lua (integrated prototype-A board, v2.8.24)
 
-The built-in HUD follows the agreed prototype-A layout as one compact texture-backed board. The board defaults to 500x180, clamps no smaller than 430x176, and keeps the left status stack, center action panel, center player-info/assignment panel, and right cue rail together when dragged or resized. v2.8.23 reshapes the board toward the original cockpit sketch: the left and right rails span the board height, the center column carries the large action call, and the player assignments sit directly under that action call instead of becoming a full-width table. Subtle slot backgrounds make the status/cue/player-info lanes easier to read without darkening the fight. The center action panel also has a slim mode-coloured accent bar so KILL/SWAP/DEFEND state is visible without screen flashing.
+The built-in HUD follows the agreed prototype-A layout as one compact texture-backed board. The board defaults to 540x212, clamps no smaller than 500x196, and keeps the left status stack, center action panel, center player-info/assignment panel, and right cue rail together when dragged or resized. v2.8.24 takes the tactical-console reference seriously without making the addon a full-screen dashboard: it adds a top signal strip, small ruler ticks, console-style section headers, subtle slot backgrounds, and a target health-pool bar in the center instrument. The center action panel also has a slim mode-coloured accent bar so KILL/SWAP/DEFEND state is visible without screen flashing.
+
+v2.8.23 reshaped the board toward the original cockpit sketch: the left and right rails span the board height, the center column carries the large action call, and the player assignments sit directly under that action call instead of becoming a full-width table. Focus, cue, and assignment rows now use compact tags and target-coloured text so they read as scan rows instead of plain paragraph labels.
 
 v2.8.22 added the text safety rules that still apply: visible detail is capped by the current board height so center copy, cue lines, and assignment lines cannot collide. Resizing the board taller/wider allows the full five-player review layout without overlap. Waiting/pre-gate states render structural placeholders in all zones so the HUD does not collapse back into floating text before live combat data exists. `/acc unlock` drags and resizes the integrated board; `/acc lock` locks it.
 
-内置 HUD 现在按 A 方案做成一个紧凑的贴图背景面板。左侧状态栈、中央行动区、中央玩家分工区、右侧提示轨会一起移动/缩放；默认 500x180，最小 430x176。v2.8.23 更接近最初的驾驶舱草图：左右轨道贯穿整块面板，中间上方显示大行动提示，中间下方显示玩家分工，而不是三个等宽上方框加一整条下方表格。文字仍会按当前面板高度裁剪，避免互相覆盖；需要完整五人复盘时可把面板拉高/拉宽。`/acc unlock` 拖动并缩放整块面板，`/acc lock` 锁定。
+内置 HUD 现在按 A 方案做成一个紧凑的贴图背景面板。左侧状态栈、中央行动区、中央玩家分工区、右侧提示轨会一起移动/缩放；默认 540x212，最小 500x196。v2.8.24 加入顶部信号条、标尺刻度、控制台式分区标题、行背景，以及中央目标血量条，让它更像战术仪表盘而不是普通表格。文字仍会按当前面板高度裁剪，避免互相覆盖；需要完整五人复盘时可把面板拉高/拉宽。`/acc unlock` 拖动并缩放整块面板，`/acc lock` 锁定。
 
 ### ScreenEdgeGlow.lua (v2.2.0, softened in v2.8.2)
 
