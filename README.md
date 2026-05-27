@@ -58,7 +58,7 @@ The 100+ enemy comp catalog in `Data/Strategies.lua` carries `ownVariants` so th
 /acc selftest verbose  -- in-client validation
 ```
 
-After `/acc test` the addon replays a realistic 3v3 RMP arena through the same engine path used in a match: gates closed (`OPEN`), combat start, enemy burst, healer CC, healer pressure (`DEFEND`), Disc Priest reveal, Pain Suppression/trinket state, a swap/kill window, then reset. **If you see this replay, the addon is loaded and the decision pipeline is working.** Move the frame to a corner you'll actually look at during a match. Use `/acc test hud` for the older visual-only HUD tour.
+After `/acc test` the addon replays a realistic 3v3 RMP arena over about a minute through the same engine path used in a match: gates closed (`OPEN`), combat start, enemy burst, healer CC, healer pressure (`DEFEND`), Disc Priest reveal, Pain Suppression/trinket state, a swap/kill window, then reset. **If you see this replay, the addon is loaded and the decision pipeline is working.** Move the frame to a corner you'll actually look at during a match. Use `/acc test hud` for the older visual-only HUD tour.
 
 ---
 
@@ -200,7 +200,7 @@ lua5.1 tools/check_locales.lua
 lua5.1 tools/replay.lua <path/to/ArenaCoachTBC.lua>
 ```
 
-CI runs syntax check → locale parity → tests → 99% coverage gate on every push and PR. The current headless suite has **664 tests** and the benchmark suite tracks agreement against hand-labelled scenarios.
+CI runs syntax check → locale parity → tests → 99% coverage gate on every push and PR. The current headless suite has **665 tests** and the benchmark suite tracks agreement against hand-labelled scenarios.
 
 ---
 
@@ -270,7 +270,7 @@ MIT.
 /acc selftest verbose  -- 客户端内自检
 ```
 
-执行 `/acc test` 后，插件会通过真实决策引擎回放一局 3v3 RMP：铁门未开（`OPEN`）、开战、敌方爆发、治疗被控、治疗承压（`DEFEND`）、戒律牧确认、痛苦压制/徽章状态、换火击杀窗口，最后重置。**看到这个回放，说明插件已加载且决策链路可运行。** 把框拖到你比赛中实际会看的位置。`/acc test hud` 保留旧的纯视觉 HUD 演示。
+执行 `/acc test` 后，插件会用约 1 分钟通过真实决策引擎回放一局 3v3 RMP：铁门未开（`OPEN`）、开战、敌方爆发、治疗被控、治疗承压（`DEFEND`）、戒律牧确认、痛苦压制/徽章状态、换火击杀窗口，最后重置。**看到这个回放，说明插件已加载且决策链路可运行。** 把框拖到你比赛中实际会看的位置。`/acc test hud` 保留旧的纯视觉 HUD 演示。
 
 ---
 

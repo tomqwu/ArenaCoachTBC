@@ -194,6 +194,27 @@ H.it(g, "real-arena scenario exercises opener, defensive, kill, and reset modes"
     H.assertEq(Core.state.bracket, 3)
 end)
 
+H.it(g, "real-arena scenario schedules over a readable fight window", function()
+    resetState()
+    local delays = {}
+    _G.C_Timer = {
+        After = function(delay, _fn)
+            table.insert(delays, delay or 0)
+        end,
+    }
+    local ran, err = SIM:Run("real-arena", { printEvents = false })
+    _G.C_Timer = nil
+    H.assertTrue(ran, "Run failed: " .. tostring(err))
+
+    local maxDelay, early = 0, 0
+    for _, delay in ipairs(delays) do
+        if delay > maxDelay then maxDelay = delay end
+        if delay <= 12 then early = early + 1 end
+    end
+    H.assertTrue(maxDelay >= 60, "real-arena should not finish like a rapid HUD demo")
+    H.assertTrue(early <= 4, "real-arena opener should not stack too many early visual ticks")
+end)
+
 H.it(g, "/acc simulate (no arg) lists scenarios", function()
     resetState()
     local lines = {}

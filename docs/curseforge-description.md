@@ -178,7 +178,7 @@ Learning and recordings are local SavedVariables only. `/acc reset` clears saved
 | Command | What It Does |
 |---|---|
 | `/acc help` | Show all commands |
-| `/acc test` | Run a realistic 3v3 arena replay through the engine |
+| `/acc test` | Run a readable ~1-minute realistic 3v3 arena replay through the engine |
 | `/acc test hud` | Run the visual-only arena HUD demo |
 | `/acc test bg` | Run a battleground demo |
 | `/acc test world` | Run a world-PvP demo |
@@ -222,7 +222,7 @@ Both locales are parity-checked in CI. Current locale parity is **145 keys per l
 
 The addon is developed as a pure Lua 5.1 project with headless tests for the strategy engine and WoW API stubs for UI/core behavior. Current local release validation:
 
-- **664 tests passing**
+- **665 tests passing**
 - **99%+ coverage**
 - Locale parity check
 - Lua syntax check

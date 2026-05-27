@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.10] - 2026-05-27
+
+### Changed
+- **Readable `/acc test` pacing.** The realistic arena replay now spans about a minute instead of compressing an entire match into a rapid 11-second sequence. Bookkeeping events can update scenario state without forcing redundant HUD repaints, so the replay reads like an arena opener instead of a flashing demo.
+
 ## [2.8.9] - 2026-05-27
 
 ### Fixed

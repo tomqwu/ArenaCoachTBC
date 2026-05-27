@@ -270,7 +270,7 @@ function SIM:_dispatch(scenario, opts)
                 ev.t or 0,
                 ev.label or (ev.type .. " " .. tostring(ev.spell or ev.unit or ""))))
         end
-        if ns.Core and ns.Core.Evaluate then ns.Core:Evaluate() end
+        if not ev.noEvaluate and ns.Core and ns.Core.Evaluate then ns.Core:Evaluate() end
     end
 
     local haveTimer = (type(_G.C_Timer) == "table" and type(_G.C_Timer.After) == "function")
