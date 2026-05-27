@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.17] - 2026-05-27
+
+### Fixed
+- **Prototype-A now has an obvious draggable shell.** The integrated HUD uses a stronger translucent background, darker top drag strip, grip marker, and visible internal dividers so the left focus, center action, right cue, and lower assignments zones start inside one clear box instead of reading as loose floating text.
+- **Detached prototype modules reset off for migrated layouts.** Older SavedVariables that accidentally enabled satellite modules are migrated back to the integrated board default, while the legacy detached frames remain dormant unless deliberately re-enabled.
+
 ## [2.8.16] - 2026-05-27
 
 ### Fixed

@@ -14,11 +14,18 @@ ns.UI = ns.UI or {}
 local UI = ns.UI
 UI.frame = nil
 
-local ADDON_VERSION = "2.8.16"
+local ADDON_VERSION = "2.8.17"
 local STALE_FADE_START = 2.5
 local STALE_FADE_SECONDS = 1.5
 local COMPACT_WIDTH = 460
 local COMPACT_HEIGHT = 168
+local GRID_PADDING = 8
+local HEADER_HEIGHT = 22
+local GRID_TOP_Y = -30
+local TOP_ROW_HEIGHT = 82
+local SIDE_PANEL_WIDTH = 126
+local CENTER_PANEL_WIDTH = COMPACT_WIDTH - (GRID_PADDING * 2) - (SIDE_PANEL_WIDTH * 2)
+local ASSIGN_PANEL_HEIGHT = 52
 local UNIT_WIDTH = 150
 local UNIT_HEIGHT = 96
 local RAIL_WIDTH = 150
@@ -132,6 +139,23 @@ local function skinPanel(frame, alpha, borderAlpha)
     end
 end
 
+local function solidTexture(parent, key, layer, r, g, b, a)
+    if not (parent and parent.CreateTexture) then return nil end
+    local tex = parent[key] or parent:CreateTexture(nil, layer or "BACKGROUND")
+    parent[key] = tex
+    colorTexture(tex, r, g, b, a)
+    return tex
+end
+
+local function placeLine(parent, key, w, h, x, y, alpha)
+    local tex = solidTexture(parent, key, "ARTWORK", 0.95, 0.74, 0.36, alpha or 0.68)
+    if not tex then return nil end
+    clearPoints(tex)
+    size(tex, w, h)
+    point(tex, "TOPLEFT", parent, "TOPLEFT", x, y)
+    return tex
+end
+
 local function createChildPanel(parent, key, width, height, pointA, relativePoint, x, y, alpha)
     if not (parent and type(CreateFrame) == "function") then return nil end
     local panel = parent[key] or CreateFrame("Frame", nil, parent)
@@ -237,19 +261,43 @@ function UI:CreateFrame()
     if f.SetFrameLevel then pcall(f.SetFrameLevel, f, 20) end
 
     -- Backdrop (TBC client uses Backdrop trait built-in for Frame)
-    setBackdrop(f, 0.42, 12)
-    skinPanel(f, 0.44, 0.62)
+    setBackdrop(f, 0.52, 12)
+    skinPanel(f, 0.58, 0.74)
 
     -- Title: small identity marker, not a full header row.
     f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    f.title:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -6)
+    f.title:SetPoint("TOPLEFT", f, "TOPLEFT", 28, -6)
     f.title:SetJustifyH("LEFT")
     f.title:SetWidth(190)
     f.title:SetText(L("UI_TITLE"))
 
-    local leftPanel = createChildPanel(f, "leftPanel", 126, 74, "TOPLEFT", "TOPLEFT", 8, -30, 0.34)
-    local rightPanel = createChildPanel(f, "rightPanel", 126, 74, "TOPRIGHT", "TOPRIGHT", -8, -30, 0.34)
-    local assignPanel = createChildPanel(f, "assignPanel", COMPACT_WIDTH - 16, 52, "BOTTOMLEFT", "BOTTOMLEFT", 8, 8, 0.34)
+    local dragBar = solidTexture(f, "dragBar", "BACKGROUND", 0.03, 0.025, 0.015, 0.76)
+    if dragBar then
+        clearPoints(dragBar)
+        point(dragBar, "TOPLEFT", f, "TOPLEFT", 2, -2)
+        point(dragBar, "TOPRIGHT", f, "TOPRIGHT", -2, -2)
+        if dragBar.SetHeight then pcall(dragBar.SetHeight, dragBar, HEADER_HEIGHT) end
+    end
+
+    local topY = GRID_TOP_Y
+    local leftX = GRID_PADDING
+    local centerX = leftX + SIDE_PANEL_WIDTH
+    local rightX = centerX + CENTER_PANEL_WIDTH
+    local assignY = topY - TOP_ROW_HEIGHT
+    local contentW = COMPACT_WIDTH - (GRID_PADDING * 2)
+
+    local leftPanel = createChildPanel(f, "leftPanel", SIDE_PANEL_WIDTH, TOP_ROW_HEIGHT,
+        "TOPLEFT", "TOPLEFT", leftX, topY, 0.48)
+    local centerPanel = createChildPanel(f, "centerPanel", CENTER_PANEL_WIDTH, TOP_ROW_HEIGHT,
+        "TOPLEFT", "TOPLEFT", centerX, topY, 0.42)
+    local rightPanel = createChildPanel(f, "rightPanel", SIDE_PANEL_WIDTH, TOP_ROW_HEIGHT,
+        "TOPLEFT", "TOPLEFT", rightX, topY, 0.48)
+    local assignPanel = createChildPanel(f, "assignPanel", contentW, ASSIGN_PANEL_HEIGHT,
+        "TOPLEFT", "TOPLEFT", leftX, assignY, 0.46)
+
+    placeLine(f, "leftDivider", 1, TOP_ROW_HEIGHT, centerX, topY, 0.78)
+    placeLine(f, "rightDivider", 1, TOP_ROW_HEIGHT, rightX, topY, 0.78)
+    placeLine(f, "assignDivider", contentW, 1, leftX, assignY, 0.78)
 
     -- Small build marker for rapid local-copy/release verification.
     f.versionText = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -259,52 +307,60 @@ function UI:CreateFrame()
     f.versionText:SetTextColor(0.75, 0.75, 0.75)
     f.versionText:SetText("v" .. addonVersion())
 
+    f.dragGrip = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    f.dragGrip:SetPoint("TOPLEFT", f, "TOPLEFT", 8, -6)
+    f.dragGrip:SetJustifyH("LEFT")
+    f.dragGrip:SetWidth(16)
+    f.dragGrip:SetTextColor(0.78, 0.62, 0.34)
+    f.dragGrip:SetText("|||")
+
     -- v2.8.1: Japanese-arcade-style warning plate. This is just a big,
     -- passive text cue inside the HUD, never a fullscreen flash.
+    local actionParent = centerPanel or f
     f.arcadeText = f:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
-    f.arcadeText:SetPoint("TOP", f, "TOP", 0, -28)
+    f.arcadeText:SetPoint("TOP", actionParent, "TOP", 0, -5)
     if f.arcadeText.SetFont then
         local fontPath = (f.arcadeText.GetFont and select(1, f.arcadeText:GetFont()))
             or "Fonts\\FRIZQT__.TTF"
-        pcall(f.arcadeText.SetFont, f.arcadeText, fontPath, 18, "THICKOUTLINE")
+        pcall(f.arcadeText.SetFont, f.arcadeText, fontPath, 17, "THICKOUTLINE")
     end
     f.arcadeText:SetJustifyH("CENTER")
-    f.arcadeText:SetWidth(190)
+    f.arcadeText:SetWidth(CENTER_PANEL_WIDTH - 10)
     f.arcadeText:SetText(string.format("!! %s !!", L("UI_ARCADE_READY")))
 
     -- Main recommendation line ("KILL: Warlock"). This remains the
     -- largest element, but no longer consumes a raid-warning sized band.
     f.bigText = f:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
-    f.bigText:SetPoint("TOP", f.arcadeText, "BOTTOM", 0, -2)
+    f.bigText:SetPoint("TOP", f.arcadeText, "BOTTOM", 0, -1)
     if f.bigText.SetFont then
         local fontPath = (f.bigText.GetFont and select(1, f.bigText:GetFont()))
             or "Fonts\\FRIZQT__.TTF"
-        pcall(f.bigText.SetFont, f.bigText, fontPath, 22, "OUTLINE")
+        pcall(f.bigText.SetFont, f.bigText, fontPath, 20, "OUTLINE")
     end
     f.bigText:SetJustifyH("CENTER")
-    f.bigText:SetWidth(206)
+    f.bigText:SetWidth(CENTER_PANEL_WIDTH - 10)
     f.bigText:SetText(L("REASON_DEFAULT"))
 
     -- Target stats row (HP% + kill prob%) under the mode line. Kept
     -- compact so it reads as supporting context rather than another alert.
     f.statsText = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    f.statsText:SetPoint("TOP", f.bigText, "BOTTOM", 0, -4)
+    f.statsText:SetPoint("TOP", f.bigText, "BOTTOM", 0, -3)
     if f.statsText.SetFont then
         local fontPath = (f.statsText.GetFont and select(1, f.statsText:GetFont()))
             or "Fonts\\FRIZQT__.TTF"
-        pcall(f.statsText.SetFont, f.statsText, fontPath, 12, "OUTLINE")
+        pcall(f.statsText.SetFont, f.statsText, fontPath, 11, "OUTLINE")
     end
     f.statsText:SetJustifyH("CENTER")
-    f.statsText:SetWidth(206)
+    f.statsText:SetWidth(CENTER_PANEL_WIDTH - 10)
     f.statsText:SetText("")
 
     -- Reason / top callout text. Default mode shows one line; verbose
     -- mode can still expand for debugging.
     f.subText = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    f.subText:SetPoint("TOP", f.statsText, "BOTTOM", 0, -5)
+    f.subText:SetPoint("TOP", f.statsText, "BOTTOM", 0, -3)
     if f.subText.SetSpacing then pcall(f.subText.SetSpacing, f.subText, 2) end
     f.subText:SetJustifyH("CENTER")
-    f.subText:SetWidth(206)
+    f.subText:SetWidth(CENTER_PANEL_WIDTH - 10)
     f.subText:SetText("")
 
     if leftPanel then
@@ -317,7 +373,7 @@ function UI:CreateFrame()
         end
         if f.unitText.SetSpacing then pcall(f.unitText.SetSpacing, f.unitText, 1) end
         f.unitText:SetJustifyH("LEFT")
-        f.unitText:SetWidth(110)
+        f.unitText:SetWidth(SIDE_PANEL_WIDTH - 16)
         f.unitText:SetText(waitingUnitText())
     end
 
@@ -331,7 +387,7 @@ function UI:CreateFrame()
         end
         if f.railText.SetSpacing then pcall(f.railText.SetSpacing, f.railText, 1) end
         f.railText:SetJustifyH("LEFT")
-        f.railText:SetWidth(110)
+        f.railText:SetWidth(SIDE_PANEL_WIDTH - 16)
         f.railText:SetText(waitingCueText())
     end
 
@@ -345,7 +401,7 @@ function UI:CreateFrame()
         end
         if f.assignText.SetSpacing then pcall(f.assignText.SetSpacing, f.assignText, 1) end
         f.assignText:SetJustifyH("LEFT")
-        f.assignText:SetWidth(COMPACT_WIDTH - 36)
+        f.assignText:SetWidth(contentW - 20)
         f.assignText:SetText(waitingAssignmentText())
     end
 

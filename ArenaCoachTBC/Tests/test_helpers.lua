@@ -42,6 +42,18 @@ function mockMethods:SetTextColor()       end
 function mockMethods:SetJustifyH()        end
 function mockMethods:SetJustifyV()        end
 function mockMethods:SetWidth(w)          self._width = w end
+function mockMethods:SetHeight(h)         self._height = h end
+function mockMethods:SetColorTexture(r, g, b, a)
+    self._color = { r, g, b, a }
+end
+function mockMethods:SetTexture(...)
+    local n = select("#", ...)
+    if n >= 3 then
+        self._color = { select(1, ...) }
+    else
+        self._texture = select(1, ...)
+    end
+end
 function mockMethods:SetFont(path, size, flags)
     self._fontPath = path
     self._fontSize = size

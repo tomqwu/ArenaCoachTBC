@@ -118,7 +118,7 @@ If burst is blocked, the decision records the blocker for trace and WeakAura dis
 
 ### DBM-Style Player Assignments
 
-Each recommendation can include per-friendly assignments. The built-in HUD uses an integrated prototype-A board: a center action zone, a left focus panel for current targets/pressure, a right cue panel for icon/text reminders, and a lower assignment panel. The zones remain visible with placeholders while waiting/pre-gates, then fill in as real combat data arrives. Assignments show up to three compact lines in normal mode so a 3v3 team gets one action per player without covering the fight; `/acc verbose on` expands to all five for 5v5 review. Examples:
+Each recommendation can include per-friendly assignments. The built-in HUD uses an integrated prototype-A board: a center action zone, a left focus panel for current targets/pressure, a right cue panel for icon/text reminders, and a lower assignment panel. The board has a visible translucent shell, top drag strip, grip marker, and internal dividers so users can see where to drag it and where each module belongs. The zones remain visible with placeholders while waiting/pre-gates, then fill in as real combat data arrives. Assignments show up to three compact lines in normal mode so a 3v3 team gets one action per player without covering the fight; `/acc verbose on` expands to all five for 5v5 review. Examples:
 
 - Warrior: MS / Hamstring -> kill target
 - Shaman: Purge / shock -> kill target

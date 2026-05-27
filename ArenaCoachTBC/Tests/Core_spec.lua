@@ -76,7 +76,7 @@ H.it(g, "InitDB migrates only untouched prototype-A side positions", function()
     local db = Core:InitDB()
     H.assertEq(db.unitFrame.x, -230)
     H.assertEq(db.railFrame.x, 230)
-    H.assertEq(db.layoutVersion, 2815)
+    H.assertEq(db.layoutVersion, 2817)
 
     _G.ArenaCoachTBCDB = {
         unitFrame = { point = "CENTER", x = -180, y = 96, scale = 1.0 },
@@ -87,6 +87,17 @@ H.it(g, "InitDB migrates only untouched prototype-A side positions", function()
     H.assertEq(db.unitFrame.y, 96)
     H.assertEq(db.railFrame.x, 190)
     H.assertEq(db.railFrame.y, 88)
+end)
+
+H.it(g, "InitDB recenters prototype modules into the integrated board by default", function()
+    _G.ArenaCoachTBCDB = {
+        layoutVersion = 2815,
+        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0, detachedModules = true },
+    }
+    local db = Core:InitDB()
+    H.assertFalse(db.frame.detachedModules,
+        "fresh layouts should start as one divided board, not detached satellites")
+    H.assertEq(db.layoutVersion, 2817)
 end)
 
 H.it(g, "CurrentLocale returns GetLocale value on auto", function()
