@@ -1423,7 +1423,7 @@ H.it(g, "_NonArenaCLEUStub does not overwrite an existing entry", function()
         "must not overwrite existing enemy with stub")
 end)
 
-H.it(g, "CLEU creates non-arena enemy stubs only when hostile damage hits us", function()
+H.it(g, "CLEU creates non-arena enemy stubs only when hostile player damage hits us", function()
     rebootForEvents()
     clearWoWApis()
     _G.ArenaCoachTBCDB = nil; Core:InitDB()
@@ -1433,17 +1433,43 @@ H.it(g, "CLEU creates non-arena enemy stubs only when hostile damage hits us", f
     _G.UnitExists = function() return false end
     H._gameTime = 1000
 
-    H.fireCLEU(1000, "SPELL_CAST_SUCCESS", false, "guid-enemy", "Enemy",
+    H.fireCLEU(1000, "SPELL_CAST_SUCCESS", false, "Player-Enemy", "Enemy",
                nil, nil, "guid-other", "Other", nil, nil, H.ns.Spells.POLYMORPH, "Polymorph")
     EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
-    H.assertNil(Core.state.enemies["guid-enemy"],
+    H.assertNil(Core.state.enemies["Player-Enemy"],
         "unrelated world CLEU casts should not create phantom enemies")
 
-    H.fireCLEU(1001, "SPELL_DAMAGE", false, "guid-enemy", "Enemy",
+    H.fireCLEU(1001, "SPELL_DAMAGE", false, "Player-Enemy", "Enemy",
                nil, nil, "guid-player", "Player", nil, nil, H.ns.Spells.PYROBLAST, "Pyroblast")
     EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
-    H.assertNotNil(Core.state.enemies["guid-enemy"],
-        "damage to a friendly should create a combat stub when no nameplate is visible")
+    H.assertNotNil(Core.state.enemies["Player-Enemy"],
+        "player damage to a friendly should create a combat stub when no nameplate is visible")
+end)
+
+H.it(g, "CLEU mob damage does not wake world PvP HUD while flagged", function()
+    rebootForEvents()
+    clearWoWApis()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    Core.state.pvpContext = "world_idle"
+    Core.state.enemies = {}
+    Core._lastWorldHostileTs = 900
+    Core._friendlyGUIDs = { ["guid-player"] = { class = "WARRIOR", alive = true } }
+    _G.UnitExists = function() return false end
+    _G.IsActiveBattlefieldArena = function() return false end
+    _G.GetInstanceInfo = function() return "Elwynn Forest", "none" end
+    _G.UnitIsPVP = function(u) return u == "player" end
+    H._gameTime = 1000
+
+    H.fireCLEU(1000, "SPELL_DAMAGE", false, "Creature-0-0-0-0-12345-0000000000", "Forest Spider",
+               nil, nil, "guid-player", "Player", nil, nil, 1, "Bite")
+    EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
+
+    H.assertEq(Core._lastWorldHostileTs, 900,
+        "PvE mob damage must not refresh the world-PvP hostile timer")
+    H.assertNil(Core.state.enemies["Creature-0-0-0-0-12345-0000000000"],
+        "PvE mobs must not become non-arena PvP enemies")
+    H.assertEq(Core:DetectPvPContext(), "world_idle",
+        "PvP-flagged mob combat should stay idle, so UI:Apply auto-hides")
 end)
 
 H.it(g, "CLEU treats Classic landed swing and damage shield events as pressure", function()
@@ -1463,14 +1489,14 @@ H.it(g, "CLEU treats Classic landed swing and damage shield events as pressure",
         Core.Evaluate = function() evalCount = evalCount + 1 end
 
         for i = 1, 3 do
-            H.fireCLEU(1000 + i, subEvent, false, "guid-enemy", "Enemy",
+            H.fireCLEU(1000 + i, subEvent, false, "Player-Enemy", "Enemy",
                        nil, nil, "guid-player", "Player", nil, nil,
                        H.ns.Spells.PYROBLAST, "Pyroblast")
             EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
         end
 
         Core.Evaluate = savedEvaluate
-        H.assertNotNil(Core.state.enemies["guid-enemy"],
+        H.assertNotNil(Core.state.enemies["Player-Enemy"],
             subEvent .. " should create a non-arena enemy stub")
         H.assertEq(#Core._friendlyDamageTs, 3,
             subEvent .. " should count toward trained-friendly pressure")

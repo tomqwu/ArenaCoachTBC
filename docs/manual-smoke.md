@@ -60,6 +60,7 @@ behaviour is what tests can't see.
 - [ ] Audio cue fires on mode flip (KILL/SWAP/DEFEND/OPEN play distinct WoW SoundKit IDs); arena-only
 - [ ] URGENT callouts stay readable without a full-screen flash, even if an old SavedVariables file has `alerts.screenFlash = true`
 - [ ] Standing in Stormwind / Orgrimmar for 30 s: no frame-rate drop (city-lag fix, v2.2.5)
+- [ ] While PvP-flagged outside instances, hitting or being hit by an ordinary creature does not show the HUD; a real hostile player or duel still does
 
 ## In-arena
 

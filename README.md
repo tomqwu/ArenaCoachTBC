@@ -14,7 +14,7 @@ A real-time arena strategy coach for **World of Warcraft TBC Classic / TBC Anniv
 |---|---|
 | **Arena 2v2 / 3v3 / 5v5** | Full engine: comp ID, spec inference, chain planning, opponent profiles, lookahead, burst gating, all visual + audio alerts. |
 | **Battlegrounds** (WSG/AB/AV/EotS) | Engine adapts: sparse nameplate enemy discovery, hostile-damage CLEU fallback, flag-carrier priority (+200), low-HP straggler boost, BG-specific callouts (`CALL_FLAG_CARRIER_LOW`, `CALL_BG_DEFEND`). Class-prior tier kicks in when the team-signature profile lacks samples (PUG'd rosters). |
-| **World PvP / duels** | Engine simplifies: single-target focus, no SWAP thrash, no comp matching. Low player HP can still trigger `DEFEND`, even solo on a non-healer. `DUEL_REQUESTED` auto-engages. |
+| **World PvP / duels** | Engine simplifies: single-target focus, no SWAP thrash, no comp matching. Low player HP can still trigger `DEFEND`, even solo on a non-healer. Ordinary `Creature-...` mob combat does not wake the HUD; world fallback requires player evidence. `DUEL_REQUESTED` auto-engages. |
 | **Arena-only alerts** stay gated to arena | Voice cues only fire when `IsActiveBattlefieldArena()` is true. No full-screen flash or spurious red flash in WSG. |
 
 ---
@@ -202,7 +202,7 @@ lua5.1 tools/check_locales.lua
 lua5.1 tools/replay.lua <path/to/ArenaCoachTBC.lua>
 ```
 
-CI runs syntax check → locale parity → tests → 99% coverage gate on every push and PR. The current headless suite has **681 tests** and the benchmark suite tracks agreement against hand-labelled scenarios.
+CI runs syntax check → locale parity → tests → 99% coverage gate on every push and PR. The current headless suite has **682 tests** and the benchmark suite tracks agreement against hand-labelled scenarios.
 
 ---
 

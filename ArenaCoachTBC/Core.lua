@@ -321,6 +321,10 @@ local function classToken(class)
     return class:upper()
 end
 
+local function isPlayerGUID(guid)
+    return type(guid) == "string" and guid:find("^Player%-") ~= nil
+end
+
 local function newEnemy(unit)
     return {
         unit             = unit,
@@ -870,7 +874,7 @@ local function onCLEU(_event, ...)
         local playerHit = Core._friendlyGUIDs[destGUID]
             or (type(UnitGUID) == "function" and destGUID == UnitGUID("player"))
         local isDamage = isDamageSubEvent(subEvent)
-        if playerHit and isDamage then
+        if playerHit and isDamage and isPlayerGUID(sourceGUID) then
             Core._lastWorldHostileTs = ts or 0
             -- Stub-create an enemy from CLEU if a hostile player damages us
             -- before their nameplate is visible.

@@ -82,7 +82,7 @@ The engine switches to battleground behavior. It uses nearby hostile players and
 
 ### In World PvP And Duels
 
-The addon simplifies the advice. It focuses on the current enemy, avoids noisy swap calls, and can still show DEFEND when you are low or being pressured.
+The addon simplifies the advice. It focuses on the current enemy, avoids noisy swap calls, and can still show DEFEND when you are low or being pressured. Ordinary PvE mob combat does not wake the HUD while you are only PvP-flagged; the world fallback requires hostile player evidence.
 
 ### In Cities Or Idle Areas
 
@@ -223,8 +223,8 @@ Both locales are parity-checked in CI. Current locale parity is **154 keys per l
 
 The addon is developed as a pure Lua 5.1 project with headless tests for the strategy engine and WoW API stubs for UI/core behavior. Current local release validation:
 
-- **681 tests passing**
-- **99.64% coverage**
+- **682 tests passing**
+- **99.65% coverage**
 - Locale parity check
 - Lua syntax check
 - GitHub Actions on push and release tags

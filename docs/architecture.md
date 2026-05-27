@@ -132,7 +132,7 @@ Pre-v2.1.6 this module referenced `Sound/Voice/*.ogg` paths that were never bund
 
 将提示键和模式名映射到 WoW 客户端内置的数字 SoundKit ID。`UI:Apply` 在新顶层提示和模式切换时触发一次性音效（受 `db.alerts.sound` 控制，仅竞技场触发）。v2.1.6 前引用的 `Sound/Voice/*.ogg` 路径并未打包进插件，所以历史版本的音效从未真正发出。
 
-### UI.lua (integrated prototype-A board, v2.8.28)
+### UI.lua (integrated prototype-A board, v2.8.29)
 
 The built-in HUD follows the agreed prototype-A layout as one compact texture-backed board. The board defaults to 540x212, clamps no smaller than 500x196, and keeps the left status stack, center action panel, bottom player-info/assignment strip, and right cue rail together when dragged or resized.
 
@@ -164,9 +164,11 @@ Iterates `nameplate1..nameplate40` to resolve the current frame for a given enem
 
 遍历 `nameplate1..nameplate40` 找到指定敌方 GUID 对应的当前铭牌，挂上一个含四条彩带的子覆盖框。击杀目标得红色边框，换火候选得橙色。`UI:Apply` 每次都清空重绘。从不修改铭牌原生的血条/施法条/姓名，与 Plater/KuiNameplates/TidyPlates 共存。
 
-### Non-arena discovery (Unreleased)
+### Non-arena discovery (v2.8.29)
 
-BG/world enemy state is intentionally opportunistic. `Core:RefreshEnemiesNonArena()` scans all `nameplate1..nameplate40` slots without stopping at the first gap because nameplate unit IDs can be sparse. CLEU fallback stubs are only created when a hostile source damages the player or a known friendly, which avoids phantom enemies from unrelated world combat nearby. World PvP defensive mode uses healer-capable friendlies when present and falls back to the lowest alive friendly in solo play, so a low-HP non-healer player still gets `DEFEND` instead of a forced `KILL`.
+BG/world enemy state is intentionally opportunistic. `Core:RefreshEnemiesNonArena()` scans all `nameplate1..nameplate40` slots without stopping at the first gap because nameplate unit IDs can be sparse. v2.8.29 tightens CLEU fallback stubs so only `Player-...` GUID sources can refresh the world-PvP hostile timer or create a non-arena enemy stub; ordinary `Creature-...` mob combat stays `world_idle` and does not wake the HUD. World PvP defensive mode uses healer-capable friendlies when present and falls back to the lowest alive friendly in solo play, so a low-HP non-healer player still gets `DEFEND` instead of a forced `KILL`.
+
+BG/world 的敌人发现是机会式的。`Core:RefreshEnemiesNonArena()` 会扫描所有 `nameplate1..nameplate40`，不会因为 `nameplate1` 不存在就停止。v2.8.29 收紧了 CLEU 兜底：只有 `Player-...` GUID 来源会刷新户外 PvP 敌对计时或创建非竞技场敌人；普通 `Creature-...` 野怪战斗保持 `world_idle`，不会唤醒 HUD。
 
 ### Auto-hide gate + master switch (v2.2.5)
 

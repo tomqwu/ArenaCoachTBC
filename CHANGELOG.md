@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.29] - 2026-05-27
+
+### Fixed
+- **PvE mobs no longer wake the world-PvP HUD.** World/BG CLEU fallback now requires a real player GUID before refreshing the hostile-contact timer or creating a non-arena enemy stub, so hitting or being hit by ordinary creatures while PvP-flagged leaves the HUD hidden.
+
 ## [2.8.28] - 2026-05-27
 
 ### Changed
