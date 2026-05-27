@@ -32,11 +32,13 @@ local DEFAULTS = {
     -- saturated primaries. Toggle via /acc highcontrast on|off.
     frame    = { point = "CENTER", x = 0, y = 120, scale = 1.0,
                  verbose = false, highContrast = false },
-    -- v2.8.13: prototype-A layout modules. Main call stays center,
-    -- focus strip sits left, cue rail sits right, assignments sit lower.
+    -- v2.8.14: prototype-A modules default close enough to fit a
+    -- 640-wide arena capture: left focus, center action, right cue rail,
+    -- lower assignments.
     assignmentFrame = { point = "CENTER", x = 0, y = 16, scale = 1.0 },
-    unitFrame = { point = "CENTER", x = -258, y = 120, scale = 1.0 },
-    railFrame = { point = "CENTER", x = 258, y = 120, scale = 1.0 },
+    unitFrame = { point = "CENTER", x = -230, y = 120, scale = 1.0 },
+    railFrame = { point = "CENTER", x = 230, y = 120, scale = 1.0 },
+    layoutVersion = 2814,
     alerts   = { sound = true, raidWarning = false, partyChat = false, screenFlash = false,
                  -- v2.2.0: peripheral-vision visual layers.
                  -- v2.7.0: edgeGlow flipped from default-on to default-off.
@@ -132,9 +134,35 @@ local function deepMerge(dest, src)
     end
 end
 
+local function migrateLayoutDefaults(db, previousVersion)
+    if not db then return end
+    local current = tonumber(previousVersion ~= nil and previousVersion or 0) or 0
+    if current >= 2814 then return end
+
+    local function moveOldDefault(key, oldX, oldY, newX, newY)
+        local cfg = db[key]
+        if type(cfg) ~= "table" then return end
+        if (cfg.point or "CENTER") == "CENTER"
+           and tonumber(cfg.x or oldX) == oldX
+           and tonumber(cfg.y or oldY) == oldY then
+            cfg.x = newX
+            cfg.y = newY
+        end
+    end
+
+    -- v2.8.13 placed the side modules too close to the edges on
+    -- 640-wide screenshots. Only migrate untouched defaults; if a
+    -- player already dragged a module, preserve their position.
+    moveOldDefault("unitFrame", -258, 120, -230, 120)
+    moveOldDefault("railFrame", 258, 120, 230, 120)
+    db.layoutVersion = 2814
+end
+
 function Core:InitDB()
     _G.ArenaCoachTBCDB = _G.ArenaCoachTBCDB or {}
+    local previousLayoutVersion = _G.ArenaCoachTBCDB.layoutVersion
     deepMerge(_G.ArenaCoachTBCDB, DEFAULTS)
+    migrateLayoutDefaults(_G.ArenaCoachTBCDB, previousLayoutVersion)
     return _G.ArenaCoachTBCDB
 end
 

@@ -58,7 +58,7 @@ The 100+ enemy comp catalog in `Data/Strategies.lua` carries `ownVariants` so th
 /acc selftest verbose  -- in-client validation
 ```
 
-After `/acc test` the addon replays a realistic 3v3 RMP arena over about a minute through the same engine path used in a match: gates closed (`OPEN`), combat start, enemy burst, healer CC, healer pressure (`DEFEND`), Disc Priest reveal, Pain Suppression/trinket state, a swap/kill window, then reset. **If you see this replay, the addon is loaded and the decision pipeline is working.** Use `/acc unlock` to move the prototype-A modules — left focus strip, center action toast, right cue rail, and lower assignments — to spots you can glance at without covering arena frames, cast bars, or your WeakAuras. Use `/acc test hud` for the visual-only HUD tour.
+After `/acc test` the addon replays a realistic 3v3 RMP arena over about a minute through the same engine path used in a match: gates closed (`OPEN`), combat start, enemy burst, healer CC, healer pressure (`DEFEND`), Disc Priest reveal, Pain Suppression/trinket state, a swap/kill window, then reset. **If you see this replay, the addon is loaded and the decision pipeline is working.** Use `/acc unlock` to move the prototype-A modules — left focus strip, center action toast, right cue rail, and lower assignments — to spots you can glance at without covering arena frames, cast bars, or your WeakAuras. Use `/acc test hud` for the visual-only HUD tour; the waiting/pre-gate beats now show all four modules with placeholders so the layout is visible before combat data exists.
 
 ---
 
@@ -200,7 +200,7 @@ lua5.1 tools/check_locales.lua
 lua5.1 tools/replay.lua <path/to/ArenaCoachTBC.lua>
 ```
 
-CI runs syntax check → locale parity → tests → 99% coverage gate on every push and PR. The current headless suite has **665 tests** and the benchmark suite tracks agreement against hand-labelled scenarios.
+CI runs syntax check → locale parity → tests → 99% coverage gate on every push and PR. The current headless suite has **671 tests** and the benchmark suite tracks agreement against hand-labelled scenarios.
 
 ---
 

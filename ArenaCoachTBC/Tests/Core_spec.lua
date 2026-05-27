@@ -68,6 +68,27 @@ H.it(g, "InitDB preserves existing user keys (no overwrite)", function()
     H.assertEq(db.frame.point, "CENTER")  -- filled in
 end)
 
+H.it(g, "InitDB migrates only untouched prototype-A side positions", function()
+    _G.ArenaCoachTBCDB = {
+        unitFrame = { point = "CENTER", x = -258, y = 120, scale = 1.0 },
+        railFrame = { point = "CENTER", x = 258, y = 120, scale = 1.0 },
+    }
+    local db = Core:InitDB()
+    H.assertEq(db.unitFrame.x, -230)
+    H.assertEq(db.railFrame.x, 230)
+    H.assertEq(db.layoutVersion, 2814)
+
+    _G.ArenaCoachTBCDB = {
+        unitFrame = { point = "CENTER", x = -180, y = 96, scale = 1.0 },
+        railFrame = { point = "CENTER", x = 190, y = 88, scale = 1.0 },
+    }
+    db = Core:InitDB()
+    H.assertEq(db.unitFrame.x, -180)
+    H.assertEq(db.unitFrame.y, 96)
+    H.assertEq(db.railFrame.x, 190)
+    H.assertEq(db.railFrame.y, 88)
+end)
+
 H.it(g, "CurrentLocale returns GetLocale value on auto", function()
     _G.ArenaCoachTBCDB = nil; Core:InitDB()
     _G.ArenaCoachTBCDB.language = "auto"

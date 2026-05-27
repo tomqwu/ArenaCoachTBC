@@ -74,7 +74,7 @@ The central HUD updates as the fight changes:
 - **BURST READY** only when the burst gates pass
 - **Assignments** showing one compact action per teammate, such as Warrior MS, Shaman purge, Paladin HoJ, Priest dispel, or Druid Cyclone
 
-The text fades out if the fight state stops refreshing, so stale instructions do not sit on the screen after the situation has moved on.
+The text fades out if the fight state stops refreshing, so stale instructions do not sit on the screen after the situation has moved on. Before gates open, the prototype-A modules stay visible with waiting placeholders so the display reads as a real layout before target/cue/assignment data exists.
 
 ### In Battlegrounds
 
@@ -118,7 +118,7 @@ If burst is blocked, the decision records the blocker for trace and WeakAura dis
 
 ### DBM-Style Player Assignments
 
-Each recommendation can include per-friendly assignments. The built-in HUD uses the prototype-A module layout: a center action toast, a left focus strip for current targets/pressure, a right cue rail for icon/text reminders, and a lower assignment module. Assignments show up to three compact lines in normal mode so a 3v3 team gets one action per player without covering the fight; `/acc verbose on` expands to all five for 5v5 review. Examples:
+Each recommendation can include per-friendly assignments. The built-in HUD uses the prototype-A module layout: a center action toast, a left focus strip for current targets/pressure, a right cue rail for icon/text reminders, and a lower assignment module. The modules remain visible with placeholders while waiting/pre-gates, then fill in as real combat data arrives. Assignments show up to three compact lines in normal mode so a 3v3 team gets one action per player without covering the fight; `/acc verbose on` expands to all five for 5v5 review. Examples:
 
 - Warrior: MS / Hamstring -> kill target
 - Shaman: Purge / shock -> kill target
@@ -216,13 +216,13 @@ ArenaCoachTBC currently ships:
 - English (`enUS`)
 - Simplified Chinese (`zhCN`)
 
-Both locales are parity-checked in CI. Current locale parity is **145 keys per locale**. Spell names are resolved by the WoW client through spell IDs, so they follow the language of your client where Blizzard provides localized spell data.
+Both locales are parity-checked in CI. Current locale parity is **153 keys per locale**. Spell names are resolved by the WoW client through spell IDs, so they follow the language of your client where Blizzard provides localized spell data.
 
 ## Project Quality
 
 The addon is developed as a pure Lua 5.1 project with headless tests for the strategy engine and WoW API stubs for UI/core behavior. Current local release validation:
 
-- **665 tests passing**
+- **671 tests passing**
 - **99%+ coverage**
 - Locale parity check
 - Lua syntax check

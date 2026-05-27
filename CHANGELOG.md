@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.14] - 2026-05-27
+
+### Fixed
+- **Prototype-A layout is visible while waiting.** The HUD no longer collapses into only floating center text before the fight starts or during `/acc test hud`. The left focus strip, center action toast, right cue rail, and lower assignments module now show structural waiting placeholders until real target/cue/assignment data arrives.
+- **640-wide arena fit.** The center toast is now 300x118, side modules are 150px wide, and untouched v2.8.13 side-module SavedVariables migrate inward so the layout reads as left / center / right in compact screenshots instead of drifting off the edges.
+
+### Tests
+- Added regression coverage for force-shown HUD demos, pre-gate scaffolding, initial waiting scaffolding, and default-position migration.
+
 ## [2.8.13] - 2026-05-27
 
 ### Changed

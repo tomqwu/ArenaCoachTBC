@@ -22,7 +22,7 @@ behaviour is what tests can't see.
 - [ ] `/acc reset` wipes SavedVariables; `/reload` restores defaults
 - [ ] `/acc debug` toggles debug printing
 - [ ] `/acc test` runs the readable ~1-minute realistic 3v3 arena replay through the engine: starts OPEN before gates, shows defensive pressure when the healer is CCed/trained, returns to an offensive kill/swap call, then resets without rapid flicker.
-- [ ] `/acc test hud` runs the visual-only prototype-A HUD demo: left focus strip, center action toast, right cue rail, lower assignments, nameplate border on any visible enemy, and the thin edge cue only if `/acc glow on` is enabled.
+- [ ] `/acc test hud` runs the visual-only prototype-A HUD demo: left focus strip, center action toast, right cue rail, lower assignments, nameplate border on any visible enemy, and the thin edge cue only if `/acc glow on` is enabled. The first/waiting beat already shows all four modules with placeholders.
 - [ ] `/acc test bg` runs the battleground walk-through (flag carrier priority, low-HP straggler, CALL_BG_DEFEND)
 - [ ] `/acc test world` runs the world-PvP walk-through (single-target focus)
 - [ ] `/acc enemy war mage priest druid pala` populates manual enemy list and the engine emits a recommendation
@@ -32,8 +32,8 @@ behaviour is what tests can't see.
 - [ ] Frame visible in arena / BG / world PvP / duel; **hidden in cities and quest hubs** (auto-hide gate, v2.2.5)
 - [ ] OPEN / KILL / SWAP / DEFEND / RESET modes each render with a distinct colour (yellow / red / orange / blue / grey)
 - [ ] HUD top-right version marker matches the installed addon release
-- [ ] Main HUD stays compact (roughly 320x118 before user scaling) and does not cover party frames, arena frames, action bars, cast bars, nameplates, DBM bars, WeakAura clusters, chat, or damage meters
-- [ ] Prototype-A modules are present: left focus strip, center action toast, right cue/icon rail, and lower assignment module
+- [ ] Main HUD stays compact (roughly 300x118 before user scaling) and does not cover party frames, arena frames, action bars, cast bars, nameplates, DBM bars, WeakAura clusters, chat, or damage meters
+- [ ] Prototype-A modules are present: left focus strip, center action toast, right cue/icon rail, and lower assignment module, including visible waiting/pre-gate placeholders before live target data arrives
 - [ ] `/acc unlock` lets each module drag independently; `/acc lock` prevents all four modules from moving
 - [ ] Arcade warning plate renders passive cues (`!! READY !!`, `!! BURST !!`, `!! DANGER !!`, `!! PINCH !!`) inside the compact toast without covering the playfield
 - [ ] Target stats row shows `HP <n>%   kill <n>%   BURST READY` when there's a primary target; hidden on DEFEND / RESET

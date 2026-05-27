@@ -14,16 +14,16 @@ ns.UI = ns.UI or {}
 local UI = ns.UI
 UI.frame = nil
 
-local ADDON_VERSION = "2.8.13"
+local ADDON_VERSION = "2.8.14"
 local STALE_FADE_START = 2.5
 local STALE_FADE_SECONDS = 1.5
-local COMPACT_WIDTH = 320
+local COMPACT_WIDTH = 300
 local COMPACT_HEIGHT = 118
-local UNIT_WIDTH = 174
-local UNIT_HEIGHT = 92
-local RAIL_WIDTH = 174
+local UNIT_WIDTH = 150
+local UNIT_HEIGHT = 96
+local RAIL_WIDTH = 150
 local RAIL_HEIGHT = 118
-local ASSIGN_WIDTH = 320
+local ASSIGN_WIDTH = 300
 local ASSIGN_HEIGHT = 76
 local DEFAULT_ACTION_LINES = 3
 local VERBOSE_ACTION_LINES = 5
@@ -68,6 +68,45 @@ local function setBackdrop(frame, alpha, edgeSize)
     frame:SetBackdropColor(0, 0, 0, alpha or 0.30)
 end
 
+local function moduleHeader(key)
+    return "|cffc8a86b" .. L(key) .. "|r"
+end
+
+local function waitingValue()
+    return "|cff8a8a8a" .. L("UI_MODULE_WAITING") .. "|r"
+end
+
+local function waitingLine(labelKey)
+    return string.format("%s: %s", L(labelKey), waitingValue())
+end
+
+local function waitingUnitText()
+    return table.concat({
+        moduleHeader("UI_MODULE_FOCUS"),
+        waitingLine("UI_MODULE_TARGET"),
+        waitingLine("UI_MODULE_SWAP"),
+        waitingLine("UI_MODULE_TEAM"),
+    }, "\n")
+end
+
+local function waitingCueText()
+    return table.concat({
+        moduleHeader("UI_MODULE_CUES"),
+        waitingLine("UI_MODULE_BURST"),
+        waitingLine("UI_MODULE_UTILITY"),
+    }, "\n")
+end
+
+local function waitingAssignmentText()
+    return moduleHeader("UI_ACTIONS_HEADER") .. "\n" .. waitingValue()
+end
+
+local function layoutScaffoldActive(recommendation)
+    if recommendation and recommendation._forceShow then return true end
+    local phase = ns.Core and ns.Core.state and ns.Core.state.combatPhase
+    return recommendation and recommendation.mode == "OPEN" and phase == "PRE"
+end
+
 local function saveFramePosition(key, frame)
     if not (ArenaCoachTBCDB and frame and frame.GetPoint) then return end
     ArenaCoachTBCDB[key] = ArenaCoachTBCDB[key] or {}
@@ -106,7 +145,7 @@ function UI:CreateFrame()
     local fcfg = db.frame or { point = "CENTER", x = 0, y = 120, scale = 1.0 }
 
     local f = CreateFrame("Frame", "ArenaCoachTBCFrame", UIParent)
-    -- v2.8.13: live-combat "prototype A" compact toast. Keep the
+    -- v2.8.14: live-combat "prototype A" compact toast. Keep the
     -- center callout readable without blocking player frames, Gladius,
     -- action bars, cast bars, Details, or WeakAura clusters. Player
     -- assignments live in their own movable module below.
@@ -119,7 +158,7 @@ function UI:CreateFrame()
     f:EnableMouse(true)
 
     -- Backdrop (TBC client uses Backdrop trait built-in for Frame)
-    setBackdrop(f, 0.36, 12)
+    setBackdrop(f, 0.42, 12)
 
     -- Title: small identity marker, not a full header row.
     f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -146,8 +185,8 @@ function UI:CreateFrame()
         pcall(f.arcadeText.SetFont, f.arcadeText, fontPath, 18, "THICKOUTLINE")
     end
     f.arcadeText:SetJustifyH("CENTER")
-    f.arcadeText:SetWidth(300)
-    f.arcadeText:SetText("")
+    f.arcadeText:SetWidth(COMPACT_WIDTH - 20)
+    f.arcadeText:SetText(string.format("!! %s !!", L("UI_ARCADE_READY")))
 
     -- Main recommendation line ("KILL: Warlock"). This remains the
     -- largest element, but no longer consumes a raid-warning sized band.
@@ -159,7 +198,7 @@ function UI:CreateFrame()
         pcall(f.bigText.SetFont, f.bigText, fontPath, 22, "OUTLINE")
     end
     f.bigText:SetJustifyH("CENTER")
-    f.bigText:SetWidth(300)
+    f.bigText:SetWidth(COMPACT_WIDTH - 20)
     f.bigText:SetText(L("REASON_DEFAULT"))
 
     -- Target stats row (HP% + kill prob%) under the mode line. Kept
@@ -172,7 +211,7 @@ function UI:CreateFrame()
         pcall(f.statsText.SetFont, f.statsText, fontPath, 12, "OUTLINE")
     end
     f.statsText:SetJustifyH("CENTER")
-    f.statsText:SetWidth(300)
+    f.statsText:SetWidth(COMPACT_WIDTH - 20)
     f.statsText:SetText("")
 
     -- Reason / top callout text. Default mode shows one line; verbose
@@ -181,7 +220,7 @@ function UI:CreateFrame()
     f.subText:SetPoint("TOP", f.statsText, "BOTTOM", 0, -5)
     if f.subText.SetSpacing then pcall(f.subText.SetSpacing, f.subText, 2) end
     f.subText:SetJustifyH("CENTER")
-    f.subText:SetWidth(300)
+    f.subText:SetWidth(COMPACT_WIDTH - 20)
     f.subText:SetText("")
 
     installDrag(f, "frame")
@@ -201,16 +240,16 @@ function UI:CreateUnitStripFrame()
     if type(CreateFrame) ~= "function" then return nil end
 
     local db = ArenaCoachTBCDB or {}
-    local ucfg = db.unitFrame or { point = "CENTER", x = -258, y = 120, scale = 1.0 }
+    local ucfg = db.unitFrame or { point = "CENTER", x = -230, y = 120, scale = 1.0 }
     local uf = CreateFrame("Frame", "ArenaCoachTBCUnitStripFrame", UIParent)
     uf:SetSize(UNIT_WIDTH, UNIT_HEIGHT)
     uf:SetPoint(ucfg.point or "CENTER", UIParent, ucfg.point or "CENTER",
-                ucfg.x or -258, ucfg.y or 120)
+                ucfg.x or -230, ucfg.y or 120)
     uf:SetScale(ucfg.scale or 1.0)
     uf:SetMovable(true)
     uf:SetClampedToScreen(true)
     uf:EnableMouse(true)
-    setBackdrop(uf, 0.26, 10)
+    setBackdrop(uf, 0.34, 10)
 
     uf.text = uf:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     uf.text:SetPoint("TOPLEFT", uf, "TOPLEFT", 8, -8)
@@ -222,10 +261,10 @@ function UI:CreateUnitStripFrame()
     if uf.text.SetSpacing then pcall(uf.text.SetSpacing, uf.text, 1) end
     uf.text:SetJustifyH("LEFT")
     uf.text:SetWidth(UNIT_WIDTH - 16)
-    uf.text:SetText("")
+    uf.text:SetText(waitingUnitText())
 
     installDrag(uf, "unitFrame")
-    uf:Hide()
+    uf._hasUnits = true
     self.unitFrame = uf
     return uf
 end
@@ -235,16 +274,16 @@ function UI:CreateCueRailFrame()
     if type(CreateFrame) ~= "function" then return nil end
 
     local db = ArenaCoachTBCDB or {}
-    local rcfg = db.railFrame or { point = "CENTER", x = 258, y = 120, scale = 1.0 }
+    local rcfg = db.railFrame or { point = "CENTER", x = 230, y = 120, scale = 1.0 }
     local rf = CreateFrame("Frame", "ArenaCoachTBCCueRailFrame", UIParent)
     rf:SetSize(RAIL_WIDTH, RAIL_HEIGHT)
     rf:SetPoint(rcfg.point or "CENTER", UIParent, rcfg.point or "CENTER",
-                rcfg.x or 258, rcfg.y or 120)
+                rcfg.x or 230, rcfg.y or 120)
     rf:SetScale(rcfg.scale or 1.0)
     rf:SetMovable(true)
     rf:SetClampedToScreen(true)
     rf:EnableMouse(true)
-    setBackdrop(rf, 0.26, 10)
+    setBackdrop(rf, 0.34, 10)
 
     rf.text = rf:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     rf.text:SetPoint("TOPLEFT", rf, "TOPLEFT", 8, -8)
@@ -256,10 +295,10 @@ function UI:CreateCueRailFrame()
     if rf.text.SetSpacing then pcall(rf.text.SetSpacing, rf.text, 2) end
     rf.text:SetJustifyH("LEFT")
     rf.text:SetWidth(RAIL_WIDTH - 16)
-    rf.text:SetText("")
+    rf.text:SetText(waitingCueText())
 
     installDrag(rf, "railFrame")
-    rf:Hide()
+    rf._hasCues = true
     self.railFrame = rf
     return rf
 end
@@ -291,10 +330,10 @@ function UI:CreateAssignmentsFrame()
     if af.actionText.SetSpacing then pcall(af.actionText.SetSpacing, af.actionText, 1) end
     af.actionText:SetJustifyH("LEFT")
     af.actionText:SetWidth(ASSIGN_WIDTH - 20)
-    af.actionText:SetText("")
+    af.actionText:SetText(waitingAssignmentText())
 
     installDrag(af, "assignmentFrame")
-    af:Hide()
+    af._hasAssignments = true
     self.assignFrame = af
     return af
 end
@@ -425,8 +464,10 @@ end
 
 local calloutText
 
-local function formatPlayerActions(actions)
-    if not actions or #actions == 0 then return "" end
+local function formatPlayerActions(actions, scaffold)
+    if not actions or #actions == 0 then
+        return scaffold and waitingAssignmentText() or ""
+    end
     local lines = { "|cffc8a86b" .. L("UI_ACTIONS_HEADER") .. "|r" }
     local verbose = (ArenaCoachTBCDB and ArenaCoachTBCDB.frame
                      and ArenaCoachTBCDB.frame.verbose) or false
@@ -468,36 +509,48 @@ local function lowestFriendly(state)
     return best
 end
 
-local function formatUnitStrip(recommendation)
-    if not recommendation then return "" end
+local function formatUnitStrip(recommendation, scaffold)
+    if not recommendation then return scaffold and waitingUnitText() or "" end
     local lines = {}
     local mode = recommendation.mode or "RESET"
     local showTarget = (mode == "OPEN" or mode == "KILL" or mode == "SWAP")
     local target = recommendation.primaryTargetName
                 or recommendation.primaryTargetClass
                 or nil
+    local targetLine
     if showTarget and target and target ~= "" then
         local hp = pct(recommendation.primaryTargetHp)
         local suffix = hp and string.format(" %d%%", hp) or ""
-        table.insert(lines, string.format("%s: %s%s", L(mode), target, suffix))
+        targetLine = string.format("%s: %s%s", L(mode), target, suffix)
     end
     local secondary = recommendation.secondaryTargetName
                    or recommendation.secondaryTargetClass
                    or nil
+    local secondaryLine
     if secondary and secondary ~= "" and secondary ~= target then
-        table.insert(lines, string.format("%s: %s", L("SWAP"), secondary))
+        secondaryLine = string.format("%s: %s", L("SWAP"), secondary)
     end
     local low = lowestFriendly(ns.Core and ns.Core.state)
+    local teamLine
     if low then
-        table.insert(lines, string.format("Team: %s %d%%", low.name, low.hp))
+        teamLine = string.format("%s: %s %d%%", L("UI_MODULE_TEAM"), low.name, low.hp)
+    end
+    if scaffold then
+        table.insert(lines, targetLine or waitingLine("UI_MODULE_TARGET"))
+        table.insert(lines, secondaryLine or waitingLine("UI_MODULE_SWAP"))
+        table.insert(lines, teamLine or waitingLine("UI_MODULE_TEAM"))
+    else
+        if targetLine then table.insert(lines, targetLine) end
+        if secondaryLine then table.insert(lines, secondaryLine) end
+        if teamLine then table.insert(lines, teamLine) end
     end
     if #lines == 0 then return "" end
-    table.insert(lines, 1, "|cffc8a86bFocus|r")
+    table.insert(lines, 1, moduleHeader("UI_MODULE_FOCUS"))
     return table.concat(lines, "\n")
 end
 
-local function formatCueRail(recommendation)
-    if not recommendation then return "" end
+local function formatCueRail(recommendation, scaffold)
+    if not recommendation then return scaffold and waitingCueText() or "" end
     local lines = {}
     if recommendation.burstAllowed and recommendation.mode == "KILL" then
         table.insert(lines, "★ " .. L("UI_BURST_READY"))
@@ -512,8 +565,10 @@ local function formatCueRail(recommendation)
                 string.format("%s  %s", calloutIcon(key, 14), calloutText(key, recommendation)))
         end
     end
-    if #lines == 0 then return "" end
-    table.insert(lines, 1, "|cffc8a86bCues|r")
+    if #lines == 0 then
+        return scaffold and waitingCueText() or ""
+    end
+    table.insert(lines, 1, moduleHeader("UI_MODULE_CUES"))
     return table.concat(lines, "\n")
 end
 
@@ -820,9 +875,10 @@ function UI:Apply(recommendation)
         end
     end
     f.subText:SetText(table.concat(subParts, "\n"))
-    setModuleText(self.unitFrame, "text", formatUnitStrip(recommendation), "_hasUnits")
-    setModuleText(self.railFrame, "text", formatCueRail(recommendation), "_hasCues")
-    setModuleText(self.assignFrame, "actionText", formatPlayerActions(recommendation.playerActions), "_hasAssignments")
+    local scaffold = layoutScaffoldActive(recommendation)
+    setModuleText(self.unitFrame, "text", formatUnitStrip(recommendation, scaffold), "_hasUnits")
+    setModuleText(self.railFrame, "text", formatCueRail(recommendation, scaffold), "_hasCues")
+    setModuleText(self.assignFrame, "actionText", formatPlayerActions(recommendation.playerActions, scaffold), "_hasAssignments")
 
     -- v2.0.2 / v2.1: PvP-context gate. The aggressive alerts (screen
     -- flash, voice cue) should only fire in actual arena. Outside
