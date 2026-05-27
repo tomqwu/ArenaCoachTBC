@@ -40,6 +40,8 @@ behaviour is what tests can't see.
 - [ ] Prototype-A zones are present inside one visible board: left focus, center action, right cue/icon rail, and lower assignments, including waiting/pre-gate placeholders before live target data arrives
 - [ ] The board has a light translucent shell, top drag strip/grip, lower-right resize grip, and internal dividers, so `/acc unlock` makes it obvious where to click/drag without darkening the fight
 - [ ] Dragging the lower-right grip resizes the integrated board; left focus, center action, right cue, and lower assignments stay inside one divided box and the size persists after `/reload`
+- [ ] On the default compact board, the center action/detail text stays inside the center section and never crosses the divider into the assignment row
+- [ ] On a taller/wider resized board with `/acc verbose on`, the lower assignment row can show the full five-player review list without colliding with the center action or right cue rail
 - [ ] `/acc unlock` lets the integrated board drag/resize; `/acc lock` prevents it from moving or resizing
 - [ ] Arcade warning plate renders passive cues (`!! READY !!`, `!! BURST !!`, `!! DANGER !!`, `!! PINCH !!`) inside the compact toast without covering the playfield
 - [ ] Target stats row shows `HP <n>%   kill <n>%   BURST READY` when there's a primary target; hidden on DEFEND / RESET

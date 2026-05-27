@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.22] - 2026-05-27
+
+### Fixed
+- **Prototype-A sections no longer collide.** Added gutters, a reserved assignment row, and stronger minimum-height bounds so the focus, action, cue, and assignment regions stay visually separated.
+- **Center detail is capped to the action section.** Verbose comp, chain, and callout lines are now limited by available center height so they cannot spill into the assignment row.
+- **Verbose detail scales with board size.** Compact boards clip assignments and cues for readability, while taller/wider resized boards can show the full five-player assignment list for review.
+
 ## [2.8.21] - 2026-05-27
 
 ### Fixed

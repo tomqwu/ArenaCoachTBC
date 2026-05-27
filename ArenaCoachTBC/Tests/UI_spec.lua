@@ -54,9 +54,9 @@ H.it(g, "CreateFrame builds prototype-A module set", function()
     H.assertTrue((UI.assignFrame._height or 999) <= 90, "assignment module should stay compact")
     H.assertTrue((f.arcadeText._fontSize or 999) <= 20, "arcade cue should not be raid-warning sized")
     H.assertTrue((f.bigText._fontSize or 999) <= 24, "main action text should fit a compact toast")
-    H.assertEq(f.leftPanel._width, 126)
-    H.assertEq(f.centerPanel._width, 192)
-    H.assertEq(f.rightPanel._width, 126)
+    H.assertEq(f.leftPanel._width, 124)
+    H.assertEq(f.centerPanel._width, 184)
+    H.assertEq(f.rightPanel._width, 124)
     H.assertEq(f.assignPanel._width, 444)
     H.assertEq(f.leftPanel._height, 82)
     H.assertEq(f.centerPanel._height, 82)
@@ -64,9 +64,17 @@ H.it(g, "CreateFrame builds prototype-A module set", function()
     H.assertEq(f.assignPanel._height, 52)
     H.assertTrue(f._resizable, "main board should expose WoW resizing")
     H.assertEq(f._minResize[1], 360)
-    H.assertEq(f._minResize[2], 132)
+    H.assertEq(f._minResize[2], 168)
     H.assertEq(f._maxResize[1], 720)
     H.assertEq(f._maxResize[2], 280)
+    H.assertEq(f.centerPanel._point[5], -30)
+    H.assertEq(f.centerPanel._point[4], 138)
+    H.assertEq(f.rightPanel._point[4], 328)
+    H.assertEq(f._accCenterSubLines, 1)
+    H.assertEq(f._accCueLines, 3)
+    H.assertEq(f._accAssignLines, 3)
+    H.assertTrue((f.subText._height or 999) <= f.centerPanel._height,
+        "center extra text should be bounded inside the action section")
     H.assertTrue((f._accBg._color and f._accBg._color[4] or 1) <= 0.35,
         "main board background should stay light enough to see the fight")
     H.assertTrue((f.dragBar._color and f.dragBar._color[4] or 1) <= 0.45,
@@ -85,6 +93,62 @@ H.it(g, "CreateFrame builds prototype-A module set", function()
         "waiting cue rail should show structural labels")
     H.assertTrue((f.assignText._text or ""):find("Assignments", 1, true) ~= nil,
         "waiting assignment panel should show structural labels")
+end)
+
+H.it(g, "layout keeps center copy inside its section on wide boards", function()
+    _G.ArenaCoachTBCDB = {
+        enabled = true, locked = false, language = "auto",
+        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0, width = 720, height = 260, verbose = true },
+        alerts = { sound = false, screenFlash = false, edgeGlow = false, nameplate = false },
+        strategy = {}, debug = false,
+    }
+    UI.frame = nil
+    UI.assignFrame = nil
+    UI.unitFrame = nil
+    UI.railFrame = nil
+    local f = UI:CreateFrame()
+    H.assertTrue(f.centerPanel._width >= 300, "wide boards should give action text real breathing room")
+    H.assertTrue(f.leftPanel._width >= 180, "wide boards should widen the focus section")
+    H.assertTrue(f.rightPanel._width >= 180, "wide boards should widen the cue section")
+    H.assertTrue((f.subText._height or 999) <= (f.centerPanel._height - 40),
+        "bounded center details should not run into the assignment row")
+
+    UI:Apply({
+        mode = "DEFEND",
+        reasonKey = "REASON_DEFEND_TRAINED",
+        callouts = {
+            "CALL_HEALER_CC",
+            "CALL_GROUNDING",
+            "CALL_PURGE",
+            "CALL_BURST_BLOCK_INCOMING",
+        },
+        comp = "RMP",
+        compLabel = "RMP (Rogue / Mage / Priest)",
+        compSpecConfirmed = false,
+        chain = {
+            id = "test-chain",
+            label = "Long chain",
+            expectedProb = 0.88,
+            links = {
+                { spellID = 1, category = "STUN" },
+                { spellID = 2, category = "FEAR" },
+            },
+        },
+        playerActions = {
+            { name = "You", actionKey = "ACTION_DPS_PEEL", targetName = "Leaves" },
+            { name = "Totemkin", actionKey = "ACTION_SHAMAN_DEFEND", targetName = "Leaves" },
+            { name = "Leaves", actionKey = "ACTION_DRUID_DEFEND", targetName = "Leaves" },
+            { name = "Priest", actionKey = "ACTION_PRIEST_DEFEND", targetName = "Leaves" },
+            { name = "Paladin", actionKey = "ACTION_PALADIN_DEFEND", targetName = "Leaves" },
+        },
+    })
+    local center = f.subText and f.subText._text or ""
+    local centerLines = 1
+    center:gsub("\n", function() centerLines = centerLines + 1 end)
+    H.assertTrue(centerLines <= f._accCenterSubLines,
+        "verbose center detail should be capped to the visible center section: " .. center)
+    H.assertTrue((f.assignText._text or ""):find("Paladin", 1, true) ~= nil,
+        "taller assignment row should carry full verbose team jobs")
 end)
 
 H.it(g, "CreateFrame restores and saves resized prototype-A board dimensions", function()
@@ -258,7 +322,7 @@ H.it(g, "Apply force-show keeps prototype-A scaffold visible without live data",
     H.ns.Core.state.combatPhase = nil
 end)
 
-H.it(g, "Apply caps default assignments but verbose mode shows the full team", function()
+H.it(g, "Apply caps compact assignments and shows full team when resized taller", function()
     _G.ArenaCoachTBCDB = {
         enabled = true, locked = false, language = "auto",
         frame = { point = "CENTER", x = 0, y = 120, scale = 1.0, verbose = false },
@@ -279,6 +343,8 @@ H.it(g, "Apply caps default assignments but verbose mode shows the full team", f
     H.assertTrue(compact:find("Paladin:", 1, true) ~= nil, "third assignment missing: " .. compact)
     H.assertTrue(compact:find("Druid:", 1, true) == nil, "compact HUD should cap after three assignments: " .. compact)
 
+    UI.frame:SetSize(720, 260)
+    UI:_LayoutMainBoard(UI.frame)
     _G.ArenaCoachTBCDB.frame.verbose = true
     UI:Apply({ mode = "KILL", primaryTargetName = "Holyman", callouts = {}, priority = "HIGH", playerActions = actions })
     local verbose = UI.frame and UI.frame.assignText and UI.frame.assignText._text or ""

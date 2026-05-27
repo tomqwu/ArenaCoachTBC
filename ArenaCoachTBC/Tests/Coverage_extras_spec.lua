@@ -150,14 +150,18 @@ H.it(g, "UI renders spell texture icons when available", function()
 end)
 
 H.it(g, "UI formats purge fallback target and verbose comp badge", function()
-    UI:CreateFrame()
-    UI._calloutLastShown = {}
-    H.advanceTime(5)
     _G.ArenaCoachTBCDB = _G.ArenaCoachTBCDB or {}
     _G.ArenaCoachTBCDB.frame = {
         point = "CENTER", x = 0, y = 0, scale = 1,
-        verbose = true,
+        width = 720, height = 260, verbose = true,
     }
+    UI.frame = nil
+    UI.assignFrame = nil
+    UI.unitFrame = nil
+    UI.railFrame = nil
+    UI:CreateFrame()
+    UI._calloutLastShown = {}
+    H.advanceTime(5)
     UI:Apply({
         mode = "KILL", primaryTargetClass = nil,
         callouts = { "CALL_PURGE" }, priority = "HIGH",

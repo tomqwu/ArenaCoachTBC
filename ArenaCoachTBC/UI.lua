@@ -14,16 +14,18 @@ ns.UI = ns.UI or {}
 local UI = ns.UI
 UI.frame = nil
 
-local ADDON_VERSION = "2.8.21"
+local ADDON_VERSION = "2.8.22"
 local STALE_FADE_START = 2.5
 local STALE_FADE_SECONDS = 1.5
 local COMPACT_WIDTH = 460
 local COMPACT_HEIGHT = 168
 local MIN_COMPACT_WIDTH = 360
-local MIN_COMPACT_HEIGHT = 132
+local MIN_COMPACT_HEIGHT = 168
 local MAX_COMPACT_WIDTH = 720
 local MAX_COMPACT_HEIGHT = 280
 local GRID_PADDING = 8
+local PANEL_GUTTER = 6
+local BOARD_BOTTOM_PADDING = 4
 local HEADER_HEIGHT = 22
 local GRID_TOP_Y = -30
 local TOP_ROW_HEIGHT = 82
@@ -107,6 +109,10 @@ local function size(region, w, h)
         if region.SetWidth then pcall(region.SetWidth, region, w) end
         if region.SetHeight then pcall(region.SetHeight, region, h) end
     end
+end
+
+local function height(region, h)
+    if region and region.SetHeight then pcall(region.SetHeight, region, h) end
 end
 
 local function clamp(value, minValue, maxValue)
@@ -269,25 +275,24 @@ local function boardMetrics(frame)
     local height = clamp((frame and frame.GetHeight and frame:GetHeight()) or COMPACT_HEIGHT,
         MIN_COMPACT_HEIGHT, MAX_COMPACT_HEIGHT)
     local contentW = math.max(0, width - (GRID_PADDING * 2))
-    local assignH = clamp(math.floor(height * 0.31), 44, 76)
-    local topH = height - 34 - assignH
-    if topH < 58 then
-        topH = 58
-        assignH = math.max(38, height - 34 - topH)
-    end
-
-    local sideW = clamp(math.floor(contentW * 0.285), 104, 154)
-    local centerW = contentW - (sideW * 2)
-    if centerW < 116 then
-        centerW = 116
-        sideW = math.max(90, math.floor((contentW - centerW) / 2))
-    end
-
+    local assignH = clamp(math.floor(height * 0.29), ASSIGN_PANEL_HEIGHT, 90)
+    local assignY = -(height - BOARD_BOTTOM_PADDING - assignH)
     local topY = GRID_TOP_Y
+    local topH = math.max(72, math.abs(assignY - topY))
+
+    local sideW = clamp(math.floor(contentW * 0.28), 112, 190)
+    local centerW = contentW - (sideW * 2) - (PANEL_GUTTER * 2)
+    if centerW < 132 then
+        centerW = 132
+        sideW = math.max(100, math.floor((contentW - centerW - (PANEL_GUTTER * 2)) / 2))
+    end
+
     local leftX = GRID_PADDING
-    local centerX = leftX + sideW
-    local rightX = centerX + centerW
-    local assignY = topY - topH
+    local centerX = leftX + sideW + PANEL_GUTTER
+    local rightX = centerX + centerW + PANEL_GUTTER
+    local centerSubLines = (topH >= 138 and 3) or (topH >= 110 and 2) or 1
+    local cueLines = clamp(math.floor((topH - 16) / 14) - 1, 2, VERBOSE_ACTION_LINES)
+    local assignLines = clamp(math.floor((assignH - 7) / 11) - 1, 2, VERBOSE_ACTION_LINES)
 
     return {
         width = width,
@@ -302,6 +307,9 @@ local function boardMetrics(frame)
         sideW = sideW,
         centerW = centerW,
         assignH = assignH,
+        centerSubLines = centerSubLines,
+        cueLines = cueLines,
+        assignLines = assignLines,
     }
 end
 
@@ -348,13 +356,39 @@ local function layoutMainBoard(f)
     placeLine(f, "assignDivider", m.contentW, 1, m.leftX, m.assignY, 0.78)
 
     local centerTextW = math.max(100, m.centerW - 10)
-    if f.arcadeText and f.arcadeText.SetWidth then pcall(f.arcadeText.SetWidth, f.arcadeText, centerTextW) end
-    if f.bigText and f.bigText.SetWidth then pcall(f.bigText.SetWidth, f.bigText, centerTextW) end
-    if f.statsText and f.statsText.SetWidth then pcall(f.statsText.SetWidth, f.statsText, centerTextW) end
-    if f.subText and f.subText.SetWidth then pcall(f.subText.SetWidth, f.subText, centerTextW) end
+    if f.arcadeText then
+        clearPoints(f.arcadeText)
+        point(f.arcadeText, "TOP", f.centerPanel or f, "TOP", 0, -4)
+        if f.arcadeText.SetWidth then pcall(f.arcadeText.SetWidth, f.arcadeText, centerTextW) end
+        height(f.arcadeText, 19)
+    end
+    if f.bigText then
+        clearPoints(f.bigText)
+        point(f.bigText, "TOP", f.arcadeText or (f.centerPanel or f), f.arcadeText and "BOTTOM" or "TOP", 0, -1)
+        if f.bigText.SetWidth then pcall(f.bigText.SetWidth, f.bigText, centerTextW) end
+        height(f.bigText, 22)
+    end
+    if f.statsText then
+        clearPoints(f.statsText)
+        point(f.statsText, "TOP", f.bigText or (f.centerPanel or f), f.bigText and "BOTTOM" or "TOP", 0, -2)
+        if f.statsText.SetWidth then pcall(f.statsText.SetWidth, f.statsText, centerTextW) end
+        height(f.statsText, 14)
+    end
+    if f.subText then
+        clearPoints(f.subText)
+        point(f.subText, "TOP", f.statsText or (f.centerPanel or f), f.statsText and "BOTTOM" or "TOP", 0, -2)
+        if f.subText.SetWidth then pcall(f.subText.SetWidth, f.subText, centerTextW) end
+        height(f.subText, math.max(14, m.topH - 64))
+    end
     if f.unitText and f.unitText.SetWidth then pcall(f.unitText.SetWidth, f.unitText, math.max(76, m.sideW - 16)) end
     if f.railText and f.railText.SetWidth then pcall(f.railText.SetWidth, f.railText, math.max(76, m.sideW - 16)) end
     if f.assignText and f.assignText.SetWidth then pcall(f.assignText.SetWidth, f.assignText, math.max(120, m.contentW - 20)) end
+    height(f.unitText, math.max(20, m.topH - 12))
+    height(f.railText, math.max(20, m.topH - 12))
+    height(f.assignText, math.max(20, m.assignH - 12))
+    f._accCenterSubLines = m.centerSubLines
+    f._accCueLines = m.cueLines
+    f._accAssignLines = m.assignLines
 
     if f.resizeGrip then
         clearPoints(f.resizeGrip)
@@ -856,7 +890,9 @@ local function formatPlayerActions(actions, scaffold)
     local lines = { "|cffc8a86b" .. L("UI_ACTIONS_HEADER") .. "|r" }
     local verbose = (ArenaCoachTBCDB and ArenaCoachTBCDB.frame
                      and ArenaCoachTBCDB.frame.verbose) or false
-    local maxLines = verbose and VERBOSE_ACTION_LINES or DEFAULT_ACTION_LINES
+    local panelCap = (UI.frame and UI.frame._accAssignLines) or DEFAULT_ACTION_LINES
+    local maxLines = verbose and math.min(VERBOSE_ACTION_LINES, panelCap)
+        or math.min(DEFAULT_ACTION_LINES, panelCap)
     for i = 1, math.min(#actions, maxLines) do
         local a = actions[i]
         local who = a.name or a.unit or a.class or "?"
@@ -942,7 +978,9 @@ local function formatCueRail(recommendation, scaffold)
     end
     local verbose = (ArenaCoachTBCDB and ArenaCoachTBCDB.frame
                      and ArenaCoachTBCDB.frame.verbose) or false
-    local maxLines = verbose and VERBOSE_ACTION_LINES or DEFAULT_ACTION_LINES
+    local panelCap = (UI.frame and UI.frame._accCueLines) or DEFAULT_ACTION_LINES
+    local maxLines = verbose and math.min(VERBOSE_ACTION_LINES, panelCap)
+        or math.min(DEFAULT_ACTION_LINES, panelCap)
     if recommendation.callouts then
         for i = 1, math.min(#recommendation.callouts, maxLines) do
             local key = recommendation.callouts[i]
@@ -971,6 +1009,12 @@ end
 
 local function setFontStringText(fs, text)
     if fs then fs:SetText(text or "") end
+end
+
+local function capLines(lines, maxLines)
+    maxLines = tonumber(maxLines) or #lines
+    while #lines > maxLines do table.remove(lines) end
+    return lines
 end
 
 local function detachedModulesEnabled()
@@ -1282,6 +1326,7 @@ function UI:Apply(recommendation)
             end
         end
     end
+    capLines(subParts, f._accCenterSubLines or 1)
     f.subText:SetText(table.concat(subParts, "\n"))
     local scaffold = layoutScaffoldActive(recommendation)
     local integratedUnitText = formatUnitStrip(recommendation, true)
