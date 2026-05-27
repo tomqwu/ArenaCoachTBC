@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.25] - 2026-05-27
+
+### Changed
+- **Bottom assignment strip now divides into 1/2/3/5 slots.** The player-info row uses fixed small cards based on current player actions, alive friendlies, or arena bracket instead of a loose paragraph block.
+- **2v2, 3v3, and 5v5 jobs keep stable positions.** A five-player recommendation now fills five compact cards in normal mode, while 2-player advice hides unused cells.
+- **Assignment header stays visible.** The bottom row keeps a tactical slot label so the divided area is easy to read and drag around during HUD layout checks.
+
 ## [2.8.24] - 2026-05-27
 
 ### Changed

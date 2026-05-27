@@ -41,11 +41,12 @@ behaviour is what tests can't see.
 - [ ] The board has a light translucent shell, top drag strip/grip, signal/ruler accents, lower-right resize grip, internal dividers, slot backgrounds, a target health bar, and a mode-coloured center accent, so `/acc unlock` makes it obvious where to click/drag without darkening the fight
 - [ ] Dragging the lower-right grip resizes the integrated board; left status, center action, center player info, and right cue rail stay inside one divided box and the size persists after `/reload`
 - [ ] On the default compact board, the center action/detail text stays inside the center action section and never crosses into the player-info/assignment section
-- [ ] On a taller/wider resized board with `/acc verbose on`, the player-info section can show the full five-player review list without colliding with the center action or right cue rail
+- [ ] Bottom assignment strip divides into 1, 2, 3, or 5 small cards based on current player actions/bracket; unused cells are hidden in 2v2, and 5v5 uses five stable cells
+- [ ] On a taller/wider resized board with `/acc verbose on`, the player-info cards remain inside the bottom strip without colliding with the center action or right cue rail
 - [ ] `/acc unlock` lets the integrated board drag/resize; `/acc lock` prevents it from moving or resizing
 - [ ] Signal strip renders passive cues (`READY`, `BURST`, `DANGER`, `PINCH`) inside the compact center instrument without covering the playfield
 - [ ] Target stats row shows `HP <n>%   kill <n>%   BURST READY` when there's a primary target; hidden on DEFEND / RESET
-- [ ] Player-info module shows one compact action per living friendly in 3v3; in 5v5 normal mode it caps at three lines, while `/acc verbose on` shows all five when the board is tall enough
+- [ ] Player-info module shows one compact action card per advised friendly in 3v3; in 5v5 it fills five small cards instead of a paragraph block
 - [ ] Left status stack shows current primary target, swap target, and a pressured friendly when known
 - [ ] Right cue rail shows callout icons/text for burst, purge, HoJ, peel, dispel, or other top cues
 - [ ] If no fresh evaluation arrives for a few seconds, the HUD text fades away and clears stale nameplate/edge cues

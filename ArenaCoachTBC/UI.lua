@@ -14,7 +14,7 @@ ns.UI = ns.UI or {}
 local UI = ns.UI
 UI.frame = nil
 
-local ADDON_VERSION = "2.8.24"
+local ADDON_VERSION = "2.8.25"
 local STALE_FADE_START = 2.5
 local STALE_FADE_SECONDS = 1.5
 local COMPACT_WIDTH = 540
@@ -202,6 +202,48 @@ local function layoutPanelSlots(panel, prefix, rows, topOffset)
     end
 end
 
+local function layoutAssignmentSlots(frame, slots)
+    if not (frame and frame.assignPanel and frame.assignPanel.GetWidth and frame.assignPanel.GetHeight) then return end
+    local panel = frame.assignPanel
+    slots = clamp(slots or 3, 1, VERBOSE_ACTION_LINES)
+    if slots == 4 then slots = 5 end
+
+    local w = panel:GetWidth() or 0
+    local h = panel:GetHeight() or 0
+    local headerH = 18
+    local gap = 4
+    local innerX = 6
+    local innerW = math.max(20, w - (innerX * 2))
+    local cardH = math.max(20, h - headerH - 9)
+    local cardY = -(headerH + 4)
+    local cardW = math.max(20, math.floor((innerW - (gap * (slots - 1))) / slots))
+
+    frame._accAssignSlots = slots
+    for i = 1, VERBOSE_ACTION_LINES do
+        local bg = panel["assignCard" .. i] or panel:CreateTexture(nil, "BACKGROUND")
+        panel["assignCard" .. i] = bg
+        local text = frame.assignSlotTexts and frame.assignSlotTexts[i]
+        if i <= slots then
+            local x = innerX + ((i - 1) * (cardW + gap))
+            clearPoints(bg)
+            size(bg, cardW, cardH)
+            point(bg, "TOPLEFT", panel, "TOPLEFT", x, cardY)
+            colorTexture(bg, 0.13, 0.09, 0.035, 0.22)
+            if bg.Show then bg:Show() end
+            if text then
+                clearPoints(text)
+                point(text, "TOPLEFT", panel, "TOPLEFT", x + 4, cardY - 4)
+                if text.SetWidth then pcall(text.SetWidth, text, math.max(20, cardW - 8)) end
+                if text.SetHeight then pcall(text.SetHeight, text, math.max(10, cardH - 6)) end
+                if text.Show then text:Show() end
+            end
+        else
+            if bg.Hide then bg:Hide() end
+            if text and text.Hide then text:Hide() end
+        end
+    end
+end
+
 local function layoutRulers(frame, width, height)
     if not frame then return end
     local count = 14
@@ -383,7 +425,7 @@ local function layoutMainBoard(f)
 
     if f.leftPanel then
         clearPoints(f.leftPanel)
-        size(f.leftPanel, m.leftW, m.bodyH)
+        size(f.leftPanel, m.leftW, m.actionH)
         point(f.leftPanel, "TOPLEFT", f, "TOPLEFT", m.leftX, m.topY)
         layoutPanelSlots(f.leftPanel, "left", 4, 26)
     end
@@ -394,20 +436,22 @@ local function layoutMainBoard(f)
     end
     if f.rightPanel then
         clearPoints(f.rightPanel)
-        size(f.rightPanel, m.rightW, m.bodyH)
+        size(f.rightPanel, m.rightW, m.actionH)
         point(f.rightPanel, "TOPLEFT", f, "TOPLEFT", m.rightX, m.topY)
         layoutPanelSlots(f.rightPanel, "right", 4, 26)
     end
     if f.assignPanel then
         clearPoints(f.assignPanel)
-        size(f.assignPanel, m.centerW, m.assignH)
-        point(f.assignPanel, "TOPLEFT", f, "TOPLEFT", m.centerX, m.assignY)
-        layoutPanelSlots(f.assignPanel, "assign", 3, 22)
+        size(f.assignPanel, m.contentW, m.assignH)
+        point(f.assignPanel, "TOPLEFT", f, "TOPLEFT", m.leftX, m.assignY)
+        local activeSlots = rawget(f, "_accAssignSlots")
+        if type(activeSlots) ~= "number" then activeSlots = 3 end
+        layoutAssignmentSlots(f, activeSlots)
     end
 
-    placeLine(f, "leftDivider", 1, m.bodyH, m.centerX - math.floor(PANEL_GUTTER / 2), m.bodyY, 0.42)
-    placeLine(f, "rightDivider", 1, m.bodyH, m.rightX - math.floor(PANEL_GUTTER / 2), m.bodyY, 0.42)
-    placeLine(f, "assignDivider", m.centerW, 1, m.centerX, m.assignY + 1, 0.58)
+    placeLine(f, "leftDivider", 1, m.actionH, m.centerX - math.floor(PANEL_GUTTER / 2), m.bodyY, 0.42)
+    placeLine(f, "rightDivider", 1, m.actionH, m.rightX - math.floor(PANEL_GUTTER / 2), m.bodyY, 0.42)
+    placeLine(f, "assignDivider", m.contentW, 1, m.leftX, m.assignY + 1, 0.58)
 
     if f.modeAccent then
         clearPoints(f.modeAccent)
@@ -458,9 +502,10 @@ local function layoutMainBoard(f)
     end
     if f.unitText and f.unitText.SetWidth then pcall(f.unitText.SetWidth, f.unitText, math.max(76, m.leftW - 16)) end
     if f.railText and f.railText.SetWidth then pcall(f.railText.SetWidth, f.railText, math.max(76, m.rightW - 16)) end
-    if f.assignText and f.assignText.SetWidth then pcall(f.assignText.SetWidth, f.assignText, math.max(120, m.centerW - 20)) end
-    height(f.unitText, math.max(20, m.bodyH - 12))
-    height(f.railText, math.max(20, m.bodyH - 12))
+    if f.assignText and f.assignText.SetWidth then pcall(f.assignText.SetWidth, f.assignText, math.max(120, m.contentW - 20)) end
+    if f.assignHeader and f.assignHeader.SetWidth then pcall(f.assignHeader.SetWidth, f.assignHeader, math.max(120, m.contentW - 20)) end
+    height(f.unitText, math.max(20, m.actionH - 12))
+    height(f.railText, math.max(20, m.actionH - 12))
     height(f.assignText, math.max(20, m.assignH - 12))
     f._accCenterSubLines = m.centerSubLines
     f._accCueLines = m.cueLines
@@ -558,18 +603,18 @@ function UI:CreateFrame()
 
     local m = boardMetrics(f)
 
-    local leftPanel = createChildPanel(f, "leftPanel", m.leftW, m.bodyH,
+    local leftPanel = createChildPanel(f, "leftPanel", m.leftW, m.actionH,
         "TOPLEFT", "TOPLEFT", m.leftX, m.bodyY, 0.16)
     local centerPanel = createChildPanel(f, "centerPanel", m.centerW, m.actionH,
         "TOPLEFT", "TOPLEFT", m.centerX, m.bodyY, 0.14)
-    local rightPanel = createChildPanel(f, "rightPanel", m.rightW, m.bodyH,
+    local rightPanel = createChildPanel(f, "rightPanel", m.rightW, m.actionH,
         "TOPLEFT", "TOPLEFT", m.rightX, m.bodyY, 0.16)
-    local assignPanel = createChildPanel(f, "assignPanel", m.centerW, m.assignH,
-        "TOPLEFT", "TOPLEFT", m.centerX, m.assignY, 0.16)
+    local assignPanel = createChildPanel(f, "assignPanel", m.contentW, m.assignH,
+        "TOPLEFT", "TOPLEFT", m.leftX, m.assignY, 0.16)
 
-    placeLine(f, "leftDivider", 1, m.bodyH, m.centerX - math.floor(PANEL_GUTTER / 2), m.bodyY, 0.42)
-    placeLine(f, "rightDivider", 1, m.bodyH, m.rightX - math.floor(PANEL_GUTTER / 2), m.bodyY, 0.42)
-    placeLine(f, "assignDivider", m.centerW, 1, m.centerX, m.assignY + 1, 0.58)
+    placeLine(f, "leftDivider", 1, m.actionH, m.centerX - math.floor(PANEL_GUTTER / 2), m.bodyY, 0.42)
+    placeLine(f, "rightDivider", 1, m.actionH, m.rightX - math.floor(PANEL_GUTTER / 2), m.bodyY, 0.42)
+    placeLine(f, "assignDivider", m.contentW, 1, m.leftX, m.assignY + 1, 0.58)
     if centerPanel and centerPanel.CreateTexture then
         f.modeAccent = centerPanel:CreateTexture(nil, "ARTWORK")
         colorTexture(f.modeAccent, 1.0, 0.82, 0.26, 0.72)
@@ -707,6 +752,18 @@ function UI:CreateFrame()
     end
 
     if assignPanel then
+        f.assignHeader = assignPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        f.assignHeader:SetPoint("TOPLEFT", assignPanel, "TOPLEFT", 10, -5)
+        if f.assignHeader.SetFont then
+            local fontPath = (f.assignHeader.GetFont and select(1, f.assignHeader:GetFont()))
+                or "Fonts\\FRIZQT__.TTF"
+            pcall(f.assignHeader.SetFont, f.assignHeader, fontPath, 10, "OUTLINE")
+        end
+        f.assignHeader:SetJustifyH("LEFT")
+        f.assignHeader:SetWidth(m.contentW - 20)
+        f.assignHeader:SetText(consoleHeader("UI_ACTIONS_HEADER", "R O L E · S L O T S", "03"))
+        improveTextContrast(f.assignHeader, 0.95, 1, -1)
+
         f.assignText = assignPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         f.assignText:SetPoint("TOPLEFT", assignPanel, "TOPLEFT", 10, -7)
         if f.assignText.SetFont then
@@ -716,9 +773,26 @@ function UI:CreateFrame()
         end
         if f.assignText.SetSpacing then pcall(f.assignText.SetSpacing, f.assignText, 1) end
         f.assignText:SetJustifyH("LEFT")
-        f.assignText:SetWidth(m.centerW - 20)
+        f.assignText:SetWidth(m.contentW - 20)
         f.assignText:SetText(waitingAssignmentText())
+        if f.assignText.Hide then f.assignText:Hide() end
         improveTextContrast(f.assignText, 0.95, 1, -1)
+
+        f.assignSlotTexts = {}
+        for i = 1, VERBOSE_ACTION_LINES do
+            local slot = assignPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            if slot.SetFont then
+                local fontPath = (slot.GetFont and select(1, slot:GetFont()))
+                    or "Fonts\\FRIZQT__.TTF"
+                pcall(slot.SetFont, slot, fontPath, 9, "OUTLINE")
+            end
+            if slot.SetSpacing then pcall(slot.SetSpacing, slot, 1) end
+            slot:SetJustifyH("LEFT")
+            slot:SetJustifyV("TOP")
+            slot:SetText("")
+            improveTextContrast(slot, 0.95, 1, -1)
+            f.assignSlotTexts[i] = slot
+        end
     end
 
     installDrag(f, "frame")
@@ -979,6 +1053,57 @@ end
 
 local calloutText
 
+local function normalizedAssignmentSlots(count)
+    count = tonumber(count) or 0
+    if count <= 1 then return 1 end
+    if count == 2 then return 2 end
+    if count <= 3 then return 3 end
+    return 5
+end
+
+local function bracketSlots()
+    local bracket = ns.Core and ns.Core.state and ns.Core.state.bracket
+    if type(bracket) == "number" then return normalizedAssignmentSlots(bracket) end
+    if type(bracket) == "string" then
+        if bracket:find("5") then return 5 end
+        if bracket:find("3") then return 3 end
+        if bracket:find("2") then return 2 end
+        if bracket:find("1") then return 1 end
+    end
+    return nil
+end
+
+local function friendlySlots()
+    local friendlies = ns.Core and ns.Core.state and ns.Core.state.friendlies
+    if type(friendlies) ~= "table" then return nil end
+    local count = 0
+    for _, friendly in pairs(friendlies) do
+        if friendly and friendly.alive ~= false then count = count + 1 end
+    end
+    if count > 0 then return normalizedAssignmentSlots(count) end
+    return nil
+end
+
+local function assignmentSlotCount(actions)
+    if actions and #actions > 0 then return normalizedAssignmentSlots(#actions) end
+    return friendlySlots() or bracketSlots() or DEFAULT_ACTION_LINES
+end
+
+local function assignmentCardText(action, index)
+    if not action then
+        return string.format("|cff8f7b49P·%02d|r\n%s", index, waitingValue())
+    end
+    local who = action.name or action.unit or action.class or "?"
+    local role = action.class or action.role or action.unit or ""
+    local text = action.text or (action.actionKey and L(action.actionKey)) or action.actionKey or "?"
+    local target = action.targetName or action.targetClass
+    local targetLine = target and target ~= ""
+        and ("|cffff6464" .. target .. "|r")
+        or "|cff7a715dREADY|r"
+    return string.format("|cff8f7b49P·%02d|r |cffffffff%s|r\n|cff5bc4d8%s|r\n%s\n|cff8f7b49->|r %s",
+        index, who, role ~= "" and string.upper(role) or "ROLE", text, targetLine)
+end
+
 local function formatPlayerActions(actions, scaffold)
     if not actions or #actions == 0 then
         return scaffold and waitingAssignmentText() or ""
@@ -1002,6 +1127,34 @@ local function formatPlayerActions(actions, scaffold)
             i, who, role ~= "" and string.upper(role) or "", text))
     end
     return table.concat(lines, "\n")
+end
+
+local function setAssignmentSlots(frame, actions, scaffold)
+    if not frame then return end
+    local slots = assignmentSlotCount(actions)
+    frame._accAssignSlots = slots
+    layoutAssignmentSlots(frame, slots)
+    for i = 1, VERBOSE_ACTION_LINES do
+        local fs = frame.assignSlotTexts and frame.assignSlotTexts[i]
+        if fs then
+            if i <= slots then
+                fs:SetText(assignmentCardText(actions and actions[i], i))
+                if fs.Show then fs:Show() end
+            else
+                fs:SetText("")
+                if fs.Hide then fs:Hide() end
+            end
+        end
+    end
+    if (not actions or #actions == 0) and not scaffold then
+        for i = 1, VERBOSE_ACTION_LINES do
+            local fs = frame.assignSlotTexts and frame.assignSlotTexts[i]
+            if fs then
+                fs:SetText("")
+                if fs.Hide then fs:Hide() end
+            end
+        end
+    end
 end
 
 local function pct(value)
@@ -1474,6 +1627,8 @@ function UI:Apply(recommendation)
     setFontStringText(f.unitText, integratedUnitText)
     setFontStringText(f.railText, integratedRailText)
     setFontStringText(f.assignText, integratedAssignText)
+    setAssignmentSlots(f, recommendation.playerActions, scaffold)
+    if f.assignText and f.assignText.Hide then f.assignText:Hide() end
 
     if detachedModulesEnabled() then
         setModuleText(self.unitFrame, "text", formatUnitStrip(recommendation, scaffold), "_hasUnits")

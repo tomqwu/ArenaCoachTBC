@@ -48,7 +48,10 @@ H.it(g, "CreateFrame builds prototype-A module set", function()
     H.assertNotNil(f.healthLabel)
     H.assertNotNil(f.unitText)
     H.assertNotNil(f.railText)
+    H.assertNotNil(f.assignHeader)
     H.assertNotNil(f.assignText)
+    H.assertNotNil(f.assignSlotTexts)
+    H.assertNotNil(f.assignSlotTexts[1])
     H.assertNotNil(UI.unitFrame.text)
     H.assertNotNil(UI.railFrame.text)
     H.assertNotNil(UI.assignFrame.actionText)
@@ -62,14 +65,15 @@ H.it(g, "CreateFrame builds prototype-A module set", function()
     H.assertEq(f.leftPanel._width, 131)
     H.assertEq(f.centerPanel._width, 262)
     H.assertEq(f.rightPanel._width, 115)
-    H.assertEq(f.assignPanel._width, 262)
-    H.assertEq(f.leftPanel._height, 172)
+    H.assertEq(f.assignPanel._width, 524)
+    H.assertEq(f.leftPanel._height, 103)
     H.assertEq(f.centerPanel._height, 103)
-    H.assertEq(f.rightPanel._height, 172)
+    H.assertEq(f.rightPanel._height, 103)
     H.assertEq(f.assignPanel._height, 61)
     H.assertNotNil(f.leftPanel.leftSlot1)
     H.assertNotNil(f.rightPanel.rightSlot1)
-    H.assertNotNil(f.assignPanel.assignSlot1)
+    H.assertNotNil(f.assignPanel.assignCard1)
+    H.assertEq(f._accAssignSlots, 3)
     H.assertTrue(f._resizable, "main board should expose WoW resizing")
     H.assertEq(f._minResize[1], 500)
     H.assertEq(f._minResize[2], 196)
@@ -103,6 +107,8 @@ H.it(g, "CreateFrame builds prototype-A module set", function()
         "waiting cue rail should show structural labels")
     H.assertTrue((f.assignText._text or ""):find("Assignments", 1, true) ~= nil,
         "waiting assignment panel should show structural labels")
+    H.assertTrue((f.assignHeader._text or ""):find("S L O T S", 1, true) ~= nil,
+        "bottom assignment strip should expose a visible slot header")
 end)
 
 H.it(g, "layout keeps center copy inside its section on wide boards", function()
@@ -178,7 +184,8 @@ H.it(g, "CreateFrame restores and saves resized prototype-A board dimensions", f
     H.assertTrue(f.centerPanel._width > 192, "center action panel should grow with a wider board")
     H.assertTrue(f.assignPanel._width >= f.centerPanel._width,
         "player-info panel should stay aligned under the center action column")
-    H.assertTrue(f.leftPanel._height > 140, "side modules should gain height on a taller board")
+    H.assertEq(f.leftPanel._height, f.centerPanel._height)
+    H.assertEq(f.rightPanel._height, f.centerPanel._height)
     H.assertEq(f.resizeGrip._point[1], "BOTTOMRIGHT")
 
     f.resizeGrip._scripts.OnMouseDown(f.resizeGrip, "LeftButton")
@@ -273,6 +280,12 @@ H.it(g, "Apply renders DBM-style player action assignments", function()
     H.assertTrue(txt:find("Warrior:", 1, true) ~= nil, "player assignment missing: " .. txt)
     H.assertTrue(txt:find("Shaman:", 1, true) ~= nil, "party assignment missing: " .. txt)
     H.assertTrue(txt:find("Holyman", 1, true) ~= nil, "assignment target missing: " .. txt)
+    H.assertEq(UI.frame._accAssignSlots, 2)
+    H.assertTrue((UI.frame.assignSlotTexts[1]._text or ""):find("Warrior", 1, true) ~= nil,
+        "first slot should carry player action")
+    H.assertTrue((UI.frame.assignSlotTexts[2]._text or ""):find("Shaman", 1, true) ~= nil,
+        "second slot should carry party action")
+    H.assertFalse(UI.frame.assignPanel.assignCard3._shown, "2v2 assignment strip should hide unused third card")
     H.assertTrue(UI.frame:IsShown(), "integrated assignment board should show when assignments exist")
 end)
 
@@ -340,7 +353,7 @@ H.it(g, "Apply force-show keeps prototype-A scaffold visible without live data",
     H.ns.Core.state.combatPhase = nil
 end)
 
-H.it(g, "Apply caps compact assignments and shows full team when resized taller", function()
+H.it(g, "Apply divides assignment strip into five stable arena slots", function()
     _G.ArenaCoachTBCDB = {
         enabled = true, locked = false, language = "auto",
         frame = { point = "CENTER", x = 0, y = 120, scale = 1.0, verbose = false },
@@ -356,18 +369,23 @@ H.it(g, "Apply caps compact assignments and shows full team when resized taller"
         { name = "Priest", actionKey = "ACTION_PRIEST_DEFEND", targetName = "Warrior" },
     }
     UI:Apply({ mode = "KILL", primaryTargetName = "Holyman", callouts = {}, priority = "HIGH", playerActions = actions })
-    local compact = UI.frame and UI.frame.assignText and UI.frame.assignText._text or ""
-    H.assertTrue(compact:find("Warrior:", 1, true) ~= nil, "first assignment missing: " .. compact)
-    H.assertTrue(compact:find("Paladin:", 1, true) ~= nil, "third assignment missing: " .. compact)
-    H.assertTrue(compact:find("Druid:", 1, true) == nil, "compact HUD should cap after three assignments: " .. compact)
+    H.assertEq(UI.frame._accAssignSlots, 5)
+    H.assertTrue((UI.frame.assignSlotTexts[1]._text or ""):find("Warrior", 1, true) ~= nil,
+        "first assignment slot missing")
+    H.assertTrue((UI.frame.assignSlotTexts[3]._text or ""):find("Paladin", 1, true) ~= nil,
+        "third assignment slot missing")
+    H.assertTrue((UI.frame.assignSlotTexts[4]._text or ""):find("Druid", 1, true) ~= nil,
+        "fourth assignment slot should remain visible in compact mode")
+    H.assertTrue((UI.frame.assignSlotTexts[5]._text or ""):find("Priest", 1, true) ~= nil,
+        "fifth assignment slot should remain visible in compact mode")
 
     UI.frame:SetSize(720, 260)
     UI:_LayoutMainBoard(UI.frame)
     _G.ArenaCoachTBCDB.frame.verbose = true
     UI:Apply({ mode = "KILL", primaryTargetName = "Holyman", callouts = {}, priority = "HIGH", playerActions = actions })
-    local verbose = UI.frame and UI.frame.assignText and UI.frame.assignText._text or ""
-    H.assertTrue(verbose:find("Druid:", 1, true) ~= nil, "verbose HUD should show fourth assignment: " .. verbose)
-    H.assertTrue(verbose:find("Priest:", 1, true) ~= nil, "verbose HUD should show fifth assignment: " .. verbose)
+    H.assertEq(UI.frame._accAssignSlots, 5)
+    H.assertTrue((UI.frame.assignSlotTexts[5]._text or ""):find("Priest", 1, true) ~= nil,
+        "resized strip should preserve the fifth assignment")
 end)
 
 H.it(g, "prototype-A modules have independent movable saved positions", function()
