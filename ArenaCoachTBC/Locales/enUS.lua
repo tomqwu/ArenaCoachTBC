@@ -21,7 +21,7 @@ ns.locales.enUS = {
     HELP_HEADER   = "ArenaCoachTBC commands:",
     HELP_TOGGLE   = "/acc toggle           - show/hide frame",
     HELP_LOCK     = "/acc lock / unlock    - lock or unlock the frame",
-    HELP_TEST     = "/acc test [print]     - 14s scripted UI demo (or 'print' for chat-only)",
+    HELP_TEST     = "/acc test [hud|print] - realistic arena sim (hud = visual demo, print = chat-only)",
     HELP_DEBUG    = "/acc debug            - toggle debug logging",
     HELP_RESET    = "/acc reset            - reset SavedVariables",
     HELP_STRAT    = "/acc strategy safe|balanced|greedy - set aggression",

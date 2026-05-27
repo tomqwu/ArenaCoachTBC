@@ -13,6 +13,7 @@ H.load("Data/Spells.lua")
 H.load("Data/Classes.lua")
 H.load("Data/OwnComps.lua")
 H.load("Data/Strategies.lua")
+H.load("Data/SpellSpecHints.lua")
 H.load("EventBus.lua")
 H.load("CooldownTracker.lua")
 H.load("DRTracker.lua")
@@ -20,6 +21,8 @@ H.load("StrategyEngine.lua")
 H.load("UI.lua")
 H.load("Options.lua")
 H.load("WeakAuraBridge.lua")
+H.load("Simulator.lua")
+H.load("Data/SimScenarios.lua")
 H.load("Core.lua")
 
 local Core = H.ns.Core
@@ -167,27 +170,22 @@ H.it(g, "Evaluate is a no-op when disabled", function()
     _G.ArenaCoachTBCDB.enabled = true
 end)
 
-H.it(g, "RunTestMode (default) runs the scripted demo and emits start + per-beat + end lines", function()
+H.it(g, "RunTestMode (default) runs the realistic arena simulator", function()
     _G.ArenaCoachTBCDB = nil; Core:InitDB()
-    -- v2.4.0: per-beat notes only print in verbose mode now. Flip the
-    -- toggle so the test's >= 8-line assertion still holds.
-    _G.ArenaCoachTBCDB.frame.verbose = true
     _G.C_Timer = nil  -- force synchronous fallback so beats fire inline
     if not H.ns.UI.frame then H.ns.UI:CreateFrame() end
     startCapture()
     Core:RunTestMode()
     stopCapture()
-    -- Demo: start line + 7 beat notes + end line = 9
-    H.assertTrue(#captured >= 8,
-        "demo should emit start + per-beat + end (>= 8 lines), got " .. #captured)
-    -- Verify the start line appeared
-    local sawStart = false
+    local sawStart, sawEnd = false, false
     for _, ln in ipairs(captured) do
-        if ln:find("demo starting", 1, true) or ln:find("演示开始", 1, true) then
-            sawStart = true; break
-        end
+        if ln:find("Realistic 3v3 arena", 1, true) then sawStart = true end
+        if ln:find("Arena round ends", 1, true) then sawEnd = true end
     end
-    H.assertTrue(sawStart, "expected demo-start message")
+    H.assertTrue(sawStart, "expected realistic arena simulator start")
+    H.assertTrue(sawEnd, "expected final arena reset event")
+    H.assertEq(Core.state.pvpContext, "arena")
+    H.assertEq(Core.state.bracket, 3)
 end)
 
 H.it(g, "RunTestMode 'print' triggers the legacy chat-only summary", function()
@@ -199,13 +197,13 @@ H.it(g, "RunTestMode 'print' triggers the legacy chat-only summary", function()
     H.assertTrue(#captured >= 5, "print mode should emit >=5 lines")
 end)
 
-H.it(g, "RunTestMode demo restores frame visibility when it started hidden", function()
+H.it(g, "RunTestMode hud demo restores frame visibility when it started hidden", function()
     _G.ArenaCoachTBCDB = nil; Core:InitDB()
     _G.C_Timer = nil  -- synchronous fallback runs end-of-demo restore immediately
     if not H.ns.UI.frame then H.ns.UI:CreateFrame() end
     H.ns.UI:Hide()
     startCapture()
-    Core:RunTestMode()
+    Core:RunTestMode("hud")
     stopCapture()
     -- After the synchronous restore fires, frame should be hidden again
     H.assertFalse(H.ns.UI.frame._shown,

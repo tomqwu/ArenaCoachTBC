@@ -21,7 +21,8 @@ behaviour is what tests can't see.
 - [ ] `/acc nameplate on|off` toggles nameplate highlighting (KILL = red border, SWAP = orange) independently
 - [ ] `/acc reset` wipes SavedVariables; `/reload` restores defaults
 - [ ] `/acc debug` toggles debug printing
-- [ ] `/acc test` runs the arena demo: arcade warning plate, mode label, target stats row (HP %, kill prob %, BURST READY), nameplate border on any visible enemy, and the thin edge cue only if `/acc glow on` is enabled.
+- [ ] `/acc test` runs the realistic 3v3 arena replay through the engine: starts OPEN before gates, shows defensive pressure when the healer is CCed/trained, returns to an offensive kill/swap call, then resets.
+- [ ] `/acc test hud` runs the visual-only HUD demo: arcade warning plate, mode label, target stats row (HP %, kill prob %, BURST READY), nameplate border on any visible enemy, and the thin edge cue only if `/acc glow on` is enabled.
 - [ ] `/acc test bg` runs the battleground walk-through (flag carrier priority, low-HP straggler, CALL_BG_DEFEND)
 - [ ] `/acc test world` runs the world-PvP walk-through (single-target focus)
 - [ ] `/acc enemy war mage priest druid pala` populates manual enemy list and the engine emits a recommendation

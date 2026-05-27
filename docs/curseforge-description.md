@@ -178,7 +178,8 @@ Learning and recordings are local SavedVariables only. `/acc reset` clears saved
 | Command | What It Does |
 |---|---|
 | `/acc help` | Show all commands |
-| `/acc test` | Run a 14-second arena HUD demo |
+| `/acc test` | Run a realistic 3v3 arena replay through the engine |
+| `/acc test hud` | Run the visual-only arena HUD demo |
 | `/acc test bg` | Run a battleground demo |
 | `/acc test world` | Run a world-PvP demo |
 | `/acc toggle` | Show or hide the HUD |
@@ -206,7 +207,7 @@ or your client-specific Classic addon folder.
 
 3. Restart the game or run `/reload`.
 4. Enable "Load out of date AddOns" if your client reports an interface mismatch.
-5. Run `/acc test` to verify the HUD appears.
+5. Run `/acc test` to verify the engine-driven arena replay and HUD appear.
 
 ## Localization
 
@@ -221,7 +222,7 @@ Both locales are parity-checked in CI. Current locale parity is **145 keys per l
 
 The addon is developed as a pure Lua 5.1 project with headless tests for the strategy engine and WoW API stubs for UI/core behavior. Current local release validation:
 
-- **660 tests passing**
+- **663 tests passing**
 - **99%+ coverage**
 - Locale parity check
 - Lua syntax check
@@ -244,11 +245,11 @@ MIT. Free to use, fork, modify, and redistribute.
 
 CurseForge approval does not require all of these, but they make the page clearer:
 
-1. `/acc test` showing the central HUD, arcade warning word, target stats, assignments, and nameplate border.
-2. A DEFEND state with the blue HUD and defensive assignments.
-3. A battleground demo showing flag-carrier or low-HP target priority.
-4. `/acc trace dump` showing the decision trace.
-5. The options/slash-command help output.
+1. `/acc test` showing the realistic arena replay with OPEN, DEFEND, kill/swap, and reset advice.
+2. `/acc test hud` showing the central HUD, arcade warning word, target stats, assignments, and nameplate border.
+3. A DEFEND state with the blue HUD and defensive assignments.
+4. A battleground demo showing flag-carrier or low-HP target priority.
+5. `/acc trace dump` showing the decision trace.
 
 ---
 

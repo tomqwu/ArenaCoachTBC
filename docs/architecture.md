@@ -154,9 +154,9 @@ BG/world enemy state is intentionally opportunistic. `Core:RefreshEnemiesNonAren
 
 v2.8.3 adds a stale-recommendation fade timer on the HUD frame. Each fresh `UI:Apply` resets opacity to 1.0. If no fresh recommendation refreshes the frame after 3 seconds, opacity fades over 2 seconds; at the end the frame hides and clears nameplate / edge cues. This handles the "situation out of sync" case without flashing or forcing the user to manually toggle the frame.
 
-`/acc off` and `/acc on` (aliases `/acc disable` / `/acc enable`) toggle `db.enabled`. When off, `Core:Evaluate` short-circuits at the top — no event handlers, no engine work, all visual layers hidden. Persists across `/reload`. The `/acc test` demo bypasses both gates via a per-beat `recommendation._forceShow` flag so the walk-through paints the full HUD outside arena.
+`/acc off` and `/acc on` (aliases `/acc disable` / `/acc enable`) toggle `db.enabled`. When off, `Core:Evaluate` short-circuits at the top — no event handlers, no engine work, all visual layers hidden. Persists across `/reload`. The default `/acc test` path runs the simulator with `state.simulatorActive` and `pvpContext="arena"` so the real engine/UI pipeline can be exercised outside a queue. The visual-only `/acc test hud` demo bypasses both gates via a per-beat `recommendation._forceShow` flag so the walk-through paints the full HUD outside arena.
 
-`UI:Apply` 检查 `Core.state.pvpContext`，当上下文为 `"none"` 或 `"world_idle"` 时隐藏所有视觉层。`/acc off` / `/acc on` 切换 `db.enabled`，全局开关。`/acc test` 演示通过 `_forceShow` 标志绕过这些门禁。
+`UI:Apply` 检查 `Core.state.pvpContext`，当上下文为 `"none"` 或 `"world_idle"` 时隐藏所有视觉层。`/acc off` / `/acc on` 切换 `db.enabled`，全局开关。默认 `/acc test` 使用 `state.simulatorActive` 与 `pvpContext="arena"` 在不排队的情况下跑真实引擎/UI 链路；`/acc test hud` 视觉演示则通过 `_forceShow` 标志绕过这些门禁。
 
 ---
 

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.8] - 2026-05-27
+
+### Added
+- **Realistic `/acc test` arena replay.** The default `/acc test` path now runs a real engine-driven 3v3 RMP scenario instead of only forcing canned HUD recommendations. It simulates pre-gates `OPEN`, combat start, enemy burst, healer CC, train pressure into `DEFEND`, Disc Priest discovery through Pain Suppression, trinket/defensive state, a kill/swap window, and match reset.
+- **Simulator PvP context and friendly-pressure events.** Built-in simulations can now seed bracket/context, friendlies, friendly health/debuffs, enemy debuffs, damage-pressure rings, phase changes, observations, and cleanup after the replay.
+
+### Changed
+- **Visual-only HUD tour moved to `/acc test hud`.** The old DBM-style forced HUD walk-through remains available for checking arcade warning text, target stats, assignments, nameplate paint, and optional edge cues.
+
 ## [2.8.7] - 2026-05-27
 
 ### Added

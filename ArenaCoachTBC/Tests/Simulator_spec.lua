@@ -63,6 +63,7 @@ H.it(g, "List returns sorted scenario keys", function()
     -- Should include the 3 built-ins
     local found = {}
     for _, k in ipairs(keys) do found[k] = true end
+    H.assertTrue(found["real-arena"], "missing real-arena")
     H.assertTrue(found["rmp"],        "missing rmp")
     H.assertTrue(found["tsg-mirror"], "missing tsg-mirror")
     H.assertTrue(found["drain"],      "missing drain")
@@ -166,6 +167,32 @@ for _, key in ipairs({"rmp", "tsg-mirror", "drain", "chain-vs-chain"}) do
         H.assertTrue(ok, "Run failed: " .. tostring(err))
     end)
 end
+
+H.it(g, "real-arena scenario exercises opener, defensive, kill, and reset modes", function()
+    resetState()
+    local modes = {}
+    local origEvaluate = Core.Evaluate
+    Core.Evaluate = function(self)
+        local rec = origEvaluate(self)
+        if rec and rec.mode then table.insert(modes, rec.mode) end
+        return rec
+    end
+    local ok, err = pcall(function()
+        local ran, runErr = SIM:Run("real-arena", { printEvents = false })
+        H.assertTrue(ran, "Run failed: " .. tostring(runErr))
+    end)
+    Core.Evaluate = origEvaluate
+    if not ok then error(err) end
+
+    local seen = {}
+    for _, mode in ipairs(modes) do seen[mode] = true end
+    H.assertTrue(seen.OPEN, "real arena sim should start with OPEN")
+    H.assertTrue(seen.DEFEND, "real arena sim should show DEFEND under healer pressure")
+    H.assertTrue(seen.KILL or seen.SWAP, "real arena sim should return to an offensive call")
+    H.assertTrue(seen.RESET, "real arena sim should end with RESET")
+    H.assertEq(Core.state.pvpContext, "arena")
+    H.assertEq(Core.state.bracket, 3)
+end)
 
 H.it(g, "/acc simulate (no arg) lists scenarios", function()
     resetState()

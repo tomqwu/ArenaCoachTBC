@@ -229,6 +229,10 @@ end
 -- APIs DetectPvPContext returns "none" and leaves any pre-set value
 -- alone (so test fixtures aren't trampled).
 function Core:DetectPvPContext()
+    if self.state and self.state.simulatorActive and self.state.pvpContext then
+        return self.state.pvpContext
+    end
+
     -- Headless: no APIs available, don't override a fixture value.
     local haveBattlefield = type(IsActiveBattlefieldArena) == "function"
     local haveInstance    = type(GetInstanceInfo) == "function"
@@ -610,6 +614,10 @@ function Core:RefreshAuraObservations()
     if not auraAPIAvailable() then return end
     local S = ns.Spells
     if not S then return end
+    if self.state and self.state.simulatorActive then
+        self.state.observations = self.state.observations or {}
+        return
+    end
 
     local obs = self.state.observations or {}
     local trained = obs.healerUnderPressure
@@ -1273,11 +1281,11 @@ local function recToString(rec)
 end
 
 -- M12 (post-release polish): scripted DBM-style UI walk-through.
--- /acc test (default) walks the live UI through 7 beats over ~14 seconds:
+-- /acc test now defaults to an engine-driven realistic arena replay via
+-- Simulator. /acc test hud keeps this forced visual-only walk-through:
 -- OPEN -> KILL -> burst-ready -> SWAP -> DEFEND -> profile-driven callout
 -- -> RESET. Each beat reuses the real UI:Apply path so the user sees
--- mode colour flips, chain block changes, BURST_NOW, and voice cues
--- fire exactly as they would in a real match.
+-- mode colour flips, chain block changes, BURST_NOW, and voice cues.
 -- /acc test print preserves the legacy chat-only summary.
 local DEMO_BEATS = {
     {
@@ -1541,7 +1549,15 @@ function Core:RunTestMode(rest)
     if rest == "world" then
         return Core:_RunTestDemoMode(WORLD_DEMO_BEATS, "world PvP walk-through", slowMult)
     end
-    Core:_RunTestDemoMode(DEMO_BEATS, "arena RMP 3v3 walk-through", slowMult)
+    if rest == "hud" or rest == "demo" then
+        return Core:_RunTestDemoMode(DEMO_BEATS, "arena RMP 3v3 HUD walk-through", slowMult)
+    end
+    if rest == "" or rest == "arena" or rest == "real" then
+        if ns.Simulator and ns.Simulator.Get and ns.Simulator:Get("real-arena") then
+            return Core:RunSimulator("real-arena")
+        end
+    end
+    Core:_RunTestDemoMode(DEMO_BEATS, "arena RMP 3v3 HUD walk-through", slowMult)
 end
 
 -- DBM-style scripted walk-through: force the frame visible, step through

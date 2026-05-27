@@ -10,6 +10,57 @@ local SIM = ns.Simulator
 local S   = ns.Spells
 if not (SIM and S) then return end
 
+-- Engine-driven smoke scenario for `/acc test`.
+-- Unlike the older forced HUD demo, this seeds a 3v3 arena state and lets
+-- Core:Evaluate drive the recommendation after each event. It includes the
+-- things that tend to break real matches: PRE -> ACTIVE timing, delayed spec
+-- discovery, healer CC, burst damage pressure, trinket state, defensive auras,
+-- and a final reset.
+SIM:Register("real-arena", {
+    label       = "Realistic 3v3 arena: RMP opener into peel/swap",
+    context     = "arena",
+    bracket     = 3,
+    combatPhase = "PRE",
+    friendlies  = {
+        { unit = "player", name = "You",       class = "WARRIOR", spec = "ARMS",        healthPct = 100 },
+        { unit = "party1", name = "Totemkin",  class = "SHAMAN",  spec = "ENHANCEMENT", healthPct = 100 },
+        { unit = "party2", name = "Leaves",    class = "DRUID",   spec = "RESTORATION", roleGuess = "HEALER", healthPct = 100 },
+    },
+    enemies = {
+        { class = "ROGUE",  name = "Sneakstab" },
+        { class = "MAGE",   name = "Frostbiter" },
+        { class = "PRIEST", name = "Holyman" },
+    },
+    observations = {
+        windfuryActive = true,
+        hojReady = false,
+        priestCanDispel = false,
+    },
+    events = {
+        { t = 0.0,  type = "phase", phase = "PRE",    label = "Arena doors closed: opponents visible, opener only" },
+        { t = 1.0,  type = "phase", phase = "ACTIVE", label = "Gates open: combat starts" },
+        { t = 1.3,  type = "cast", by = 2, spell = S.ICY_VEINS,         label = "Mage pops Icy Veins" },
+        { t = 1.4,  type = "aura", on = 2, spell = S.ICY_VEINS,         label = "Icy Veins aura active" },
+        { t = 2.0,  type = "friendly_debuff", unit = "party2", spell = S.POLYMORPH_SHEEP, label = "Our druid is polymorphed" },
+        { t = 2.3,  type = "cast", by = 1, spell = S.KIDNEY_SHOT,       label = "Rogue kidneys the healer" },
+        { t = 2.5,  type = "damage", on = "party2", hits = 3, pct = 54, label = "Three burst hits land on our healer" },
+        { t = 3.2,  type = "friendly_health", unit = "party2", pct = 36, label = "Healer drops into defensive range" },
+        { t = 4.0,  type = "cast", by = 3, spell = S.PAIN_SUPPRESSION,  label = "Priest reveals Discipline with Pain Suppression" },
+        { t = 4.1,  type = "aura", on = 3, spell = S.PAIN_SUPPRESSION,  label = "Pain Suppression blocks the priest kill" },
+        { t = 5.0,  type = "trinket", unit = 3,                         label = "Priest trinkets the crowd-control chain" },
+        { t = 5.5,  type = "friendly_debuff_off", unit = "party2", spell = S.POLYMORPH_SHEEP, label = "Druid is free again" },
+        { t = 5.6,  type = "friendly_health", unit = "party2", pct = 72, label = "Healer recovers" },
+        { t = 5.7,  type = "clear_pressure",                            label = "Train pressure clears" },
+        { t = 6.0,  type = "health", unit = 2, pct = 38,                 label = "Mage is caught at 38%" },
+        { t = 6.1,  type = "trinket", unit = 2,                          label = "Mage trinket is down" },
+        { t = 6.2,  type = "debuff", unit = 2, spell = S.MORTAL_STRIKE,  label = "Mortal Strike is active on mage" },
+        { t = 7.5,  type = "aura_off", on = 3, spell = S.PAIN_SUPPRESSION, label = "Pain Suppression fades" },
+        { t = 8.0,  type = "health", unit = 2, pct = 19,                 label = "Mage is killable" },
+        { t = 9.5,  type = "kill", unit = 2,                             label = "Mage dies" },
+        { t = 11.0, type = "reset",                                      label = "Arena round ends and the HUD resets" },
+    },
+})
+
 SIM:Register("rmp", {
     label   = "RMP opener (Rogue / Mage / Priest)",
     enemies = { "ROGUE", "MAGE", "PRIEST" },

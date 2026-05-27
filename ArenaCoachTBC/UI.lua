@@ -13,7 +13,7 @@ ns.UI = ns.UI or {}
 local UI = ns.UI
 UI.frame = nil
 
-local ADDON_VERSION = "2.8.7"
+local ADDON_VERSION = "2.8.8"
 local STALE_FADE_START = 3.0
 local STALE_FADE_SECONDS = 2.0
 

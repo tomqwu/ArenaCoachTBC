@@ -51,14 +51,14 @@ The 100+ enemy comp catalog in `Data/Strategies.lua` carries `ownVariants` so th
 
 ```
 /acc help              -- show all slash commands
-/acc test              -- 14s scripted UI demo
+/acc test              -- realistic arena replay through the engine
 /acc unlock            -- enable dragging
                           (drag the frame)
 /acc lock              -- freeze position
 /acc selftest verbose  -- in-client validation
 ```
 
-After `/acc test` the recommendation frame appears center-screen and walks through 7 beats over 14 seconds (mode flips, BURST_NOW pulse, DEFEND cue, profile callout) — you'll see every kind of UI transition the addon emits without a full-screen flash. **If you see this demo, the addon is loaded and working.** Move the frame to a corner you'll actually look at during a match.
+After `/acc test` the addon replays a realistic 3v3 RMP arena through the same engine path used in a match: gates closed (`OPEN`), combat start, enemy burst, healer CC, healer pressure (`DEFEND`), Disc Priest reveal, Pain Suppression/trinket state, a swap/kill window, then reset. **If you see this replay, the addon is loaded and the decision pipeline is working.** Move the frame to a corner you'll actually look at during a match. Use `/acc test hud` for the older visual-only HUD tour.
 
 ---
 
@@ -82,7 +82,8 @@ You don't run anything during a match. The addon auto-engages on `PLAYER_ENTERIN
 | `/acc help` | Print the command list |
 | `/acc toggle` | Show / hide the recommendation frame |
 | `/acc lock` / `/acc unlock` | Freeze / release the frame for dragging |
-| `/acc test` | 14s DBM-style UI demo (mode flips, BURST_NOW, DEFEND cue) |
+| `/acc test` | Realistic 3v3 arena replay through the engine (OPEN → pressure/DEFEND → kill/reset) |
+| `/acc test hud` | DBM-style visual HUD demo (mode flips, BURST_NOW, DEFEND cue) |
 | `/acc test bg` | BG-mode walk-through (flag carrier + low-HP straggler + CALL_BG_DEFEND) |
 | `/acc test world` | World PvP walk-through (single-target focus) |
 | `/acc test print` | Legacy chat-only summary |
@@ -199,7 +200,7 @@ lua5.1 tools/check_locales.lua
 lua5.1 tools/replay.lua <path/to/ArenaCoachTBC.lua>
 ```
 
-CI runs syntax check → locale parity → tests → 99% coverage gate on every push and PR. The current headless suite has **660 tests** and the benchmark suite tracks agreement against hand-labelled scenarios.
+CI runs syntax check → locale parity → tests → 99% coverage gate on every push and PR. The current headless suite has **663 tests** and the benchmark suite tracks agreement against hand-labelled scenarios.
 
 ---
 
@@ -262,14 +263,14 @@ MIT.
 
 ```
 /acc help              -- 查看所有命令
-/acc test              -- 14 秒 UI 演示
+/acc test              -- 真实竞技场引擎回放
 /acc unlock            -- 解锁拖动
                           （拖到合适位置）
 /acc lock              -- 锁定位置
 /acc selftest verbose  -- 客户端内自检
 ```
 
-执行 `/acc test` 后，提示框会出现在屏幕中央，并在 14 秒内走完 7 个节拍（模式切换、爆发提示、防御警报、对手习惯提示）——你会看到插件能输出的所有 UI 变化。**看到这个演示，说明插件已正确加载。** 把框拖到你比赛中实际会看的位置。
+执行 `/acc test` 后，插件会通过真实决策引擎回放一局 3v3 RMP：铁门未开（`OPEN`）、开战、敌方爆发、治疗被控、治疗承压（`DEFEND`）、戒律牧确认、痛苦压制/徽章状态、换火击杀窗口，最后重置。**看到这个回放，说明插件已加载且决策链路可运行。** 把框拖到你比赛中实际会看的位置。`/acc test hud` 保留旧的纯视觉 HUD 演示。
 
 ---
 
@@ -293,7 +294,8 @@ MIT.
 | `/acc help` | 显示命令列表 |
 | `/acc toggle` | 显示 / 隐藏提示框 |
 | `/acc lock` / `/acc unlock` | 锁定 / 解锁框体拖动 |
-| `/acc test` | 14 秒 DBM 风格 UI 演示（模式切换、爆发、防御警报） |
+| `/acc test` | 真实 3v3 竞技场引擎回放（开局 → 承压/防御 → 击杀/重置） |
+| `/acc test hud` | DBM 风格视觉 HUD 演示（模式切换、爆发、防御警报） |
 | `/acc test bg` | 战场模式演示（夺旗者 + 低血单位 + 战场防御提示） |
 | `/acc test world` | 户外 PvP 演示（单目标聚焦） |
 | `/acc test print` | 仅文字版本（旧行为） |
