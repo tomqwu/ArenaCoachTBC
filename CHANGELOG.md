@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.9] - 2026-05-27
+
+### Fixed
+- **Combat-log payload compatibility.** `COMBAT_LOG_EVENT_UNFILTERED` parsing now accepts both modern `CombatLogGetCurrentEventInfo()` and older vararg-style combat-log payloads. `SWING_*` events are parsed without pretending the damage amount is a spell ID, while `SPELL_*` events still expose spell id/name for trinkets, cooldowns, DR, and spec hints.
+
 ## [2.8.8] - 2026-05-27
 
 ### Added

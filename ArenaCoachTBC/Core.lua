@@ -753,10 +753,52 @@ end
 -- ============================================================
 -- Combat log parsing
 -- ============================================================
-local function onCLEU()
-    if type(CombatLogGetCurrentEventInfo) ~= "function" then return end
-    local ts, subEvent, _, sourceGUID, sourceName, _, _, destGUID, destName, _, _,
-          spellID, spellName = CombatLogGetCurrentEventInfo()
+local function parseCLEUVarargs(...)
+    local n = select("#", ...)
+    if n < 2 then return nil end
+
+    local ts, subEvent = select(1, ...)
+    if not subEvent then return nil end
+
+    local sourceGUID, sourceName, destGUID, destName, spellID, spellName
+    local hasHideCaster = type(select(3, ...)) == "boolean"
+    if hasHideCaster then
+        -- Modern payload shape:
+        -- timestamp, subEvent, hideCaster, sourceGUID, sourceName,
+        -- sourceFlags, sourceRaidFlags, destGUID, destName, ...
+        sourceGUID, sourceName = select(4, ...)
+        destGUID, destName = select(8, ...)
+        spellID, spellName = select(12, ...)
+    else
+        -- Legacy 2.4-era payload shape from COMBAT_LOG_EVENT docs:
+        -- timestamp, subEvent, sourceGUID, sourceName, sourceFlags,
+        -- destGUID, destName, destFlags, [prefix args...].
+        sourceGUID, sourceName = select(3, ...)
+        destGUID, destName = select(6, ...)
+        spellID, spellName = select(9, ...)
+    end
+
+    if type(subEvent) == "string" and subEvent:find("^SWING") then
+        spellID, spellName = nil, nil
+    end
+
+    return ts, subEvent, sourceGUID, sourceName, destGUID, destName, spellID, spellName
+end
+
+local function readCombatLogPayload(...)
+    if type(CombatLogGetCurrentEventInfo) == "function" then
+        local ts, subEvent, _, sourceGUID, sourceName, _, _, destGUID, destName, _, _,
+              spellID, spellName = CombatLogGetCurrentEventInfo()
+        if subEvent then
+            return ts, subEvent, sourceGUID, sourceName, destGUID, destName, spellID, spellName
+        end
+    end
+    return parseCLEUVarargs(...)
+end
+
+local function onCLEU(_event, ...)
+    local ts, subEvent, sourceGUID, sourceName, destGUID, destName, spellID, spellName =
+        readCombatLogPayload(...)
     if not subEvent then return end
 
     -- Recording (for offline replay)

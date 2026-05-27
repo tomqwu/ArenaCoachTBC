@@ -222,7 +222,7 @@ Both locales are parity-checked in CI. Current locale parity is **145 keys per l
 
 The addon is developed as a pure Lua 5.1 project with headless tests for the strategy engine and WoW API stubs for UI/core behavior. Current local release validation:
 
-- **663 tests passing**
+- **664 tests passing**
 - **99%+ coverage**
 - Locale parity check
 - Lua syntax check

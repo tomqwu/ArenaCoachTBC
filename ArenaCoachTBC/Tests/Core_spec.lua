@@ -569,6 +569,40 @@ H.it(g, "CLEU fires DR + cooldown trackers + re-evaluates", function()
     H.assertFalse(Core.state.enemies.arena1.hasTrinket)
 end)
 
+H.it(g, "CLEU accepts legacy vararg SPELL and SWING payloads", function()
+    setupRealisticArena3v3()
+    Core:RefreshFriendlies()
+    Core:RefreshArenaEnemies()
+    Core.state.combatPhase = "ACTIVE"
+
+    local saved = _G.CombatLogGetCurrentEventInfo
+    _G.CombatLogGetCurrentEventInfo = nil
+    local ok, err = pcall(function()
+        EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED",
+            1000, "SPELL_AURA_APPLIED",
+            "src", "Source", nil,
+            "guid-enemy-priest", "EnemyPriest", nil,
+            42292, "PvP Trinket")
+        H.assertFalse(Core.state.enemies.arena1.hasTrinket,
+            "legacy SPELL_* payload should still expose spellID")
+
+        for i = 1, 3 do
+            EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED",
+                1000 + i, "SWING_DAMAGE",
+                "guid-enemy-rogue", "EnemyRogue", nil,
+                "guid-priest-friendly", "Priest", nil,
+                1200, 0, 1)
+        end
+        H.assertTrue(Core.state.observations.healerUnderPressure,
+            "legacy SWING_* payload should still count healer pressure")
+        H.assertNil(H.ns.CooldownTracker:GetRemaining("guid-enemy-rogue", 1200),
+            "SWING_DAMAGE amount must not be parsed as a spell ID")
+    end)
+    _G.CombatLogGetCurrentEventInfo = saved
+    clearArenaApis()
+    if not ok then error(err) end
+end)
+
 H.it(g, "CLEU SPELL_AURA_APPLIED with category records DR", function()
     rebootForEvents()
     _G.ArenaCoachTBCDB = nil; Core:InitDB()
