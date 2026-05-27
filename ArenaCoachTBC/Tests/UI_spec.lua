@@ -314,16 +314,48 @@ H.it(g, "Apply renders DBM-style player action assignments", function()
     })
     local txt = UI.frame and UI.frame.assignText and UI.frame.assignText._text or ""
     H.assertTrue(txt:find("Assignments", 1, true) ~= nil, "assignment header missing: " .. txt)
+    H.assertTrue(txt:find("YOU", 1, true) ~= nil, "self action marker missing: " .. txt)
     H.assertTrue(txt:find("Warrior:", 1, true) ~= nil, "player assignment missing: " .. txt)
     H.assertTrue(txt:find("Shaman:", 1, true) ~= nil, "party assignment missing: " .. txt)
     H.assertTrue(txt:find("Holyman", 1, true) ~= nil, "assignment target missing: " .. txt)
     H.assertEq(UI.frame._accAssignSlots, 2)
-    H.assertTrue((UI.frame.assignSlotTexts[1]._text or ""):find("Warrior", 1, true) ~= nil,
-        "first slot should carry player action")
+    H.assertEq(UI.frame._accSelfAssignmentIndex, 1)
+    H.assertTrue(UI.frame.assignSlotTexts[1]._accIsSelf, "first slot should be marked as the player's action")
+    H.assertTrue(UI.frame.assignPanel.assignCard1._accIsSelf, "first slot plate should be marked as self")
+    H.assertTrue((UI.frame.assignPanel.assignCard1._color and UI.frame.assignPanel.assignCard1._color[4] or 0) >= 0.65,
+        "self action plate should be visually stronger than team slots")
+    H.assertTrue((UI.frame.assignPanel.assignCard2._color and UI.frame.assignPanel.assignCard2._color[4] or 1) <= 0.45,
+        "team assignment plates should remain secondary")
+    H.assertTrue((UI.frame.assignSlotTexts[1]._text or ""):find("YOU", 1, true) ~= nil,
+        "first slot should carry the self marker")
+    H.assertTrue((UI.frame.assignSlotTexts[1]._text or ""):find("MS / Hamstring", 1, true) ~= nil,
+        "first slot should foreground the player's action")
     H.assertTrue((UI.frame.assignSlotTexts[2]._text or ""):find("Shaman", 1, true) ~= nil,
         "second slot should carry party action")
     H.assertFalse(UI.frame.assignPanel.assignCard3._shown, "2v2 assignment strip should hide unused third card")
     H.assertTrue(UI.frame:IsShown(), "integrated assignment board should show when assignments exist")
+end)
+
+H.it(g, "Apply promotes and highlights the player action even if actions are unordered", function()
+    UI:CreateFrame()
+    UI:Apply({
+        mode = "DEFEND",
+        callouts = {},
+        priority = "URGENT",
+        playerActions = {
+            { unit = "party1", name = "Leaves", class = "DRUID", actionKey = "ACTION_DRUID_DEFEND", targetName = "You" },
+            { unit = "player", name = "Priest", class = "PRIEST", actionKey = "ACTION_PRIEST_DEFEND", targetName = "You" },
+            { unit = "party2", name = "Totemkin", class = "SHAMAN", actionKey = "ACTION_SHAMAN_DEFEND", targetName = "You" },
+        },
+    })
+    H.assertEq(UI.frame._accSelfAssignmentIndex, 1)
+    H.assertTrue((UI.frame.assignSlotTexts[1]._text or ""):find("YOU", 1, true) ~= nil,
+        "player card should be promoted to the first readable slot")
+    H.assertTrue((UI.frame.assignSlotTexts[1]._text or ""):find("Pain Supp", 1, true) ~= nil,
+        "player card should foreground the action to take")
+    H.assertTrue((UI.frame.assignSlotTexts[2]._text or ""):find("Leaves", 1, true) ~= nil,
+        "team cards should remain visible after the player action")
+    H.assertFalse(UI.frame.assignSlotTexts[2]._accIsSelf, "party slot should not inherit the self highlight")
 end)
 
 H.it(g, "Apply renders left focus strip and right cue rail", function()

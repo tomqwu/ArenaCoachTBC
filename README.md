@@ -136,7 +136,7 @@ User-facing **callout and assignment strings** (e.g. "Tremor for fear", "Warrior
 
 ## Customising the display with WeakAuras
 
-The built-in HUD (arcade cue, mode label, target stats, nameplate highlight, audio, and optional thin edge cue) covers what most users want — no WeakAura needed. If you want to drive your own custom HUD on top, the addon exposes its full live state through `_G.ArenaCoachTBC`.
+The built-in HUD (arcade cue, mode label, target stats, self-highlighted assignment cards, nameplate highlight, audio, and optional thin edge cue) covers what most users want — no WeakAura needed. The bottom strip promotes your own assignment with a bright `YOU` marker and stronger plate, then keeps teammates as secondary context. If you want to drive your own custom HUD on top, the addon exposes its full live state through `_G.ArenaCoachTBC`.
 
 > **About paste-ready import strings**: v2.0–v2.2.5 tried to ship pre-built WA import strings in this README. The `node-weakauras-parser` library we used to generate them produces strings that decode correctly but fail WA's import-validator byte check (the import dialog never shows the Import button). After 6 patches chasing it we concluded the parser is the wrong tool. If you want to use the templates, the source for each (mode badge, burst gate, defensive alert, callout stream, comp readout) is in `docs/weakaura-pack.md` — paste the trigger Lua into a Custom-trigger WeakAura you build in-game, no import-string round-trip needed.
 
@@ -202,7 +202,7 @@ lua5.1 tools/check_locales.lua
 lua5.1 tools/replay.lua <path/to/ArenaCoachTBC.lua>
 ```
 
-CI runs syntax check → locale parity → tests → 99% coverage gate on every push and PR. The current headless suite has **673 tests** and the benchmark suite tracks agreement against hand-labelled scenarios.
+CI runs syntax check → locale parity → tests → 99% coverage gate on every push and PR. The current headless suite has **681 tests** and the benchmark suite tracks agreement against hand-labelled scenarios.
 
 ---
 

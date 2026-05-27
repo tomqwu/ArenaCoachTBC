@@ -83,7 +83,7 @@ end
 -- ----- payload -----
 
 local function buildHeader()
-    local addonVer = "2.8.27"
+    local addonVer = "2.8.28"
     if ns.Spells and ns.WeakAuraBridge and _G.ArenaCoachTBC and _G.ArenaCoachTBC.GetVersion then
         addonVer = _G.ArenaCoachTBC.GetVersion()
     end

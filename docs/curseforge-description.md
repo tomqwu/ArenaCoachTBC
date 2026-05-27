@@ -72,7 +72,7 @@ The central HUD updates as the fight changes:
 - **SWAP: Mage** when the mage becomes a better target than the current one
 - **DEFEND** when your healer is low, crowd-controlled, or under repeated pressure
 - **BURST READY** only when the burst gates pass
-- **Assignments** showing one compact action per teammate, such as Warrior MS, Shaman purge, Paladin HoJ, Priest dispel, or Druid Cyclone
+- **Assignments** showing your own compact action first with a bright YOU marker, then teammate jobs such as Warrior MS, Shaman purge, Paladin HoJ, Priest dispel, or Druid Cyclone
 
 The text fades out if the fight state stops refreshing, so stale instructions do not sit on the screen after the situation has moved on. Before gates open, the integrated prototype-A board stays visible with waiting placeholders so the display reads as a real layout before target/cue/assignment data exists.
 
@@ -217,14 +217,14 @@ ArenaCoachTBC currently ships:
 - English (`enUS`)
 - Simplified Chinese (`zhCN`)
 
-Both locales are parity-checked in CI. Current locale parity is **153 keys per locale**. Spell names are resolved by the WoW client through spell IDs, so they follow the language of your client where Blizzard provides localized spell data.
+Both locales are parity-checked in CI. Current locale parity is **154 keys per locale**. Spell names are resolved by the WoW client through spell IDs, so they follow the language of your client where Blizzard provides localized spell data.
 
 ## Project Quality
 
 The addon is developed as a pure Lua 5.1 project with headless tests for the strategy engine and WoW API stubs for UI/core behavior. Current local release validation:
 
-- **673 tests passing**
-- **99%+ coverage**
+- **681 tests passing**
+- **99.64% coverage**
 - Locale parity check
 - Lua syntax check
 - GitHub Actions on push and release tags

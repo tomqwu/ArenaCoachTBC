@@ -19,7 +19,7 @@ Obsidian Signal is ArenaCoachTBC's compact tactical HUD language. It exists to m
 - Center: the dominant action/target instrument with a target-health bar.
 - Left: focus and pressure status.
 - Right: tactical cue rail with spell-aware reminders.
-- Bottom: 1/2/3/5 fixed assignment cards, not a paragraph block.
+- Bottom: 1/2/3/5 fixed assignment cards, led by a highlighted self-action card.
 - Metadata: `OBSIDIAN / SIGNAL / <mode>` so screenshots and manual checks reveal the active visual language.
 
 ## Regression Checks
@@ -30,4 +30,5 @@ Obsidian Signal is ArenaCoachTBC's compact tactical HUD language. It exists to m
 - DEFEND and RESET must hide inactive target-health instruments.
 - Text must stay inside its panel at default size and after resizing.
 - 2v2, 3v3, and 5v5 assignment slots must keep stable positions.
+- The player's own bottom assignment must be visually dominant and readable before teammate context.
 - Stale advice must fade away instead of sitting on screen.

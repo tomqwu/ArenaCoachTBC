@@ -14,7 +14,7 @@ ns.UI = ns.UI or {}
 local UI = ns.UI
 UI.frame = nil
 
-local ADDON_VERSION = "2.8.27"
+local ADDON_VERSION = "2.8.28"
 local STALE_FADE_START = 2.5
 local STALE_FADE_SECONDS = 1.5
 local COMPACT_WIDTH = 540
@@ -1115,6 +1115,33 @@ local function assignmentSlotCount(actions)
     return friendlySlots() or bracketSlots() or DEFAULT_ACTION_LINES
 end
 
+local function isSelfAction(action)
+    if not action then return false end
+    if action.unit == "player" then return true end
+    if type(UnitGUID) == "function" and action.guid then
+        local ok, playerGUID = pcall(UnitGUID, "player")
+        if ok and playerGUID and action.guid == playerGUID then return true end
+    end
+    local name = action.name
+    return name == "You" or name == L("UI_SELF_TAG")
+end
+
+local function displayActions(actions)
+    if not actions or #actions == 0 then return actions end
+    local out, selfAction = {}, nil
+    for i = 1, #actions do
+        local action = actions[i]
+        if action and isSelfAction(action) and not selfAction then
+            selfAction = action
+        else
+            table.insert(out, action)
+        end
+    end
+    if not selfAction then return actions end
+    table.insert(out, 1, selfAction)
+    return out
+end
+
 local function assignmentCardText(action, index)
     if not action then
         return string.format("|cff8f7b49P·%02d|r\n%s", index, waitingValue())
@@ -1126,7 +1153,11 @@ local function assignmentCardText(action, index)
     local targetLine = target and target ~= ""
         and ("|cffff6464" .. target .. "|r")
         or "|cff7a715dREADY|r"
-    return string.format("|cff8f7b49P·%02d|r |cffffffff%s|r\n|cff5bc4d8%s|r\n%s\n|cff8f7b49->|r %s",
+    if isSelfAction(action) then
+        return string.format("|cffffd24a%s|r |cff8f7b49P·%02d|r |cff5bc4d8%s|r\n|cffffffff%s|r\n|cff8f7b49->|r %s",
+            L("UI_SELF_TAG"), index, role ~= "" and string.upper(role) or "ROLE", text, targetLine)
+    end
+    return string.format("|cff8f7b49P·%02d|r |cffffffff%s|r |cff5bc4d8%s|r\n|cffddd2ad%s|r\n|cff8f7b49->|r %s",
         index, who, role ~= "" and string.upper(role) or "ROLE", text, targetLine)
 end
 
@@ -1135,6 +1166,7 @@ local function formatPlayerActions(actions, scaffold)
         return scaffold and waitingAssignmentText() or ""
     end
     local lines = { consoleHeader("UI_ACTIONS_HEADER", "R O L E · A S S I G N M E N T", "03") }
+    actions = displayActions(actions)
     local verbose = (ArenaCoachTBCDB and ArenaCoachTBCDB.frame
                      and ArenaCoachTBCDB.frame.verbose) or false
     local panelCap = (UI.frame and UI.frame._accAssignLines) or DEFAULT_ACTION_LINES
@@ -1149,26 +1181,47 @@ local function formatPlayerActions(actions, scaffold)
         if target and target ~= "" then
             text = text .. "  |cff8f7b49->|r  |cffff6464" .. target .. "|r"
         end
-        table.insert(lines, string.format("|cff8f7b49P·%02d|r |cffffffff%s:|r |cff5bc4d8%s|r  %s",
-            i, who, role ~= "" and string.upper(role) or "", text))
+        if isSelfAction(a) then
+            table.insert(lines, string.format("|cffffd24a%s|r |cff8f7b49P·%02d|r |cffffffff%s:|r |cff5bc4d8%s|r  |cffffffff%s|r",
+                L("UI_SELF_TAG"), i, who, role ~= "" and string.upper(role) or "", text))
+        else
+            table.insert(lines, string.format("|cff8f7b49P·%02d|r |cffffffff%s:|r |cff5bc4d8%s|r  %s",
+                i, who, role ~= "" and string.upper(role) or "", text))
+        end
     end
     return table.concat(lines, "\n")
 end
 
 local function setAssignmentSlots(frame, actions, scaffold)
     if not frame then return end
+    actions = displayActions(actions)
     local slots = assignmentSlotCount(actions)
     frame._accAssignSlots = slots
+    frame._accSelfAssignmentIndex = nil
     layoutAssignmentSlots(frame, slots)
     for i = 1, VERBOSE_ACTION_LINES do
         local fs = frame.assignSlotTexts and frame.assignSlotTexts[i]
+        local action = actions and actions[i]
+        local selfSlot = isSelfAction(action)
         if fs then
             if i <= slots then
-                fs:SetText(assignmentCardText(actions and actions[i], i))
+                fs._accIsSelf = selfSlot
+                fs:SetText(assignmentCardText(action, i))
                 if fs.Show then fs:Show() end
             else
+                fs._accIsSelf = false
                 fs:SetText("")
                 if fs.Hide then fs:Hide() end
+            end
+        end
+        local bg = frame.assignPanel and frame.assignPanel["assignCard" .. i]
+        if bg then
+            bg._accIsSelf = selfSlot
+            if selfSlot then
+                frame._accSelfAssignmentIndex = i
+                colorTexture(bg, 0.18, 0.12, 0.035, 0.70)
+            elseif i <= slots then
+                colorTexture(bg, OBSIDIAN_WARM_R, OBSIDIAN_WARM_G, OBSIDIAN_WARM_B, 0.42)
             end
         end
     end
@@ -1176,9 +1229,12 @@ local function setAssignmentSlots(frame, actions, scaffold)
         for i = 1, VERBOSE_ACTION_LINES do
             local fs = frame.assignSlotTexts and frame.assignSlotTexts[i]
             if fs then
+                fs._accIsSelf = false
                 fs:SetText("")
                 if fs.Hide then fs:Hide() end
             end
+            local bg = frame.assignPanel and frame.assignPanel["assignCard" .. i]
+            if bg then bg._accIsSelf = false end
         end
     end
 end

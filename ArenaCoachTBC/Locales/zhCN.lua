@@ -105,6 +105,7 @@ ns.locales.zhCN = {
     UI_KILL_PROB_LABEL   = "击杀率",
     UI_BURST_READY       = "可爆发",
     UI_ACTIONS_HEADER    = "分工",
+    UI_SELF_TAG          = "你",
     UI_MODULE_FOCUS      = "焦点",
     UI_MODULE_CUES       = "提示",
     UI_MODULE_TARGET     = "目标",

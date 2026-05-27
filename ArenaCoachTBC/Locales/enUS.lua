@@ -105,6 +105,7 @@ ns.locales.enUS = {
     UI_KILL_PROB_LABEL   = "kill",
     UI_BURST_READY       = "BURST READY",
     UI_ACTIONS_HEADER    = "Assignments",
+    UI_SELF_TAG          = "YOU",
     UI_MODULE_FOCUS      = "Focus",
     UI_MODULE_CUES       = "Cues",
     UI_MODULE_TARGET     = "Target",

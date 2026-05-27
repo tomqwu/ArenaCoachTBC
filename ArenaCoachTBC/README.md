@@ -12,6 +12,10 @@ If the recommendation stops refreshing, the HUD fades out and clears stale visua
 
 如果推荐停止刷新，HUD 会淡出并清理过期视觉提示，而不是把旧文字留在战斗画面上。
 
+The bottom assignment strip highlights your own job first with a `YOU` marker and stronger reading plate; teammate jobs stay visible as secondary context.
+
+底部分工条会优先高亮你自己的行动，用“你”标记和更强底板显示；队友分工保留为辅助信息。
+
 > ⚠️ **This addon never automates gameplay.** It does not cast spells, does not target enemies for you, does not click protected buttons, and does not edit secure macros in combat. Everything it does is visual / audio / text suggestions.
 >
 > ⚠️ **此插件绝不自动化操作。** 不施法、不切换目标、不点击受保护按钮、不修改安全宏。只提供视觉、音频、文字建议。
@@ -198,7 +202,7 @@ The addon publishes its current recommendation and full state through the global
 | `GetFriendlies()` | full friendlies map / 完整己方表 |
 | `GetEnemyByGUID(guid)` | one enemy / 单个敌方 |
 | `GetCombatPhase()` | "PRE" / "ACTIVE" / "POST" |
-| `GetVersion()` | "2.8.27" |
+| `GetVersion()` | "2.8.28" |
 
 ### Sample custom trigger / 自定义触发器示例
 

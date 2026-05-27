@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.28] - 2026-05-27
+
+### Changed
+- **Bottom assignments now prioritize your own action.** The player assignment is promoted to the first bottom card when needed, marked with a bright `YOU` tag, and rendered on a stronger plate so the answer to "what do I do right now?" is visible before team context.
+- **Assignment cards are denser and clearer.** Bottom cards now use three scan-friendly lines instead of cramped four-line blocks, keeping action text readable inside the compact HUD.
+
 ## [2.8.27] - 2026-05-27
 
 ### Fixed
