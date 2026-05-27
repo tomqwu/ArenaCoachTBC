@@ -38,7 +38,8 @@ behaviour is what tests can't see.
 - [ ] HUD top-right version marker matches the installed addon release
 - [ ] Main HUD board stays compact (roughly 540x212 before user scaling) and does not cover party frames, arena frames, action bars, cast bars, nameplates, DBM bars, WeakAura clusters, chat, or damage meters
 - [ ] Prototype-A zones are present inside one visible board: left status stack, center action, center player-info/assignments, and right cue/icon rail, including waiting/pre-gate placeholders before live target data arrives
-- [ ] The board has a light translucent shell, top drag strip/grip, signal/ruler accents, lower-right resize grip, internal dividers, slot backgrounds, a target health bar, and a mode-coloured center accent, so `/acc unlock` makes it obvious where to click/drag without darkening the fight
+- [ ] The board reads as Obsidian Signal: warm obsidian translucent shell, brass rules/reticles, cyan information accents, bone-white data text, restrained crimson signal colour, top drag strip/grip, signal/ruler accents, lower-right resize grip, internal dividers, slot backgrounds, target health bar, and mode-coloured center accent
+- [ ] Metadata strip shows `OBSIDIAN / SIGNAL / <mode>` while still keeping the top-right version marker visible
 - [ ] Dragging the lower-right grip resizes the integrated board; left status, center action, center player info, and right cue rail stay inside one divided box and the size persists after `/reload`
 - [ ] On the default compact board, the center action/detail text stays inside the center action section and never crosses into the player-info/assignment section
 - [ ] Bottom assignment strip divides into 1, 2, 3, or 5 small cards based on current player actions/bracket; unused cells are hidden in 2v2, and 5v5 uses five stable cells

@@ -49,7 +49,9 @@ function mockMethods:StopMovingOrSizing() self._moving = false; self._sizing = f
 -- rendered output (`f.bigText._text`).
 function mockMethods:SetText(text)        self._text = tostring(text or "") end
 function mockMethods:GetText()            return self._text end
-function mockMethods:SetTextColor()       end
+function mockMethods:SetTextColor(r, g, b, a)
+    self._textColor = { r, g, b, a }
+end
 function mockMethods:SetShadowColor(r, g, b, a)
     self._shadowColor = { r, g, b, a }
 end

@@ -14,7 +14,7 @@ ns.UI = ns.UI or {}
 local UI = ns.UI
 UI.frame = nil
 
-local ADDON_VERSION = "2.8.25"
+local ADDON_VERSION = "2.8.26"
 local STALE_FADE_START = 2.5
 local STALE_FADE_SECONDS = 1.5
 local COMPACT_WIDTH = 540
@@ -38,6 +38,13 @@ local ASSIGN_WIDTH = 300
 local ASSIGN_HEIGHT = 76
 local DEFAULT_ACTION_LINES = 3
 local VERBOSE_ACTION_LINES = 5
+local OBSIDIAN_R, OBSIDIAN_G, OBSIDIAN_B = 0.018, 0.015, 0.011
+local OBSIDIAN_WARM_R, OBSIDIAN_WARM_G, OBSIDIAN_WARM_B = 0.070, 0.052, 0.030
+local BRASS_R, BRASS_G, BRASS_B = 0.78, 0.62, 0.34
+local BRASS_DIM_R, BRASS_DIM_G, BRASS_DIM_B = 0.45, 0.35, 0.18
+local CYAN_R, CYAN_G, CYAN_B = 0.34, 0.78, 0.86
+local BONE_R, BONE_G, BONE_B = 0.86, 0.82, 0.70
+local CRIMSON_R, CRIMSON_G, CRIMSON_B = 0.86, 0.20, 0.23
 
 UI.staleFadeStart = STALE_FADE_START
 UI.staleFadeSeconds = STALE_FADE_SECONDS
@@ -76,7 +83,7 @@ local function setBackdrop(frame, alpha, edgeSize)
         tile = true, tileSize = 16, edgeSize = edgeSize or 10,
         insets = { left = 3, right = 3, top = 3, bottom = 3 },
     })
-    frame:SetBackdropColor(0, 0, 0, alpha or 0.30)
+    frame:SetBackdropColor(OBSIDIAN_R, OBSIDIAN_G, OBSIDIAN_B, alpha or 0.30)
 end
 
 local function colorTexture(tex, r, g, b, a)
@@ -133,7 +140,7 @@ local function skinPanel(frame, alpha, borderAlpha)
         point(frame._accBg, "TOPLEFT", frame, "TOPLEFT", 0, 0)
         point(frame._accBg, "BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
     end
-    colorTexture(frame._accBg, 0, 0, 0, alpha or 0.44)
+    colorTexture(frame._accBg, OBSIDIAN_R, OBSIDIAN_G, OBSIDIAN_B, alpha or 0.44)
 
     local border = borderAlpha or 0.50
     local bars = {
@@ -154,7 +161,7 @@ local function skinPanel(frame, alpha, borderAlpha)
         else
             if tex.SetWidth then pcall(tex.SetWidth, tex, 1) end
         end
-        colorTexture(tex, 0.78, 0.62, 0.34, border)
+        colorTexture(tex, BRASS_R, BRASS_G, BRASS_B, border)
     end
 end
 
@@ -173,7 +180,7 @@ local function solidTexture(parent, key, layer, r, g, b, a)
 end
 
 local function placeLine(parent, key, w, h, x, y, alpha)
-    local tex = solidTexture(parent, key, "ARTWORK", 0.95, 0.74, 0.36, alpha or 0.68)
+    local tex = solidTexture(parent, key, "ARTWORK", BRASS_R, BRASS_G, BRASS_B, alpha or 0.68)
     if not tex then return nil end
     clearPoints(tex)
     size(tex, w, h)
@@ -182,7 +189,7 @@ local function placeLine(parent, key, w, h, x, y, alpha)
 end
 
 local function placeSlot(parent, key, w, h, x, y, alpha)
-    local tex = solidTexture(parent, key, "BACKGROUND", 0.15, 0.10, 0.035, alpha or 0.16)
+    local tex = solidTexture(parent, key, "BACKGROUND", OBSIDIAN_WARM_R, OBSIDIAN_WARM_G, OBSIDIAN_WARM_B, alpha or 0.16)
     if not tex then return nil end
     clearPoints(tex)
     size(tex, w, h)
@@ -228,7 +235,7 @@ local function layoutAssignmentSlots(frame, slots)
             clearPoints(bg)
             size(bg, cardW, cardH)
             point(bg, "TOPLEFT", panel, "TOPLEFT", x, cardY)
-            colorTexture(bg, 0.13, 0.09, 0.035, 0.22)
+            colorTexture(bg, OBSIDIAN_WARM_R, OBSIDIAN_WARM_G, OBSIDIAN_WARM_B, 0.24)
             if bg.Show then bg:Show() end
             if text then
                 clearPoints(text)
@@ -242,6 +249,23 @@ local function layoutAssignmentSlots(frame, slots)
             if text and text.Hide then text:Hide() end
         end
     end
+end
+
+local function layoutCornerReticles(frame, width, height)
+    if not frame then return end
+    local len = 12
+    local inset = 5
+    local rightX = math.max(inset, width - inset - len)
+    local bottomY = -math.max(inset, height - inset)
+    local bottomVY = -math.max(inset, height - inset - len)
+    placeLine(frame, "reticleTLH", len, 1, inset, -inset, 0.78)
+    placeLine(frame, "reticleTLV", 1, len, inset, -inset, 0.78)
+    placeLine(frame, "reticleTRH", len, 1, rightX, -inset, 0.78)
+    placeLine(frame, "reticleTRV", 1, len, width - inset, -inset, 0.78)
+    placeLine(frame, "reticleBLH", len, 1, inset, bottomY, 0.78)
+    placeLine(frame, "reticleBLV", 1, len, inset, bottomVY, 0.78)
+    placeLine(frame, "reticleBRH", len, 1, rightX, bottomY, 0.78)
+    placeLine(frame, "reticleBRV", 1, len, width - inset, bottomVY, 0.78)
 end
 
 local function layoutRulers(frame, width, height)
@@ -422,6 +446,7 @@ local function layoutMainBoard(f)
         pcall(f.metaText.SetWidth, f.metaText, math.max(120, m.width - 260))
     end
     layoutRulers(f, m.width, m.height)
+    layoutCornerReticles(f, m.width, m.height)
 
     if f.leftPanel then
         clearPoints(f.leftPanel)
@@ -521,7 +546,7 @@ local function layoutMainBoard(f)
                 clearPoints(line)
                 size(line, 4 + (i * 3), 1)
                 point(line, "BOTTOMRIGHT", f.resizeGrip, "BOTTOMRIGHT", -3, 2 + (i * 4))
-                colorTexture(line, 0.95, 0.74, 0.36, 0.80)
+                colorTexture(line, BRASS_R, BRASS_G, BRASS_B, 0.80)
             end
         end
     end
@@ -574,14 +599,15 @@ function UI:CreateFrame()
     if f.SetFrameLevel then pcall(f.SetFrameLevel, f, 20) end
 
     -- Backdrop (TBC client uses Backdrop trait built-in for Frame)
-    setBackdrop(f, 0.24, 12)
-    skinPanel(f, 0.26, 0.66)
+    setBackdrop(f, 0.22, 12)
+    skinPanel(f, 0.32, 0.72)
 
     -- Title: small identity marker, not a full header row.
     f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     f.title:SetPoint("TOPLEFT", f, "TOPLEFT", 28, -6)
     f.title:SetJustifyH("LEFT")
     f.title:SetWidth(190)
+    f.title:SetTextColor(BRASS_R, BRASS_G, BRASS_B)
     f.title:SetText(L("UI_TITLE"))
     improveTextContrast(f.title, 1.0)
 
@@ -589,11 +615,11 @@ function UI:CreateFrame()
     f.metaText:SetPoint("TOP", f, "TOP", 0, -7)
     f.metaText:SetJustifyH("CENTER")
     f.metaText:SetWidth(220)
-    f.metaText:SetTextColor(0.58, 0.48, 0.30)
-    f.metaText:SetText("A R E N A  /  C O A C H  /  L I V E")
+    f.metaText:SetTextColor(BRASS_DIM_R, BRASS_DIM_G, BRASS_DIM_B)
+    f.metaText:SetText("O B S I D I A N  /  S I G N A L  /  L I V E")
     improveTextContrast(f.metaText, 0.85)
 
-    local dragBar = solidTexture(f, "dragBar", "BACKGROUND", 0.10, 0.08, 0.035, 0.34)
+    local dragBar = solidTexture(f, "dragBar", "BACKGROUND", OBSIDIAN_WARM_R, OBSIDIAN_WARM_G, OBSIDIAN_WARM_B, 0.40)
     if dragBar then
         clearPoints(dragBar)
         point(dragBar, "TOPLEFT", f, "TOPLEFT", 2, -2)
@@ -617,16 +643,16 @@ function UI:CreateFrame()
     placeLine(f, "assignDivider", m.contentW, 1, m.leftX, m.assignY + 1, 0.58)
     if centerPanel and centerPanel.CreateTexture then
         f.modeAccent = centerPanel:CreateTexture(nil, "ARTWORK")
-        colorTexture(f.modeAccent, 1.0, 0.82, 0.26, 0.72)
+        colorTexture(f.modeAccent, BRASS_R, BRASS_G, BRASS_B, 0.72)
         f.healthBarBg = centerPanel:CreateTexture(nil, "BORDER")
-        colorTexture(f.healthBarBg, 0.10, 0.075, 0.035, 0.86)
+        colorTexture(f.healthBarBg, OBSIDIAN_WARM_R, OBSIDIAN_WARM_G, OBSIDIAN_WARM_B, 0.86)
         f.healthBarFill = centerPanel:CreateTexture(nil, "ARTWORK")
-        colorTexture(f.healthBarFill, 0.85, 0.25, 0.25, 0.92)
+        colorTexture(f.healthBarFill, CYAN_R, CYAN_G, CYAN_B, 0.92)
     end
     f.healthLabel = centerPanel and centerPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall") or nil
     if f.healthLabel then
         f.healthLabel:SetJustifyH("CENTER")
-        f.healthLabel:SetTextColor(0.70, 0.60, 0.38)
+        f.healthLabel:SetTextColor(BRASS_R, BRASS_G, BRASS_B)
         f.healthLabel:SetText("H E A L T H  ·  P O O L")
         improveTextContrast(f.healthLabel, 0.9)
     end
@@ -636,14 +662,14 @@ function UI:CreateFrame()
     f.versionText:SetPoint("TOPRIGHT", f, "TOPRIGHT", -8, -6)
     f.versionText:SetJustifyH("RIGHT")
     f.versionText:SetWidth(70)
-    f.versionText:SetTextColor(0.75, 0.75, 0.75)
+    f.versionText:SetTextColor(BONE_R, BONE_G, BONE_B)
     f.versionText:SetText("v" .. addonVersion())
 
     f.dragGrip = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     f.dragGrip:SetPoint("TOPLEFT", f, "TOPLEFT", 8, -6)
     f.dragGrip:SetJustifyH("LEFT")
     f.dragGrip:SetWidth(16)
-    f.dragGrip:SetTextColor(0.78, 0.62, 0.34)
+    f.dragGrip:SetTextColor(BRASS_R, BRASS_G, BRASS_B)
     f.dragGrip:SetText("||")
     improveTextContrast(f.dragGrip, 1.0)
 
@@ -931,11 +957,11 @@ end
 -- Apply a recommendation to the UI
 -- ============================================================
 local modeColors = {
-    OPEN   = {1.0, 1.0, 0.4},
-    KILL   = {1.0, 0.3, 0.3},
-    SWAP   = {1.0, 0.6, 0.0},
-    DEFEND = {0.4, 0.7, 1.0},
-    RESET  = {0.7, 0.7, 0.7},
+    OPEN   = {BRASS_R, BRASS_G, BRASS_B},
+    KILL   = {CRIMSON_R, CRIMSON_G, CRIMSON_B},
+    SWAP   = {0.94, 0.56, 0.18},
+    DEFEND = {CYAN_R, CYAN_G, CYAN_B},
+    RESET  = {BONE_R, BONE_G, BONE_B},
 }
 
 -- v2.5.0: high-contrast palette for the accessibility skin. Pure
@@ -1420,7 +1446,7 @@ function UI:Apply(recommendation)
                 or ""
     if f.metaText then
         local bracket = (ns.Core and ns.Core.state and ns.Core.state.bracket) or "PvP"
-        f.metaText:SetText(string.format("A R E N A  /  %s  /  %s", tostring(bracket), mode))
+        f.metaText:SetText(string.format("O B S I D I A N  /  %s  /  %s", tostring(bracket), mode))
     end
     if f.modeAccent then
         colorTexture(f.modeAccent, color[1], color[2], color[3], 0.78)
@@ -1458,27 +1484,26 @@ function UI:Apply(recommendation)
         end
         if showTarget and recommendation.primaryTargetHp then
             local hp = math.floor((recommendation.primaryTargetHp * 100) + 0.5)
-            -- HP rendered in pure white — the neutral reference value
+            -- HP rendered in bone-white — the neutral reference value
             -- the player calibrates the others against.
-            table.insert(parts, tag("ffffff",
+            table.insert(parts, tag("ddd2ad",
                 string.format("%s %d%%", L("UI_HP_LABEL"), hp)))
         end
         if showTarget and recommendation.killProb then
             local kp = math.floor((recommendation.killProb * 100) + 0.5)
-            -- Graded green / yellow / red so kill prob's "is this worth
-            -- committing?" answer is pre-parsed for the eye.
+            -- Obsidian Signal grading: cool watch state, brass setup,
+            -- crimson commitment when the kill is actually plausible.
             local hex
-            if kp >= 60 then hex = "66ff66"       -- bright green
-            elseif kp >= 30 then hex = "ffd166"   -- amber
-            else hex = "ff6464" end                -- red
+            if kp >= 60 then hex = "dc333a"       -- crimson signal
+            elseif kp >= 30 then hex = "c89e56"   -- brass amber
+            else hex = "57c7db" end                -- cool watch state
             table.insert(parts, tag(hex,
                 string.format("%s %d%%", L("UI_KILL_PROB_LABEL"), kp)))
         end
         if recommendation.burstAllowed and mode == "KILL" then
-            -- Gold + a leading sigil so BURST READY pops as the most
-            -- attention-grabbing element on the line. (Pre-v2.6 it was
-            -- the same color as the surrounding text.)
-            table.insert(parts, tag("ffd24a", "★ " .. L("UI_BURST_READY")))
+            -- Brass + a leading sigil so BURST READY reads as a deliberate
+            -- instrument cue rather than another loud alarm.
+            table.insert(parts, tag("c89e56", "★ " .. L("UI_BURST_READY")))
         end
         -- Wider " · " separator + leading/trailing space so segments
         -- breathe instead of running together.
@@ -1495,11 +1520,11 @@ function UI:Apply(recommendation)
             f._accHealthBarFillWidth = math.max(1, math.floor(barW * frac))
             size(f.healthBarFill, f._accHealthBarFillWidth, 8)
             if frac <= 0.35 then
-                colorTexture(f.healthBarFill, 1.0, 0.22, 0.22, 0.94)
+                colorTexture(f.healthBarFill, CRIMSON_R, CRIMSON_G, CRIMSON_B, 0.94)
             elseif frac <= 0.65 then
                 colorTexture(f.healthBarFill, 0.95, 0.56, 0.18, 0.92)
             else
-                colorTexture(f.healthBarFill, 0.85, 0.25, 0.25, 0.92)
+                colorTexture(f.healthBarFill, CYAN_R, CYAN_G, CYAN_B, 0.92)
             end
             if f.healthBarFill.Show then f.healthBarFill:Show() end
         else

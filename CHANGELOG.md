@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.26] - 2026-05-27
+
+### Changed
+- **Obsidian Signal visual language.** The HUD now uses warmed obsidian surfaces, burnished brass rules, cyan intelligence accents, bone-white data text, and restrained crimson signal colour.
+- **Surveyor reticles added.** Compact brass corner marks and a persistent `OBSIDIAN / SIGNAL` metadata strip make the board read more like a deliberate tactical instrument.
+- **Health and probability colours tightened.** Kill probability and target health now use the Obsidian Signal palette instead of generic green/yellow/red UI colours.
+
 ## [2.8.25] - 2026-05-27
 
 ### Changed

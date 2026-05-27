@@ -73,6 +73,8 @@ H.it(g, "CreateFrame builds prototype-A module set", function()
     H.assertNotNil(f.leftPanel.leftSlot1)
     H.assertNotNil(f.rightPanel.rightSlot1)
     H.assertNotNil(f.assignPanel.assignCard1)
+    H.assertNotNil(f.reticleTLH)
+    H.assertNotNil(f.reticleBRV)
     H.assertEq(f._accAssignSlots, 3)
     H.assertTrue(f._resizable, "main board should expose WoW resizing")
     H.assertEq(f._minResize[1], 500)
@@ -90,7 +92,11 @@ H.it(g, "CreateFrame builds prototype-A module set", function()
     H.assertTrue((f.subText._height or 999) <= f.centerPanel._height,
         "center extra text should be bounded inside the action section")
     H.assertTrue((f._accBg._color and f._accBg._color[4] or 1) <= 0.35,
-        "main board background should stay light enough to see the fight")
+        "main board obsidian field should stay translucent enough to see the fight")
+    H.assertTrue((f._accBg._color and f._accBg._color[1] or 0) > 0,
+        "main board background should be warm obsidian, not flat black")
+    H.assertTrue((f._accTop._color and f._accTop._color[1] or 0) >= 0.70,
+        "board rules should use burnished brass")
     H.assertTrue((f.dragBar._color and f.dragBar._color[4] or 1) <= 0.45,
         "drag strip should identify the handle without darkening the screen")
     H.assertTrue((f.bigText._shadowColor and f.bigText._shadowColor[4] or 0) >= 0.95,
@@ -98,6 +104,10 @@ H.it(g, "CreateFrame builds prototype-A module set", function()
     H.assertTrue((f.unitText._shadowColor and f.unitText._shadowColor[4] or 0) >= 0.90,
         "module text should remain readable on the lighter board")
     H.assertEq(f.dragGrip._text, "||")
+    H.assertTrue((f.title._textColor and f.title._textColor[1] or 0) >= 0.70,
+        "title should use the brass hierarchy color")
+    H.assertTrue((f.metaText._text or ""):find("O B S I D I A N", 1, true) ~= nil,
+        "metadata strip should carry the Obsidian Signal signature")
     H.assertFalse(UI.unitFrame:IsShown(), "detached left focus strip should start dormant")
     H.assertFalse(UI.railFrame:IsShown(), "detached right cue rail should start dormant")
     H.assertFalse(UI.assignFrame:IsShown(), "detached assignment module should start dormant")
@@ -322,6 +332,8 @@ H.it(g, "Apply renders left focus strip and right cue rail", function()
         "target health label should show current percent")
     H.assertTrue((UI.frame.metaText._text or ""):find("KILL", 1, true) ~= nil,
         "console meta strip should show current mode")
+    H.assertTrue((UI.frame.metaText._text or ""):find("O B S I D I A N", 1, true) ~= nil,
+        "console meta strip should preserve the visual language signature")
     H.assertTrue(UI.frame:IsShown(), "integrated board should show when focus and cue content exists")
     H.ns.Core.state.pvpContext = nil
     H.ns.Core.state.friendlies = nil
