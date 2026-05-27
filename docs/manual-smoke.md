@@ -32,10 +32,11 @@ behaviour is what tests can't see.
 - [ ] Frame visible in arena / BG / world PvP / duel; **hidden in cities and quest hubs** (auto-hide gate, v2.2.5)
 - [ ] OPEN / KILL / SWAP / DEFEND / RESET modes each render with a distinct colour (yellow / red / orange / blue / grey)
 - [ ] HUD top-right version marker matches the installed addon release
-- [ ] Main HUD stays compact (roughly 340x168 before user scaling) and does not cover party frames, arena frames, action bars, cast bars, nameplates, DBM bars, WeakAura clusters, chat, or damage meters
+- [ ] Main HUD stays compact (roughly 320x118 before user scaling) and does not cover party frames, arena frames, action bars, cast bars, nameplates, DBM bars, WeakAura clusters, chat, or damage meters
+- [ ] Assignment module is a separate compact frame; `/acc unlock` lets it drag independently from the main action toast, and `/acc lock` prevents both from moving
 - [ ] Arcade warning plate renders passive cues (`!! READY !!`, `!! BURST !!`, `!! DANGER !!`, `!! PINCH !!`) inside the compact toast without covering the playfield
 - [ ] Target stats row shows `HP <n>%   kill <n>%   BURST READY` when there's a primary target; hidden on DEFEND / RESET
-- [ ] Assignment block shows one compact action per living friendly in 3v3; in 5v5 normal mode it caps at three lines, while `/acc verbose on` shows all five
+- [ ] Assignment module shows one compact action per living friendly in 3v3; in 5v5 normal mode it caps at three lines, while `/acc verbose on` shows all five
 - [ ] If no fresh evaluation arrives for a few seconds, the HUD text fades away and clears stale nameplate/edge cues
 - [ ] Optional edge cue is thin, static, low-alpha, and dark on RESET; it must not pulse or flash around the screen
 - [ ] DEFEND/URGENT does not create a full-screen red flash; use HUD colour, nameplate, arcade cue, and sound cues instead

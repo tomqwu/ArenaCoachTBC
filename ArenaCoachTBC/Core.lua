@@ -32,6 +32,10 @@ local DEFAULTS = {
     -- saturated primaries. Toggle via /acc highcontrast on|off.
     frame    = { point = "CENTER", x = 0, y = 120, scale = 1.0,
                  verbose = false, highContrast = false },
+    -- v2.8.12: player assignments split into their own movable module
+    -- so the main action call can stay near center while team jobs live
+    -- lower or beside party frames.
+    assignmentFrame = { point = "CENTER", x = 0, y = 16, scale = 1.0 },
     alerts   = { sound = true, raidWarning = false, partyChat = false, screenFlash = false,
                  -- v2.2.0: peripheral-vision visual layers.
                  -- v2.7.0: edgeGlow flipped from default-on to default-off.

@@ -1,6 +1,7 @@
 -- ArenaCoachTBC - UI layer
--- One movable frame that shows the current recommendation (mode, target,
--- HP%, kill prob, callouts). Driven event-by-event from Core; no polling.
+-- Compact movable frames that show the current recommendation (mode,
+-- target, HP%, kill prob, callouts) and per-player assignments. Driven
+-- event-by-event from Core; no polling.
 -- v2.2.0 added two peripheral visual layers wired in here: a
 -- mode-coloured thin edge cue (ScreenEdgeGlow.lua) and a coloured
 -- border on the kill / swap target's nameplate (Nameplate.lua). No
@@ -13,11 +14,13 @@ ns.UI = ns.UI or {}
 local UI = ns.UI
 UI.frame = nil
 
-local ADDON_VERSION = "2.8.11"
+local ADDON_VERSION = "2.8.12"
 local STALE_FADE_START = 2.5
 local STALE_FADE_SECONDS = 1.5
-local COMPACT_WIDTH = 340
-local COMPACT_HEIGHT = 168
+local COMPACT_WIDTH = 320
+local COMPACT_HEIGHT = 118
+local ASSIGN_WIDTH = 320
+local ASSIGN_HEIGHT = 76
 local DEFAULT_ACTION_LINES = 3
 local VERBOSE_ACTION_LINES = 5
 
@@ -50,20 +53,46 @@ function UI:RefreshVersionText()
     end
 end
 
+local function saveFramePosition(key, frame)
+    if not (ArenaCoachTBCDB and frame and frame.GetPoint) then return end
+    ArenaCoachTBCDB[key] = ArenaCoachTBCDB[key] or {}
+    local point, _, _, x, y = frame:GetPoint()
+    ArenaCoachTBCDB[key].point = point
+    ArenaCoachTBCDB[key].x = x
+    ArenaCoachTBCDB[key].y = y
+end
+
+local function installDrag(frame, key)
+    if not frame then return end
+    frame:SetScript("OnMouseDown", function(self, button)
+        if button == "LeftButton" and not (ArenaCoachTBCDB and ArenaCoachTBCDB.locked) then
+            self:StartMoving()
+        end
+    end)
+    frame:SetScript("OnMouseUp", function(self)
+        self:StopMovingOrSizing()
+        saveFramePosition(key, self)
+    end)
+end
+
 -- ============================================================
 -- Build the main frame
 -- ============================================================
 function UI:CreateFrame()
-    if self.frame then return self.frame end
+    if self.frame then
+        if not self.assignFrame then self:CreateAssignmentsFrame() end
+        return self.frame
+    end
     if type(CreateFrame) ~= "function" then return nil end
 
     local db = ArenaCoachTBCDB or {}
     local fcfg = db.frame or { point = "CENTER", x = 0, y = 120, scale = 1.0 }
 
     local f = CreateFrame("Frame", "ArenaCoachTBCFrame", UIParent)
-    -- v2.8.11: live-combat "prototype A" compact toast. Keep the
+    -- v2.8.12: live-combat "prototype A" compact toast. Keep the
     -- center callout readable without blocking player frames, Gladius,
-    -- action bars, cast bars, Details, or WeakAura clusters.
+    -- action bars, cast bars, Details, or WeakAura clusters. Player
+    -- assignments live in their own movable module below.
     f:SetSize(COMPACT_WIDTH, COMPACT_HEIGHT)
     f:SetPoint(fcfg.point or "CENTER", UIParent, fcfg.point or "CENTER",
                fcfg.x or 0, fcfg.y or 120)
@@ -80,7 +109,7 @@ function UI:CreateFrame()
             tile = true, tileSize = 16, edgeSize = 12,
             insets = { left = 3, right = 3, top = 3, bottom = 3 },
         })
-        f:SetBackdropColor(0, 0, 0, 0.48)
+        f:SetBackdropColor(0, 0, 0, 0.36)
     end
 
     -- Title: small identity marker, not a full header row.
@@ -105,10 +134,10 @@ function UI:CreateFrame()
     if f.arcadeText.SetFont then
         local fontPath = (f.arcadeText.GetFont and select(1, f.arcadeText:GetFont()))
             or "Fonts\\FRIZQT__.TTF"
-        pcall(f.arcadeText.SetFont, f.arcadeText, fontPath, 20, "THICKOUTLINE")
+        pcall(f.arcadeText.SetFont, f.arcadeText, fontPath, 18, "THICKOUTLINE")
     end
     f.arcadeText:SetJustifyH("CENTER")
-    f.arcadeText:SetWidth(320)
+    f.arcadeText:SetWidth(300)
     f.arcadeText:SetText("")
 
     -- Main recommendation line ("KILL: Warlock"). This remains the
@@ -118,10 +147,10 @@ function UI:CreateFrame()
     if f.bigText.SetFont then
         local fontPath = (f.bigText.GetFont and select(1, f.bigText:GetFont()))
             or "Fonts\\FRIZQT__.TTF"
-        pcall(f.bigText.SetFont, f.bigText, fontPath, 24, "OUTLINE")
+        pcall(f.bigText.SetFont, f.bigText, fontPath, 22, "OUTLINE")
     end
     f.bigText:SetJustifyH("CENTER")
-    f.bigText:SetWidth(320)
+    f.bigText:SetWidth(300)
     f.bigText:SetText(L("REASON_DEFAULT"))
 
     -- Target stats row (HP% + kill prob%) under the mode line. Kept
@@ -131,10 +160,10 @@ function UI:CreateFrame()
     if f.statsText.SetFont then
         local fontPath = (f.statsText.GetFont and select(1, f.statsText:GetFont()))
             or "Fonts\\FRIZQT__.TTF"
-        pcall(f.statsText.SetFont, f.statsText, fontPath, 13, "OUTLINE")
+        pcall(f.statsText.SetFont, f.statsText, fontPath, 12, "OUTLINE")
     end
     f.statsText:SetJustifyH("CENTER")
-    f.statsText:SetWidth(320)
+    f.statsText:SetWidth(300)
     f.statsText:SetText("")
 
     -- Reason / top callout text. Default mode shows one line; verbose
@@ -143,44 +172,60 @@ function UI:CreateFrame()
     f.subText:SetPoint("TOP", f.statsText, "BOTTOM", 0, -5)
     if f.subText.SetSpacing then pcall(f.subText.SetSpacing, f.subText, 2) end
     f.subText:SetJustifyH("CENTER")
-    f.subText:SetWidth(320)
+    f.subText:SetWidth(300)
     f.subText:SetText("")
 
-    -- DBM-style per-player assignments. These are plain advice lines from
-    -- StrategyEngine, never clickable or protected-action buttons.
-    f.actionText = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    f.actionText:SetPoint("TOP", f.subText, "BOTTOM", 0, -5)
-    if f.actionText.SetFont then
-        local fontPath = (f.actionText.GetFont and select(1, f.actionText:GetFont()))
-            or "Fonts\\FRIZQT__.TTF"
-        pcall(f.actionText.SetFont, f.actionText, fontPath, 11, "OUTLINE")
-    end
-    if f.actionText.SetSpacing then pcall(f.actionText.SetSpacing, f.actionText, 1) end
-    f.actionText:SetJustifyH("LEFT")
-    f.actionText:SetWidth(320)
-    f.actionText:SetText("")
-
-    -- Drag handlers (respect db.locked)
-    f:SetScript("OnMouseDown", function(self, button)
-        if button == "LeftButton" and not (ArenaCoachTBCDB and ArenaCoachTBCDB.locked) then
-            self:StartMoving()
-        end
-    end)
-    f:SetScript("OnMouseUp", function(self)
-        self:StopMovingOrSizing()
-        local point, _, _, x, y = self:GetPoint()
-        if ArenaCoachTBCDB and ArenaCoachTBCDB.frame then
-            ArenaCoachTBCDB.frame.point = point
-            ArenaCoachTBCDB.frame.x = x
-            ArenaCoachTBCDB.frame.y = y
-        end
-    end)
+    installDrag(f, "frame")
     f:SetScript("OnUpdate", function(_, dt)
         if UI and UI._UpdateStaleFade then UI:_UpdateStaleFade(dt) end
     end)
 
     self.frame = f
+    self:CreateAssignmentsFrame()
     return f
+end
+
+function UI:CreateAssignmentsFrame()
+    if self.assignFrame then return self.assignFrame end
+    if type(CreateFrame) ~= "function" then return nil end
+
+    local db = ArenaCoachTBCDB or {}
+    local acfg = db.assignmentFrame or { point = "CENTER", x = 0, y = 16, scale = 1.0 }
+    local af = CreateFrame("Frame", "ArenaCoachTBCAssignmentsFrame", UIParent)
+    af:SetSize(ASSIGN_WIDTH, ASSIGN_HEIGHT)
+    af:SetPoint(acfg.point or "CENTER", UIParent, acfg.point or "CENTER",
+                acfg.x or 0, acfg.y or 16)
+    af:SetScale(acfg.scale or 1.0)
+    af:SetMovable(true)
+    af:SetClampedToScreen(true)
+    af:EnableMouse(true)
+
+    if af.SetBackdrop then
+        af:SetBackdrop({
+            bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+            tile = true, tileSize = 16, edgeSize = 10,
+            insets = { left = 3, right = 3, top = 3, bottom = 3 },
+        })
+        af:SetBackdropColor(0, 0, 0, 0.30)
+    end
+
+    af.actionText = af:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    af.actionText:SetPoint("TOPLEFT", af, "TOPLEFT", 10, -8)
+    if af.actionText.SetFont then
+        local fontPath = (af.actionText.GetFont and select(1, af.actionText:GetFont()))
+            or "Fonts\\FRIZQT__.TTF"
+        pcall(af.actionText.SetFont, af.actionText, fontPath, 11, "OUTLINE")
+    end
+    if af.actionText.SetSpacing then pcall(af.actionText.SetSpacing, af.actionText, 1) end
+    af.actionText:SetJustifyH("LEFT")
+    af.actionText:SetWidth(ASSIGN_WIDTH - 20)
+    af.actionText:SetText("")
+
+    installDrag(af, "assignmentFrame")
+    af:Hide()
+    self.assignFrame = af
+    return af
 end
 
 -- ============================================================
@@ -328,9 +373,15 @@ end
 
 function UI:_SetFrameAlpha(alpha)
     local f = self.frame
-    if not f then return end
-    f._accAlpha = alpha
-    if f.SetAlpha then f:SetAlpha(alpha) end
+    if f then
+        f._accAlpha = alpha
+        if f.SetAlpha then f:SetAlpha(alpha) end
+    end
+    local af = self.assignFrame
+    if af then
+        af._accAlpha = alpha
+        if af.SetAlpha then af:SetAlpha(alpha) end
+    end
 end
 
 function UI:_ShouldStaleFade(recommendation, mode)
@@ -352,6 +403,7 @@ function UI:_HideStaleFrame()
         self:_SetFrameAlpha(0)
         self.frame:Hide()
     end
+    if self.assignFrame then self.assignFrame:Hide() end
     self._staleFadeActive = false
     if ns.ScreenEdgeGlow then ns.ScreenEdgeGlow:Hide() end
     if ns.Nameplate then ns.Nameplate:ClearAll() end
@@ -386,13 +438,19 @@ end
 
 function UI:Show()
     if self.frame then self.frame:Show() end
+    if self.assignFrame and self.assignFrame._hasAssignments then self.assignFrame:Show() end
 end
 function UI:Hide()
     if self.frame then self.frame:Hide() end
+    if self.assignFrame then self.assignFrame:Hide() end
 end
 function UI:Toggle()
     if not self.frame then return end
-    if self.frame:IsShown() then self.frame:Hide() else self.frame:Show() end
+    if self.frame:IsShown() then
+        self:Hide()
+    else
+        self:Show()
+    end
 end
 
 function UI:Apply(recommendation)
@@ -410,11 +468,13 @@ function UI:Apply(recommendation)
     local forceShow = recommendation._forceShow   -- set by /acc test demo
     if (ctx == "none" or ctx == "world_idle") and not forceShow then
         f:Hide()
+        if self.assignFrame then self.assignFrame:Hide() end
         if ns.ScreenEdgeGlow then ns.ScreenEdgeGlow:Hide() end
         if ns.Nameplate then ns.Nameplate:ClearAll() end
         return
     end
     if not f:IsShown() then f:Show() end
+    if not self.assignFrame and self.CreateAssignmentsFrame then self:CreateAssignmentsFrame() end
 
     local mode = recommendation.mode or "RESET"
     self:_ResetStaleFade(self:_ShouldStaleFade(recommendation, mode))
@@ -594,8 +654,16 @@ function UI:Apply(recommendation)
         end
     end
     f.subText:SetText(table.concat(subParts, "\n"))
-    if f.actionText then
-        f.actionText:SetText(formatPlayerActions(recommendation.playerActions))
+    local actionText = formatPlayerActions(recommendation.playerActions)
+    local af = self.assignFrame
+    if af and af.actionText then
+        af.actionText:SetText(actionText)
+        af._hasAssignments = (actionText ~= "")
+        if actionText ~= "" then
+            if not af:IsShown() then af:Show() end
+        else
+            af:Hide()
+        end
     end
 
     -- v2.0.2 / v2.1: PvP-context gate. The aggressive alerts (screen

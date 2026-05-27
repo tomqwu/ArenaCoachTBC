@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.12] - 2026-05-27
+
+### Changed
+- **Movable assignment module.** Player assignments now render in their own compact frame instead of being welded to the main action toast. `/acc unlock` lets the main call and assignments be dragged independently; `/acc lock` locks both. The new position persists in `db.assignmentFrame`.
+- **Smaller main action toast.** The live action toast is now 320x118 with slightly smaller arcade/action/stat text and a quieter backdrop, leaving more room for arena frames, nameplates, cast bars, action bars, DBM bars, WeakAuras, chat, and damage meters.
+
 ## [2.8.11] - 2026-05-27
 
 ### Changed

@@ -132,11 +132,11 @@ Pre-v2.1.6 this module referenced `Sound/Voice/*.ogg` paths that were never bund
 
 将提示键和模式名映射到 WoW 客户端内置的数字 SoundKit ID。`UI:Apply` 在新顶层提示和模式切换时触发一次性音效（受 `db.alerts.sound` 控制，仅竞技场触发）。v2.1.6 前引用的 `Sound/Voice/*.ogg` 路径并未打包进插件，所以历史版本的音效从未真正发出。
 
-### UI.lua (compact live HUD, v2.8.11)
+### UI.lua (compact movable modules, v2.8.12)
 
-The built-in HUD is a compact 340x168 action toast by default. It is designed to coexist with party frames, arena frames, action bars, cast bars, damage meters, nameplates, DBM bars, and WeakAura clusters. The hierarchy is: small title/version, arcade cue, main action (`KILL` / `SWAP` / `DEFEND`), target stats, one top callout/reason, then up to three player assignments in normal mode. `/acc verbose on` keeps the full five-player assignment list and diagnostic detail for reviews.
+The built-in HUD is split into compact movable modules by default. The main action toast is 320x118 and is designed to coexist with party frames, arena frames, action bars, cast bars, damage meters, nameplates, DBM bars, and WeakAura clusters. The assignment module is a separate 320x76 frame that can be dragged independently with `/acc unlock`; its position is saved under `db.assignmentFrame`. The hierarchy is: small title/version, arcade cue, main action (`KILL` / `SWAP` / `DEFEND`), target stats, one top callout/reason, then up to three player assignments in normal mode. `/acc verbose on` keeps the full five-player assignment list and diagnostic detail for reviews.
 
-内置 HUD 默认是 340x168 的紧凑行动提示，而不是大面积中屏面板。它按默认 WoW 框体、竞技场框体、动作条、施法条、伤害统计、铭牌、DBM 条和 WeakAura 组合同时存在来设计。层级为：小标题/版本、街机提示词、主行动（`KILL` / `SWAP` / `DEFEND`）、目标信息、一个顶层原因/提示，然后普通模式最多显示三条玩家分工。`/acc verbose on` 保留完整五人分工和诊断细节，供复盘使用。
+内置 HUD 默认拆成紧凑、可分别移动的模块。主行动提示为 320x118，按默认 WoW 框体、竞技场框体、动作条、施法条、伤害统计、铭牌、DBM 条和 WeakAura 组合同时存在来设计。分工模块是独立的 320x76 框体，可在 `/acc unlock` 后单独拖动，位置保存到 `db.assignmentFrame`。层级为：小标题/版本、街机提示词、主行动（`KILL` / `SWAP` / `DEFEND`）、目标信息、一个顶层原因/提示，然后普通模式最多显示三条玩家分工。`/acc verbose on` 保留完整五人分工和诊断细节，供复盘使用。
 
 ### ScreenEdgeGlow.lua (v2.2.0, softened in v2.8.2)
 

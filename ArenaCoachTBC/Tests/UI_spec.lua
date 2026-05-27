@@ -21,14 +21,18 @@ _G.ArenaCoachTBCDB = {
 
 H.it(g, "CreateFrame builds compact prototype-A action toast", function()
     UI.frame = nil
+    UI.assignFrame = nil
     local f = UI:CreateFrame()
     H.assertNotNil(f)
+    H.assertNotNil(UI.assignFrame)
     H.assertNotNil(f.arcadeText)
     H.assertNotNil(f.versionText)
-    H.assertTrue((f._width or 999) <= 360, "HUD width should stay compact")
-    H.assertTrue((f._height or 999) <= 180, "HUD height should stay compact")
-    H.assertTrue((f.arcadeText._fontSize or 999) <= 22, "arcade cue should not be raid-warning sized")
-    H.assertTrue((f.bigText._fontSize or 999) <= 26, "main action text should fit a compact toast")
+    H.assertNotNil(UI.assignFrame.actionText)
+    H.assertTrue((f._width or 999) <= 330, "main HUD width should stay compact")
+    H.assertTrue((f._height or 999) <= 130, "main HUD height should stay compact")
+    H.assertTrue((UI.assignFrame._height or 999) <= 90, "assignment module should stay compact")
+    H.assertTrue((f.arcadeText._fontSize or 999) <= 20, "arcade cue should not be raid-warning sized")
+    H.assertTrue((f.bigText._fontSize or 999) <= 24, "main action text should fit a compact toast")
 end)
 
 H.it(g, "CreateFrame shows addon version in the HUD", function()
@@ -82,11 +86,12 @@ H.it(g, "Apply renders DBM-style player action assignments", function()
             { unit = "party1", name = "Shaman", actionKey = "ACTION_SHAMAN_PURGE", targetName = "Holyman" },
         },
     })
-    local txt = UI.frame.actionText and UI.frame.actionText._text or ""
+    local txt = UI.assignFrame and UI.assignFrame.actionText and UI.assignFrame.actionText._text or ""
     H.assertTrue(txt:find("Assignments", 1, true) ~= nil, "assignment header missing: " .. txt)
     H.assertTrue(txt:find("Warrior:", 1, true) ~= nil, "player assignment missing: " .. txt)
     H.assertTrue(txt:find("Shaman:", 1, true) ~= nil, "party assignment missing: " .. txt)
     H.assertTrue(txt:find("Holyman", 1, true) ~= nil, "assignment target missing: " .. txt)
+    H.assertTrue(UI.assignFrame:IsShown(), "assignment module should show when assignments exist")
 end)
 
 H.it(g, "Apply caps default assignments but verbose mode shows the full team", function()
@@ -105,16 +110,35 @@ H.it(g, "Apply caps default assignments but verbose mode shows the full team", f
         { name = "Priest", actionKey = "ACTION_PRIEST_DEFEND", targetName = "Warrior" },
     }
     UI:Apply({ mode = "KILL", primaryTargetName = "Holyman", callouts = {}, priority = "HIGH", playerActions = actions })
-    local compact = UI.frame.actionText and UI.frame.actionText._text or ""
+    local compact = UI.assignFrame and UI.assignFrame.actionText and UI.assignFrame.actionText._text or ""
     H.assertTrue(compact:find("Warrior:", 1, true) ~= nil, "first assignment missing: " .. compact)
     H.assertTrue(compact:find("Paladin:", 1, true) ~= nil, "third assignment missing: " .. compact)
     H.assertTrue(compact:find("Druid:", 1, true) == nil, "compact HUD should cap after three assignments: " .. compact)
 
     _G.ArenaCoachTBCDB.frame.verbose = true
     UI:Apply({ mode = "KILL", primaryTargetName = "Holyman", callouts = {}, priority = "HIGH", playerActions = actions })
-    local verbose = UI.frame.actionText and UI.frame.actionText._text or ""
+    local verbose = UI.assignFrame and UI.assignFrame.actionText and UI.assignFrame.actionText._text or ""
     H.assertTrue(verbose:find("Druid:", 1, true) ~= nil, "verbose HUD should show fourth assignment: " .. verbose)
     H.assertTrue(verbose:find("Priest:", 1, true) ~= nil, "verbose HUD should show fifth assignment: " .. verbose)
+end)
+
+H.it(g, "assignment module has its own movable saved position", function()
+    _G.ArenaCoachTBCDB = {
+        enabled = true, locked = false, language = "auto",
+        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0 },
+        assignmentFrame = { point = "CENTER", x = 0, y = 16, scale = 1.0 },
+        alerts = { sound = false, screenFlash = false, edgeGlow = false, nameplate = false },
+        strategy = {}, debug = false,
+    }
+    UI.frame = nil
+    UI.assignFrame = nil
+    UI:CreateFrame()
+    H.assertNotNil(UI.assignFrame)
+    UI.assignFrame._scripts.OnMouseDown(UI.assignFrame, "LeftButton")
+    UI.assignFrame._scripts.OnMouseUp(UI.assignFrame)
+    H.assertEq(_G.ArenaCoachTBCDB.assignmentFrame.point, "CENTER")
+    H.assertEq(_G.ArenaCoachTBCDB.assignmentFrame.x, 0)
+    H.assertEq(_G.ArenaCoachTBCDB.assignmentFrame.y, 0)
 end)
 
 H.it(g, "Apply renders arcade warning cue for burst windows", function()
