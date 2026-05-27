@@ -58,7 +58,7 @@ The 100+ enemy comp catalog in `Data/Strategies.lua` carries `ownVariants` so th
 /acc selftest verbose  -- in-client validation
 ```
 
-After `/acc test` the addon replays a realistic 3v3 RMP arena over about a minute through the same engine scorer used in a match: gates closed (`OPEN`), combat start, enemy burst, healer CC, healer pressure (`DEFEND`), Disc Priest reveal, Pain Suppression/trinket state, a swap/kill window, then reset. The timed replay force-shows the HUD because it runs outside a real arena instance, and each scheduled beat repaints the board from a fresh `StrategyEngine:Evaluate` result. **If you see this replay, the addon is loaded and the decision pipeline is working.** Use `/acc unlock` to move the integrated prototype-A board — left focus panel, center action, right cue panel, and lower assignments — to a spot you can glance at without covering arena frames, cast bars, or your WeakAuras. The board has a light translucent shell, top drag strip, grip marker, internal dividers, and shadowed/highlighted text so the draggable area is visible without darkening the fight. Use `/acc test hud` for the visual-only HUD tour; the waiting/pre-gate beats now show all four zones with placeholders so the layout is visible before combat data exists.
+After `/acc test` the addon replays a realistic 3v3 RMP arena over about a minute through the same engine scorer used in a match: gates closed (`OPEN`), combat start, enemy burst, healer CC, healer pressure (`DEFEND`), Disc Priest reveal, Pain Suppression/trinket state, a swap/kill window, then reset. The timed replay force-shows the HUD because it runs outside a real arena instance, and each scheduled beat repaints the board from a fresh `StrategyEngine:Evaluate` result. **If you see this replay, the addon is loaded and the decision pipeline is working.** Use `/acc unlock` to move the integrated prototype-A board — left focus panel, center action, right cue panel, and lower assignments — to a spot you can glance at without covering arena frames, cast bars, or your WeakAuras. Drag the lower-right grip to resize the board; width and height persist just like the position. The board has a light translucent shell, top drag strip, grip marker, internal dividers, and shadowed/highlighted text so the draggable area is visible without darkening the fight. Use `/acc test hud` for the visual-only HUD tour; the waiting/pre-gate beats now show all four zones with placeholders so the layout is visible before combat data exists.
 
 If `/acc off` was used earlier, `/acc test` and `/acc simulate <scenario>` turn the addon back on before replaying so chat events cannot advance while the HUD remains stuck on the first waiting state.
 
@@ -83,7 +83,7 @@ You don't run anything during a match. The addon auto-engages on `PLAYER_ENTERIN
 |---|---|
 | `/acc help` | Print the command list |
 | `/acc toggle` | Show / hide the recommendation frame |
-| `/acc lock` / `/acc unlock` | Freeze / release the frame for dragging |
+| `/acc lock` / `/acc unlock` | Freeze / release the frame for dragging and resizing |
 | `/acc test` | Realistic 3v3 arena replay through the engine (OPEN → pressure/DEFEND → kill/reset) |
 | `/acc test hud` | DBM-style visual HUD demo (mode flips, BURST_NOW, DEFEND cue) |
 | `/acc test bg` | BG-mode walk-through (flag carrier + low-HP straggler + CALL_BG_DEFEND) |
@@ -266,13 +266,13 @@ MIT.
 ```
 /acc help              -- 查看所有命令
 /acc test              -- 真实竞技场引擎回放
-/acc unlock            -- 解锁拖动
-                          （拖到合适位置）
+/acc unlock            -- 解锁拖动/缩放
+                          （拖到合适位置，右下角可缩放）
 /acc lock              -- 锁定位置
 /acc selftest verbose  -- 客户端内自检
 ```
 
-执行 `/acc test` 后，插件会用约 1 分钟通过真实决策引擎回放一局 3v3 RMP：铁门未开（`OPEN`）、开战、敌方爆发、治疗被控、治疗承压（`DEFEND`）、戒律牧确认、痛苦压制/徽章状态、换火击杀窗口，最后重置。**看到这个回放，说明插件已加载且决策链路可运行。** 把框拖到你比赛中实际会看的位置。`/acc test hud` 保留旧的纯视觉 HUD 演示。
+执行 `/acc test` 后，插件会用约 1 分钟通过真实决策引擎回放一局 3v3 RMP：铁门未开（`OPEN`）、开战、敌方爆发、治疗被控、治疗承压（`DEFEND`）、戒律牧确认、痛苦压制/徽章状态、换火击杀窗口，最后重置。**看到这个回放，说明插件已加载且决策链路可运行。** 把框拖到你比赛中实际会看的位置；右下角拖拽可缩放，位置和大小都会保存。`/acc test hud` 保留旧的纯视觉 HUD 演示。
 
 ---
 

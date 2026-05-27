@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.20] - 2026-05-27
+
+### Changed
+- **Prototype-A board is resizable.** `/acc unlock` now exposes a lower-right grip on the integrated HUD board, with width/height saved alongside position and clamped to arena-safe bounds.
+- **HUD zones reflow with the board.** The left focus, center action, right cue, and lower assignment panels resize together so enlarging the HUD gives text more room without breaking the single-box layout.
+
 ## [2.8.19] - 2026-05-27
 
 ### Changed

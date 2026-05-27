@@ -41,7 +41,7 @@ The addon stores SavedVariables in `ArenaCoachTBCDB`.
 | `/acc` or `/arenacoach` | alias root | 命令根 |
 | `/acc help` | print all commands | 显示所有命令 |
 | `/acc toggle` | show / hide the recommendation frame | 显示 / 隐藏提示框 |
-| `/acc lock` / `/acc unlock` | lock or unlock the frame for dragging | 锁定 / 解锁框体 |
+| `/acc lock` / `/acc unlock` | lock or unlock the frame for dragging/resizing | 锁定 / 解锁拖动与缩放 |
 | `/acc off` / `/acc on` (aliases `/acc disable` / `/acc enable`) | **master switch.** Stops the engine + hides every visual layer. Persists across `/reload`. | **主开关**。停止引擎并隐藏所有视觉层，`/reload` 后保持。 |
 | `/acc glow on\|off` | toggle the optional thin mode-coloured edge cue | 切换可选的细边缘提示 |
 | `/acc nameplate on\|off` | toggle the KILL / SWAP target nameplate highlights (v2.2.0) | 切换击杀/换火目标的铭牌高亮（v2.2.0） |
@@ -198,7 +198,7 @@ The addon publishes its current recommendation and full state through the global
 | `GetFriendlies()` | full friendlies map / 完整己方表 |
 | `GetEnemyByGUID(guid)` | one enemy / 单个敌方 |
 | `GetCombatPhase()` | "PRE" / "ACTIVE" / "POST" |
-| `GetVersion()` | "2.8.19" |
+| `GetVersion()` | "2.8.20" |
 
 ### Sample custom trigger / 自定义触发器示例
 

@@ -14,7 +14,7 @@ behaviour is what tests can't see.
 - [ ] `/acc` prints help text
 - [ ] `/acc help` same
 - [ ] `/acc toggle` hides and shows the frame
-- [ ] `/acc lock` / `/acc unlock` toggles drag-lock; frame can be repositioned when unlocked
+- [ ] `/acc lock` / `/acc unlock` toggles drag-lock; frame can be repositioned and resized from the lower-right grip when unlocked
 - [ ] `/acc off` (alias `/acc disable`) hides the frame + thin edge cue + nameplate paint and short-circuits the engine; persists across `/reload`
 - [ ] `/acc on` (alias `/acc enable`) re-enables; the frame returns once you enter a PvP context
 - [ ] `/acc glow on|off` toggles the optional thin edge cue independently of the master switch
@@ -36,8 +36,9 @@ behaviour is what tests can't see.
 - [ ] HUD top-right version marker matches the installed addon release
 - [ ] Main HUD board stays compact (roughly 460x168 before user scaling) and does not cover party frames, arena frames, action bars, cast bars, nameplates, DBM bars, WeakAura clusters, chat, or damage meters
 - [ ] Prototype-A zones are present inside one visible board: left focus, center action, right cue/icon rail, and lower assignments, including waiting/pre-gate placeholders before live target data arrives
-- [ ] The board has a light translucent shell, top drag strip/grip, and internal dividers, so `/acc unlock` makes it obvious where to click and drag without darkening the fight
-- [ ] `/acc unlock` lets the integrated board drag; `/acc lock` prevents it from moving
+- [ ] The board has a light translucent shell, top drag strip/grip, lower-right resize grip, and internal dividers, so `/acc unlock` makes it obvious where to click/drag without darkening the fight
+- [ ] Dragging the lower-right grip resizes the integrated board; left focus, center action, right cue, and lower assignments stay inside one divided box and the size persists after `/reload`
+- [ ] `/acc unlock` lets the integrated board drag/resize; `/acc lock` prevents it from moving or resizing
 - [ ] Arcade warning plate renders passive cues (`!! READY !!`, `!! BURST !!`, `!! DANGER !!`, `!! PINCH !!`) inside the compact toast without covering the playfield
 - [ ] Target stats row shows `HP <n>%   kill <n>%   BURST READY` when there's a primary target; hidden on DEFEND / RESET
 - [ ] Assignment module shows one compact action per living friendly in 3v3; in 5v5 normal mode it caps at three lines, while `/acc verbose on` shows all five

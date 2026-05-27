@@ -33,6 +33,7 @@ H.it(g, "CreateFrame builds prototype-A module set", function()
     H.assertNotNil(f.versionText)
     H.assertNotNil(f.dragBar)
     H.assertNotNil(f.dragGrip)
+    H.assertNotNil(f.resizeGrip)
     H.assertNotNil(f.leftPanel)
     H.assertNotNil(f.centerPanel)
     H.assertNotNil(f.rightPanel)
@@ -61,6 +62,11 @@ H.it(g, "CreateFrame builds prototype-A module set", function()
     H.assertEq(f.centerPanel._height, 82)
     H.assertEq(f.rightPanel._height, 82)
     H.assertEq(f.assignPanel._height, 52)
+    H.assertTrue(f._resizable, "main board should expose WoW resizing")
+    H.assertEq(f._minResize[1], 360)
+    H.assertEq(f._minResize[2], 132)
+    H.assertEq(f._maxResize[1], 720)
+    H.assertEq(f._maxResize[2], 280)
     H.assertTrue((f._accBg._color and f._accBg._color[4] or 1) <= 0.35,
         "main board background should stay light enough to see the fight")
     H.assertTrue((f.dragBar._color and f.dragBar._color[4] or 1) <= 0.45,
@@ -79,6 +85,35 @@ H.it(g, "CreateFrame builds prototype-A module set", function()
         "waiting cue rail should show structural labels")
     H.assertTrue((f.assignText._text or ""):find("Assignments", 1, true) ~= nil,
         "waiting assignment panel should show structural labels")
+end)
+
+H.it(g, "CreateFrame restores and saves resized prototype-A board dimensions", function()
+    _G.ArenaCoachTBCDB = {
+        enabled = true, locked = false, language = "auto",
+        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0, width = 520, height = 210 },
+        alerts = { sound = false, screenFlash = false, edgeGlow = false, nameplate = false },
+        strategy = {}, debug = false,
+    }
+    UI.frame = nil
+    UI.assignFrame = nil
+    UI.unitFrame = nil
+    UI.railFrame = nil
+    local f = UI:CreateFrame()
+    H.assertEq(f._width, 520)
+    H.assertEq(f._height, 210)
+    H.assertTrue(f.centerPanel._width > 192, "center action panel should grow with a wider board")
+    H.assertTrue(f.assignPanel._width > 444, "assignment panel should grow with a wider board")
+    H.assertTrue(f.leftPanel._height > 82, "top-row modules should gain height on a taller board")
+    H.assertEq(f.resizeGrip._point[1], "BOTTOMRIGHT")
+
+    f.resizeGrip._scripts.OnMouseDown(f.resizeGrip, "LeftButton")
+    H.assertEq(f._sizing, "BOTTOMRIGHT")
+    f:SetSize(560, 220)
+    f.resizeGrip._scripts.OnMouseUp(f.resizeGrip)
+    H.assertFalse(f._sizing, "resize should stop when the grip is released")
+    H.assertEq(_G.ArenaCoachTBCDB.frame.width, 560)
+    H.assertEq(_G.ArenaCoachTBCDB.frame.height, 220)
+    H.assertTrue(f.centerPanel._width > 210, "layout should recompute after resize")
 end)
 
 H.it(g, "CreateFrame shows addon version in the HUD", function()

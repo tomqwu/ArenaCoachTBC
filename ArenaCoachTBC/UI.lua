@@ -14,11 +14,15 @@ ns.UI = ns.UI or {}
 local UI = ns.UI
 UI.frame = nil
 
-local ADDON_VERSION = "2.8.19"
+local ADDON_VERSION = "2.8.20"
 local STALE_FADE_START = 2.5
 local STALE_FADE_SECONDS = 1.5
 local COMPACT_WIDTH = 460
 local COMPACT_HEIGHT = 168
+local MIN_COMPACT_WIDTH = 360
+local MIN_COMPACT_HEIGHT = 132
+local MAX_COMPACT_WIDTH = 720
+local MAX_COMPACT_HEIGHT = 280
 local GRID_PADDING = 8
 local HEADER_HEIGHT = 22
 local GRID_TOP_Y = -30
@@ -26,6 +30,7 @@ local TOP_ROW_HEIGHT = 82
 local SIDE_PANEL_WIDTH = 126
 local CENTER_PANEL_WIDTH = COMPACT_WIDTH - (GRID_PADDING * 2) - (SIDE_PANEL_WIDTH * 2)
 local ASSIGN_PANEL_HEIGHT = 52
+local RESIZE_GRIP_SIZE = 16
 local UNIT_WIDTH = 150
 local UNIT_HEIGHT = 96
 local RAIL_WIDTH = 150
@@ -102,6 +107,17 @@ local function size(region, w, h)
         if region.SetWidth then pcall(region.SetWidth, region, w) end
         if region.SetHeight then pcall(region.SetHeight, region, h) end
     end
+end
+
+local function clamp(value, minValue, maxValue)
+    local n = tonumber(value) or minValue
+    if n < minValue then return minValue end
+    if n > maxValue then return maxValue end
+    return n
+end
+
+local function rounded(value)
+    return math.floor((tonumber(value) or 0) + 0.5)
 end
 
 local function skinPanel(frame, alpha, borderAlpha)
@@ -220,6 +236,14 @@ local function saveFramePosition(key, frame)
     ArenaCoachTBCDB[key].point = point
     ArenaCoachTBCDB[key].x = x
     ArenaCoachTBCDB[key].y = y
+    if key == "frame" and frame.GetWidth and frame.GetHeight then
+        local width = frame:GetWidth()
+        local height = frame:GetHeight()
+        if width and height then
+            ArenaCoachTBCDB[key].width = clamp(rounded(width), MIN_COMPACT_WIDTH, MAX_COMPACT_WIDTH)
+            ArenaCoachTBCDB[key].height = clamp(rounded(height), MIN_COMPACT_HEIGHT, MAX_COMPACT_HEIGHT)
+        end
+    end
 end
 
 local function installDrag(frame, key)
@@ -233,6 +257,119 @@ local function installDrag(frame, key)
         self:StopMovingOrSizing()
         saveFramePosition(key, self)
     end)
+end
+
+local function boardMetrics(frame)
+    local width = clamp((frame and frame.GetWidth and frame:GetWidth()) or COMPACT_WIDTH,
+        MIN_COMPACT_WIDTH, MAX_COMPACT_WIDTH)
+    local height = clamp((frame and frame.GetHeight and frame:GetHeight()) or COMPACT_HEIGHT,
+        MIN_COMPACT_HEIGHT, MAX_COMPACT_HEIGHT)
+    local contentW = math.max(0, width - (GRID_PADDING * 2))
+    local assignH = clamp(math.floor(height * 0.31), 44, 76)
+    local topH = height - 34 - assignH
+    if topH < 58 then
+        topH = 58
+        assignH = math.max(38, height - 34 - topH)
+    end
+
+    local sideW = clamp(math.floor(contentW * 0.285), 104, 154)
+    local centerW = contentW - (sideW * 2)
+    if centerW < 116 then
+        centerW = 116
+        sideW = math.max(90, math.floor((contentW - centerW) / 2))
+    end
+
+    local topY = GRID_TOP_Y
+    local leftX = GRID_PADDING
+    local centerX = leftX + sideW
+    local rightX = centerX + centerW
+    local assignY = topY - topH
+
+    return {
+        width = width,
+        height = height,
+        contentW = contentW,
+        topY = topY,
+        leftX = leftX,
+        centerX = centerX,
+        rightX = rightX,
+        assignY = assignY,
+        topH = topH,
+        sideW = sideW,
+        centerW = centerW,
+        assignH = assignH,
+    }
+end
+
+local function layoutMainBoard(f)
+    if not f then return end
+    local m = boardMetrics(f)
+
+    if f.dragBar then
+        clearPoints(f.dragBar)
+        point(f.dragBar, "TOPLEFT", f, "TOPLEFT", 2, -2)
+        point(f.dragBar, "TOPRIGHT", f, "TOPRIGHT", -2, -2)
+        if f.dragBar.SetHeight then pcall(f.dragBar.SetHeight, f.dragBar, HEADER_HEIGHT) end
+    end
+    if f.versionText and f.versionText.SetWidth then
+        pcall(f.versionText.SetWidth, f.versionText, math.max(58, math.min(86, m.width - 240)))
+    end
+    if f.title and f.title.SetWidth then
+        pcall(f.title.SetWidth, f.title, math.max(120, m.width - 190))
+    end
+
+    if f.leftPanel then
+        clearPoints(f.leftPanel)
+        size(f.leftPanel, m.sideW, m.topH)
+        point(f.leftPanel, "TOPLEFT", f, "TOPLEFT", m.leftX, m.topY)
+    end
+    if f.centerPanel then
+        clearPoints(f.centerPanel)
+        size(f.centerPanel, m.centerW, m.topH)
+        point(f.centerPanel, "TOPLEFT", f, "TOPLEFT", m.centerX, m.topY)
+    end
+    if f.rightPanel then
+        clearPoints(f.rightPanel)
+        size(f.rightPanel, m.sideW, m.topH)
+        point(f.rightPanel, "TOPLEFT", f, "TOPLEFT", m.rightX, m.topY)
+    end
+    if f.assignPanel then
+        clearPoints(f.assignPanel)
+        size(f.assignPanel, m.contentW, m.assignH)
+        point(f.assignPanel, "TOPLEFT", f, "TOPLEFT", m.leftX, m.assignY)
+    end
+
+    placeLine(f, "leftDivider", 1, m.topH, m.centerX, m.topY, 0.78)
+    placeLine(f, "rightDivider", 1, m.topH, m.rightX, m.topY, 0.78)
+    placeLine(f, "assignDivider", m.contentW, 1, m.leftX, m.assignY, 0.78)
+
+    local centerTextW = math.max(100, m.centerW - 10)
+    if f.arcadeText and f.arcadeText.SetWidth then pcall(f.arcadeText.SetWidth, f.arcadeText, centerTextW) end
+    if f.bigText and f.bigText.SetWidth then pcall(f.bigText.SetWidth, f.bigText, centerTextW) end
+    if f.statsText and f.statsText.SetWidth then pcall(f.statsText.SetWidth, f.statsText, centerTextW) end
+    if f.subText and f.subText.SetWidth then pcall(f.subText.SetWidth, f.subText, centerTextW) end
+    if f.unitText and f.unitText.SetWidth then pcall(f.unitText.SetWidth, f.unitText, math.max(76, m.sideW - 16)) end
+    if f.railText and f.railText.SetWidth then pcall(f.railText.SetWidth, f.railText, math.max(76, m.sideW - 16)) end
+    if f.assignText and f.assignText.SetWidth then pcall(f.assignText.SetWidth, f.assignText, math.max(120, m.contentW - 20)) end
+
+    if f.resizeGrip then
+        clearPoints(f.resizeGrip)
+        size(f.resizeGrip, RESIZE_GRIP_SIZE, RESIZE_GRIP_SIZE)
+        point(f.resizeGrip, "BOTTOMRIGHT", f, "BOTTOMRIGHT", -2, 2)
+        for i = 1, 3 do
+            local line = f.resizeGrip["_line" .. i]
+            if line then
+                clearPoints(line)
+                size(line, 4 + (i * 3), 1)
+                point(line, "BOTTOMRIGHT", f.resizeGrip, "BOTTOMRIGHT", -3, 2 + (i * 4))
+                colorTexture(line, 0.95, 0.74, 0.36, 0.80)
+            end
+        end
+    end
+end
+
+function UI:_LayoutMainBoard(frame)
+    layoutMainBoard(frame or self.frame)
 end
 
 -- ============================================================
@@ -256,11 +393,20 @@ function UI:CreateFrame()
     -- center frame, those satellites could sit elsewhere and the HUD
     -- still looked like plain floating text. The board keeps the agreed
     -- left/center/right/bottom structure together.
-    f:SetSize(COMPACT_WIDTH, COMPACT_HEIGHT)
+    local savedWidth = clamp(fcfg.width or COMPACT_WIDTH, MIN_COMPACT_WIDTH, MAX_COMPACT_WIDTH)
+    local savedHeight = clamp(fcfg.height or COMPACT_HEIGHT, MIN_COMPACT_HEIGHT, MAX_COMPACT_HEIGHT)
+    f:SetSize(savedWidth, savedHeight)
     f:SetPoint(fcfg.point or "CENTER", UIParent, fcfg.point or "CENTER",
                fcfg.x or 0, fcfg.y or 120)
     f:SetScale(fcfg.scale or 1.0)
     f:SetMovable(true)
+    if f.SetResizable then pcall(f.SetResizable, f, true) end
+    if f.SetResizeBounds then
+        pcall(f.SetResizeBounds, f, MIN_COMPACT_WIDTH, MIN_COMPACT_HEIGHT, MAX_COMPACT_WIDTH, MAX_COMPACT_HEIGHT)
+    else
+        if f.SetMinResize then pcall(f.SetMinResize, f, MIN_COMPACT_WIDTH, MIN_COMPACT_HEIGHT) end
+        if f.SetMaxResize then pcall(f.SetMaxResize, f, MAX_COMPACT_WIDTH, MAX_COMPACT_HEIGHT) end
+    end
     f:SetClampedToScreen(true)
     f:EnableMouse(true)
     if f.SetFrameStrata then pcall(f.SetFrameStrata, f, "HIGH") end
@@ -321,6 +467,27 @@ function UI:CreateFrame()
     f.dragGrip:SetTextColor(0.78, 0.62, 0.34)
     f.dragGrip:SetText("|||")
     improveTextContrast(f.dragGrip, 1.0)
+
+    f.resizeGrip = CreateFrame("Frame", nil, f)
+    f.resizeGrip:SetSize(RESIZE_GRIP_SIZE, RESIZE_GRIP_SIZE)
+    f.resizeGrip:EnableMouse(true)
+    if type(f.resizeGrip.SetFrameLevel) == "function" and type(f.GetFrameLevel) == "function" then
+        local ok, level = pcall(f.GetFrameLevel, f)
+        if ok and type(level) == "number" then pcall(f.resizeGrip.SetFrameLevel, f.resizeGrip, level + 2) end
+    end
+    for i = 1, 3 do
+        f.resizeGrip["_line" .. i] = f.resizeGrip:CreateTexture(nil, "OVERLAY")
+    end
+    f.resizeGrip:SetScript("OnMouseDown", function(_, button)
+        if button == "LeftButton" and not (ArenaCoachTBCDB and ArenaCoachTBCDB.locked) and f.StartSizing then
+            f:StartSizing("BOTTOMRIGHT")
+        end
+    end)
+    f.resizeGrip:SetScript("OnMouseUp", function()
+        if f.StopMovingOrSizing then f:StopMovingOrSizing() end
+        layoutMainBoard(f)
+        saveFramePosition("frame", f)
+    end)
 
     -- v2.8.1: Japanese-arcade-style warning plate. This is just a big,
     -- passive text cue inside the HUD, never a fullscreen flash.
@@ -421,11 +588,15 @@ function UI:CreateFrame()
     end
 
     installDrag(f, "frame")
+    f:SetScript("OnSizeChanged", function(self)
+        layoutMainBoard(self)
+    end)
     f:SetScript("OnUpdate", function(_, dt)
         if UI and UI._UpdateStaleFade then UI:_UpdateStaleFade(dt) end
     end)
 
     self.frame = f
+    layoutMainBoard(f)
     self:CreateUnitStripFrame()
     self:CreateCueRailFrame()
     self:CreateAssignmentsFrame()

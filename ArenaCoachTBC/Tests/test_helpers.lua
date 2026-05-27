@@ -29,11 +29,22 @@ function mockMethods:GetPoint()           return "CENTER", nil, "CENTER", 0, 0 e
 function mockMethods:GetChecked()         return self._checked end
 function mockMethods:SetChecked(v)        self._checked = v and true or false end
 function mockMethods:GetName()            return self._name end
+function mockMethods:GetParent()          return self._parent end
 function mockMethods:SetSize(w, h)        self._width = w; self._height = h end
 function mockMethods:GetWidth()           return self._width end
 function mockMethods:GetHeight()          return self._height end
 function mockMethods:SetPoint(...)        self._point = {...} end
 function mockMethods:ClearAllPoints()     self._point = nil end
+function mockMethods:SetResizable(v)      self._resizable = v and true or false end
+function mockMethods:SetResizeBounds(minW, minH, maxW, maxH)
+    self._minResize = { minW, minH }
+    self._maxResize = { maxW, maxH }
+end
+function mockMethods:SetMinResize(w, h)   self._minResize = { w, h } end
+function mockMethods:SetMaxResize(w, h)   self._maxResize = { w, h } end
+function mockMethods:StartMoving()        self._moving = true end
+function mockMethods:StartSizing(edge)    self._sizing = edge or true end
+function mockMethods:StopMovingOrSizing() self._moving = false; self._sizing = false end
 -- v2.1.3: track FontString-style text so UI tests can assert on
 -- rendered output (`f.bigText._text`).
 function mockMethods:SetText(text)        self._text = tostring(text or "") end
@@ -84,6 +95,7 @@ makeMockFrame = function(opts)
         _name     = opts.name,
         _kind     = opts.kind,
         _template = opts.template,
+        _parent   = opts.parent,
     }
     -- Pre-populate Text for CheckButton-style frames
     if opts.template and opts.template:find("CheckButton") then
@@ -160,7 +172,7 @@ function H.installStubs()
     end
 
     _G.CreateFrame = function(kind, name, parent, template)
-        local f = makeMockFrame{ kind = kind, name = name, template = template }
+        local f = makeMockFrame{ kind = kind, name = name, template = template, parent = parent }
         table.insert(H.frames, f)
         if name then _G[name] = f end
         return f
