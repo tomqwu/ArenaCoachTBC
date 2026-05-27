@@ -558,6 +558,25 @@ local function spellInSet(spellID, name, set)
     return false
 end
 
+local DAMAGE_SUB_EVENTS = {
+    SWING_DAMAGE = true,
+    SWING_DAMAGE_LANDED = true,
+    RANGE_DAMAGE = true,
+    SPELL_DAMAGE = true,
+    SPELL_PERIODIC_DAMAGE = true,
+    SPELL_BUILDING_DAMAGE = true,
+    DAMAGE_SHIELD = true,
+    DAMAGE_SPLIT = true,
+    ENVIRONMENTAL_DAMAGE = true,
+}
+
+local function isDamageSubEvent(subEvent)
+    if not subEvent then return false end
+    if DAMAGE_SUB_EVENTS[subEvent] then return true end
+    return subEvent:find("_DAMAGE$") ~= nil
+        or subEvent:find("_DAMAGE_LANDED$") ~= nil
+end
+
 local function friendlyIsHealer(f)
     if not f then return false end
     if f.roleGuess == "HEALER" or f.role == "HEALER" then return true end
@@ -751,7 +770,7 @@ local function onCLEU()
     local damagedFriendly = Core._friendlyGUIDs[destGUID]
     local friendlyDamageShouldEvaluate = false
     if subEvent and damagedFriendly and friendlyIsHealer(damagedFriendly)
-       and (subEvent:find("_DAMAGE$") or subEvent == "SWING_DAMAGE") then
+       and isDamageSubEvent(subEvent) then
         table.insert(Core._friendlyDamageTs, ts or 0)
         local strat = (_G.ArenaCoachTBCDB and _G.ArenaCoachTBCDB.strategy) or {}
         friendlyDamageShouldEvaluate = #Core._friendlyDamageTs >= (strat.peelTriggerDamage or 3)
@@ -765,7 +784,7 @@ local function onCLEU()
     if ctx == "bg" or ctx == "world" or ctx == "world_idle" then
         local playerHit = Core._friendlyGUIDs[destGUID]
             or (type(UnitGUID) == "function" and destGUID == UnitGUID("player"))
-        local isDamage = subEvent and (subEvent:find("_DAMAGE$") or subEvent == "SWING_DAMAGE")
+        local isDamage = isDamageSubEvent(subEvent)
         if playerHit and isDamage then
             Core._lastWorldHostileTs = ts or 0
             -- Stub-create an enemy from CLEU if a hostile player damages us

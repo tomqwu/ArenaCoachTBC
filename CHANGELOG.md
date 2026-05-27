@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.6] - 2026-05-26
+
+### Fixed
+- **Real-fight damage pressure detection.** Classic combat logs can report melee/contact hits as `SWING_DAMAGE_LANDED` and shield/contact damage as `DAMAGE_SHIELD`; those now count as damage pressure for BG/world enemy stubs and healer-train detection.
+
+### Docs
+- Added a real-fight capture checklist covering `/acc trace`, `/acc record`, `/combatlog`, SavedVariables, and replay comparison.
+
 ## [2.8.5] - 2026-05-26
 
 ### Fixed

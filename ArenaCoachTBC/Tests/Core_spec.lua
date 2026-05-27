@@ -1329,6 +1329,39 @@ H.it(g, "CLEU creates non-arena enemy stubs only when hostile damage hits us", f
         "damage to a friendly should create a combat stub when no nameplate is visible")
 end)
 
+H.it(g, "CLEU treats Classic landed swing and damage shield events as pressure", function()
+    for _, subEvent in ipairs({ "SWING_DAMAGE_LANDED", "DAMAGE_SHIELD" }) do
+        rebootForEvents()
+        clearWoWApis()
+        _G.ArenaCoachTBCDB = nil; Core:InitDB()
+        Core.state.pvpContext = "world"
+        Core.state.enemies = {}
+        Core._friendlyGUIDs = { ["guid-player"] = { class = "DRUID", alive = true } }
+        Core._friendlyDamageTs = {}
+        _G.UnitExists = function() return false end
+        H._gameTime = 1000
+
+        local evalCount = 0
+        local savedEvaluate = Core.Evaluate
+        Core.Evaluate = function() evalCount = evalCount + 1 end
+
+        for i = 1, 3 do
+            H.fireCLEU(1000 + i, subEvent, false, "guid-enemy", "Enemy",
+                       nil, nil, "guid-player", "Player", nil, nil,
+                       H.ns.Spells.PYROBLAST, "Pyroblast")
+            EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
+        end
+
+        Core.Evaluate = savedEvaluate
+        H.assertNotNil(Core.state.enemies["guid-enemy"],
+            subEvent .. " should create a non-arena enemy stub")
+        H.assertEq(#Core._friendlyDamageTs, 3,
+            subEvent .. " should count toward trained-friendly pressure")
+        H.assertEq(evalCount, 1,
+            subEvent .. " should trigger Evaluate once the pressure threshold is met")
+    end
+end)
+
 H.it(g, "RefreshEnemiesNonArena TTL-prunes stale entries (>30s)", function()
     Core.state.enemies = {
         ["guid-stale"] = { guid = "guid-stale", name = "Old", class = "ROGUE",

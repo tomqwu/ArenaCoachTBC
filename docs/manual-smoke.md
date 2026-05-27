@@ -49,6 +49,14 @@ behaviour is what tests can't see.
 - [ ] Trinket tracker correctly flips `enemy.hasTrinket` after a known trinket cast
 - [ ] DR tracker registers Fear / HoJ / Cyclone properly
 
+## Real-fight capture
+
+- [ ] Before queueing, run `/acc on`, `/acc trace on`, `/acc record on`, and `/combatlog`
+- [ ] Play one real arena, battleground, or world-PvP fight where the advice feels wrong, late, or absent
+- [ ] After the fight, run `/acc trace dump` and `/acc record status`; then `/reload` or logout so SavedVariables are written
+- [ ] Keep the matching `Logs/WoWCombatLog*.txt` file and `WTF/Account/<account>/SavedVariables/ArenaCoachTBC.lua`
+- [ ] Replay the addon recording with `lua5.1 tools/replay.lua <path/to/ArenaCoachTBC.lua>` and compare the last recommendations with the screenshot or clip
+
 ## Integration
 
 - [ ] WeakAuras trigger code from `docs/weakaura-pack.md` pasted into a hand-built WA reads the recommendation correctly via `_G.ArenaCoachTBC`. (Paste-ready import strings removed in v2.2.6 — see that CHANGELOG entry.)
