@@ -36,7 +36,7 @@ behaviour is what tests can't see.
 - [ ] HUD top-right version marker matches the installed addon release
 - [ ] Main HUD board stays compact (roughly 460x168 before user scaling) and does not cover party frames, arena frames, action bars, cast bars, nameplates, DBM bars, WeakAura clusters, chat, or damage meters
 - [ ] Prototype-A zones are present inside one visible board: left focus, center action, right cue/icon rail, and lower assignments, including waiting/pre-gate placeholders before live target data arrives
-- [ ] The board has a clear translucent shell, top drag strip/grip, and internal dividers, so `/acc unlock` makes it obvious where to click and drag
+- [ ] The board has a light translucent shell, top drag strip/grip, and internal dividers, so `/acc unlock` makes it obvious where to click and drag without darkening the fight
 - [ ] `/acc unlock` lets the integrated board drag; `/acc lock` prevents it from moving
 - [ ] Arcade warning plate renders passive cues (`!! READY !!`, `!! BURST !!`, `!! DANGER !!`, `!! PINCH !!`) inside the compact toast without covering the playfield
 - [ ] Target stats row shows `HP <n>%   kill <n>%   BURST READY` when there's a primary target; hidden on DEFEND / RESET

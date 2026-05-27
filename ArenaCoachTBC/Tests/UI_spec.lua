@@ -61,10 +61,14 @@ H.it(g, "CreateFrame builds prototype-A module set", function()
     H.assertEq(f.centerPanel._height, 82)
     H.assertEq(f.rightPanel._height, 82)
     H.assertEq(f.assignPanel._height, 52)
-    H.assertTrue((f._accBg._color and f._accBg._color[4] or 0) >= 0.55,
-        "main board background should be visible enough to identify the drag area")
-    H.assertTrue((f.dragBar._color and f.dragBar._color[4] or 0) >= 0.70,
-        "drag strip should be visibly darker than the playfield")
+    H.assertTrue((f._accBg._color and f._accBg._color[4] or 1) <= 0.35,
+        "main board background should stay light enough to see the fight")
+    H.assertTrue((f.dragBar._color and f.dragBar._color[4] or 1) <= 0.45,
+        "drag strip should identify the handle without darkening the screen")
+    H.assertTrue((f.bigText._shadowColor and f.bigText._shadowColor[4] or 0) >= 0.95,
+        "main text should carry readability through shadow/outline instead of a dark board")
+    H.assertTrue((f.unitText._shadowColor and f.unitText._shadowColor[4] or 0) >= 0.90,
+        "module text should remain readable on the lighter board")
     H.assertEq(f.dragGrip._text, "|||")
     H.assertFalse(UI.unitFrame:IsShown(), "detached left focus strip should start dormant")
     H.assertFalse(UI.railFrame:IsShown(), "detached right cue rail should start dormant")

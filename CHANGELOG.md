@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.19] - 2026-05-27
+
+### Changed
+- **HUD board is lighter.** Reduced the main board, module panels, and drag-strip opacity so the playfield remains visible behind the prototype-A layout.
+- **Text carries the contrast now.** Added stronger shadowing to the title, drag grip, center action, stats, callout, focus, cue, and assignment text so the lighter board remains readable without a dark screen-covering panel.
+
 ## [2.8.18] - 2026-05-27
 
 ### Fixed

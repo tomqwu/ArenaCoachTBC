@@ -14,7 +14,7 @@ ns.UI = ns.UI or {}
 local UI = ns.UI
 UI.frame = nil
 
-local ADDON_VERSION = "2.8.18"
+local ADDON_VERSION = "2.8.19"
 local STALE_FADE_START = 2.5
 local STALE_FADE_SECONDS = 1.5
 local COMPACT_WIDTH = 460
@@ -139,6 +139,12 @@ local function skinPanel(frame, alpha, borderAlpha)
     end
 end
 
+local function improveTextContrast(fs, alpha, x, y)
+    if not fs then return end
+    if fs.SetShadowColor then pcall(fs.SetShadowColor, fs, 0, 0, 0, alpha or 0.95) end
+    if fs.SetShadowOffset then pcall(fs.SetShadowOffset, fs, x or 1, y or -1) end
+end
+
 local function solidTexture(parent, key, layer, r, g, b, a)
     if not (parent and parent.CreateTexture) then return nil end
     local tex = parent[key] or parent:CreateTexture(nil, layer or "BACKGROUND")
@@ -261,8 +267,8 @@ function UI:CreateFrame()
     if f.SetFrameLevel then pcall(f.SetFrameLevel, f, 20) end
 
     -- Backdrop (TBC client uses Backdrop trait built-in for Frame)
-    setBackdrop(f, 0.52, 12)
-    skinPanel(f, 0.58, 0.74)
+    setBackdrop(f, 0.24, 12)
+    skinPanel(f, 0.26, 0.66)
 
     -- Title: small identity marker, not a full header row.
     f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -270,8 +276,9 @@ function UI:CreateFrame()
     f.title:SetJustifyH("LEFT")
     f.title:SetWidth(190)
     f.title:SetText(L("UI_TITLE"))
+    improveTextContrast(f.title, 1.0)
 
-    local dragBar = solidTexture(f, "dragBar", "BACKGROUND", 0.03, 0.025, 0.015, 0.76)
+    local dragBar = solidTexture(f, "dragBar", "BACKGROUND", 0.10, 0.08, 0.035, 0.34)
     if dragBar then
         clearPoints(dragBar)
         point(dragBar, "TOPLEFT", f, "TOPLEFT", 2, -2)
@@ -287,13 +294,13 @@ function UI:CreateFrame()
     local contentW = COMPACT_WIDTH - (GRID_PADDING * 2)
 
     local leftPanel = createChildPanel(f, "leftPanel", SIDE_PANEL_WIDTH, TOP_ROW_HEIGHT,
-        "TOPLEFT", "TOPLEFT", leftX, topY, 0.48)
+        "TOPLEFT", "TOPLEFT", leftX, topY, 0.18)
     local centerPanel = createChildPanel(f, "centerPanel", CENTER_PANEL_WIDTH, TOP_ROW_HEIGHT,
-        "TOPLEFT", "TOPLEFT", centerX, topY, 0.42)
+        "TOPLEFT", "TOPLEFT", centerX, topY, 0.16)
     local rightPanel = createChildPanel(f, "rightPanel", SIDE_PANEL_WIDTH, TOP_ROW_HEIGHT,
-        "TOPLEFT", "TOPLEFT", rightX, topY, 0.48)
+        "TOPLEFT", "TOPLEFT", rightX, topY, 0.18)
     local assignPanel = createChildPanel(f, "assignPanel", contentW, ASSIGN_PANEL_HEIGHT,
-        "TOPLEFT", "TOPLEFT", leftX, assignY, 0.46)
+        "TOPLEFT", "TOPLEFT", leftX, assignY, 0.18)
 
     placeLine(f, "leftDivider", 1, TOP_ROW_HEIGHT, centerX, topY, 0.78)
     placeLine(f, "rightDivider", 1, TOP_ROW_HEIGHT, rightX, topY, 0.78)
@@ -313,6 +320,7 @@ function UI:CreateFrame()
     f.dragGrip:SetWidth(16)
     f.dragGrip:SetTextColor(0.78, 0.62, 0.34)
     f.dragGrip:SetText("|||")
+    improveTextContrast(f.dragGrip, 1.0)
 
     -- v2.8.1: Japanese-arcade-style warning plate. This is just a big,
     -- passive text cue inside the HUD, never a fullscreen flash.
@@ -327,6 +335,7 @@ function UI:CreateFrame()
     f.arcadeText:SetJustifyH("CENTER")
     f.arcadeText:SetWidth(CENTER_PANEL_WIDTH - 10)
     f.arcadeText:SetText(string.format("!! %s !!", L("UI_ARCADE_READY")))
+    improveTextContrast(f.arcadeText, 1.0, 1, -1)
 
     -- Main recommendation line ("KILL: Warlock"). This remains the
     -- largest element, but no longer consumes a raid-warning sized band.
@@ -340,6 +349,7 @@ function UI:CreateFrame()
     f.bigText:SetJustifyH("CENTER")
     f.bigText:SetWidth(CENTER_PANEL_WIDTH - 10)
     f.bigText:SetText(L("REASON_DEFAULT"))
+    improveTextContrast(f.bigText, 1.0, 1, -1)
 
     -- Target stats row (HP% + kill prob%) under the mode line. Kept
     -- compact so it reads as supporting context rather than another alert.
@@ -353,6 +363,7 @@ function UI:CreateFrame()
     f.statsText:SetJustifyH("CENTER")
     f.statsText:SetWidth(CENTER_PANEL_WIDTH - 10)
     f.statsText:SetText("")
+    improveTextContrast(f.statsText, 0.95, 1, -1)
 
     -- Reason / top callout text. Default mode shows one line; verbose
     -- mode can still expand for debugging.
@@ -362,6 +373,7 @@ function UI:CreateFrame()
     f.subText:SetJustifyH("CENTER")
     f.subText:SetWidth(CENTER_PANEL_WIDTH - 10)
     f.subText:SetText("")
+    improveTextContrast(f.subText, 0.95, 1, -1)
 
     if leftPanel then
         f.unitText = leftPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -375,6 +387,7 @@ function UI:CreateFrame()
         f.unitText:SetJustifyH("LEFT")
         f.unitText:SetWidth(SIDE_PANEL_WIDTH - 16)
         f.unitText:SetText(waitingUnitText())
+        improveTextContrast(f.unitText, 0.95, 1, -1)
     end
 
     if rightPanel then
@@ -389,6 +402,7 @@ function UI:CreateFrame()
         f.railText:SetJustifyH("LEFT")
         f.railText:SetWidth(SIDE_PANEL_WIDTH - 16)
         f.railText:SetText(waitingCueText())
+        improveTextContrast(f.railText, 0.95, 1, -1)
     end
 
     if assignPanel then
@@ -403,6 +417,7 @@ function UI:CreateFrame()
         f.assignText:SetJustifyH("LEFT")
         f.assignText:SetWidth(contentW - 20)
         f.assignText:SetText(waitingAssignmentText())
+        improveTextContrast(f.assignText, 0.95, 1, -1)
     end
 
     installDrag(f, "frame")
@@ -446,6 +461,7 @@ function UI:CreateUnitStripFrame()
     uf.text:SetJustifyH("LEFT")
     uf.text:SetWidth(UNIT_WIDTH - 16)
     uf.text:SetText(waitingUnitText())
+    improveTextContrast(uf.text, 0.95, 1, -1)
 
     installDrag(uf, "unitFrame")
     uf._hasUnits = false
@@ -483,6 +499,7 @@ function UI:CreateCueRailFrame()
     rf.text:SetJustifyH("LEFT")
     rf.text:SetWidth(RAIL_WIDTH - 16)
     rf.text:SetText(waitingCueText())
+    improveTextContrast(rf.text, 0.95, 1, -1)
 
     installDrag(rf, "railFrame")
     rf._hasCues = false
@@ -521,6 +538,7 @@ function UI:CreateAssignmentsFrame()
     af.actionText:SetJustifyH("LEFT")
     af.actionText:SetWidth(ASSIGN_WIDTH - 20)
     af.actionText:SetText(waitingAssignmentText())
+    improveTextContrast(af.actionText, 0.95, 1, -1)
 
     installDrag(af, "assignmentFrame")
     af._hasAssignments = false

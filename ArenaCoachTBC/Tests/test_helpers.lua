@@ -39,6 +39,12 @@ function mockMethods:ClearAllPoints()     self._point = nil end
 function mockMethods:SetText(text)        self._text = tostring(text or "") end
 function mockMethods:GetText()            return self._text end
 function mockMethods:SetTextColor()       end
+function mockMethods:SetShadowColor(r, g, b, a)
+    self._shadowColor = { r, g, b, a }
+end
+function mockMethods:SetShadowOffset(x, y)
+    self._shadowOffset = { x, y }
+end
 function mockMethods:SetJustifyH()        end
 function mockMethods:SetJustifyV()        end
 function mockMethods:SetWidth(w)          self._width = w end
