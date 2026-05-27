@@ -46,7 +46,7 @@ The addon stores SavedVariables in `ArenaCoachTBCDB`.
 | `/acc glow on\|off` | toggle the optional thin mode-coloured edge cue | 切换可选的细边缘提示 |
 | `/acc nameplate on\|off` | toggle the KILL / SWAP target nameplate highlights (v2.2.0) | 切换击杀/换火目标的铭牌高亮（v2.2.0） |
 | `/acc test` | readable ~1-minute realistic 3v3 arena replay through the engine (OPEN → pressure/DEFEND → kill/reset) | 约 1 分钟真实 3v3 竞技场引擎回放（开局 → 承压/防御 → 击杀/重置） |
-| `/acc test hud` | visual HUD demo — paints the prototype-A modules (left focus strip, center action toast, right cue rail, lower assignments, nameplate, audio cues, optional thin edge cue) | 视觉 HUD 演示——A 方案模块（左焦点条、中间行动提示、右提示轨、下方分工、铭牌、音效、可选细边缘提示） |
+| `/acc test hud` | visual HUD demo — paints the prototype-A modules (left status stack, center action, center player info, right cue rail, nameplate, audio cues, optional thin edge cue) | 视觉 HUD 演示——A 方案模块（左状态栈、中间行动提示、中间玩家分工、右提示轨、铭牌、音效、可选细边缘提示） |
 | `/acc test bg` | battleground walk-through (flag carrier + low-HP straggler) | 战场演示（夺旗者 + 低血单位） |
 | `/acc test world` | world PvP walk-through (single-target focus) | 户外 PvP 演示（单目标聚焦） |
 | `/acc test print` | legacy chat-only summary of 5 sample comps | 仅文字摘要（旧行为） |
@@ -198,7 +198,7 @@ The addon publishes its current recommendation and full state through the global
 | `GetFriendlies()` | full friendlies map / 完整己方表 |
 | `GetEnemyByGUID(guid)` | one enemy / 单个敌方 |
 | `GetCombatPhase()` | "PRE" / "ACTIVE" / "POST" |
-| `GetVersion()` | "2.8.22" |
+| `GetVersion()` | "2.8.23" |
 
 ### Sample custom trigger / 自定义触发器示例
 

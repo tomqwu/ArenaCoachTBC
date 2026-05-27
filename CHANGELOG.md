@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.23] - 2026-05-27
+
+### Changed
+- **Prototype-A now follows the original cockpit sketch more closely.** The HUD uses a persistent left status stack, center action panel, center player-info/assignment panel, and right cue rail instead of equal-width top boxes plus a full-width assignment row.
+- **Side rails now span the board height.** Focus and cue sections stay visually stable while the center column handles the active call and per-player jobs.
+- **Mode accent bar added.** The center action panel gets a slim mode-coloured accent line so KILL/SWAP/DEFEND state is readable without screen flashing.
+
 ## [2.8.22] - 2026-05-27
 
 ### Fixed

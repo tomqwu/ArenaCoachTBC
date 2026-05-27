@@ -14,23 +14,20 @@ ns.UI = ns.UI or {}
 local UI = ns.UI
 UI.frame = nil
 
-local ADDON_VERSION = "2.8.22"
+local ADDON_VERSION = "2.8.23"
 local STALE_FADE_START = 2.5
 local STALE_FADE_SECONDS = 1.5
-local COMPACT_WIDTH = 460
-local COMPACT_HEIGHT = 168
-local MIN_COMPACT_WIDTH = 360
-local MIN_COMPACT_HEIGHT = 168
-local MAX_COMPACT_WIDTH = 720
-local MAX_COMPACT_HEIGHT = 280
+local COMPACT_WIDTH = 500
+local COMPACT_HEIGHT = 180
+local MIN_COMPACT_WIDTH = 430
+local MIN_COMPACT_HEIGHT = 176
+local MAX_COMPACT_WIDTH = 760
+local MAX_COMPACT_HEIGHT = 320
 local GRID_PADDING = 8
-local PANEL_GUTTER = 6
-local BOARD_BOTTOM_PADDING = 4
-local HEADER_HEIGHT = 22
-local GRID_TOP_Y = -30
-local TOP_ROW_HEIGHT = 82
-local SIDE_PANEL_WIDTH = 126
-local CENTER_PANEL_WIDTH = COMPACT_WIDTH - (GRID_PADDING * 2) - (SIDE_PANEL_WIDTH * 2)
+local PANEL_GUTTER = 8
+local BOARD_BOTTOM_PADDING = 8
+local HEADER_HEIGHT = 24
+local GRID_TOP_Y = -32
 local ASSIGN_PANEL_HEIGHT = 52
 local RESIZE_GRIP_SIZE = 16
 local UNIT_WIDTH = 150
@@ -184,6 +181,27 @@ local function placeLine(parent, key, w, h, x, y, alpha)
     return tex
 end
 
+local function placeSlot(parent, key, w, h, x, y, alpha)
+    local tex = solidTexture(parent, key, "BACKGROUND", 0.15, 0.10, 0.035, alpha or 0.16)
+    if not tex then return nil end
+    clearPoints(tex)
+    size(tex, w, h)
+    point(tex, "TOPLEFT", parent, "TOPLEFT", x, y)
+    return tex
+end
+
+local function layoutPanelSlots(panel, prefix, rows, topOffset)
+    if not (panel and panel.GetWidth and panel.GetHeight) then return end
+    local w = math.max(20, (panel:GetWidth() or 0) - 12)
+    local h = math.max(20, (panel:GetHeight() or 0) - (topOffset or 24) - 8)
+    local rowH = math.max(12, math.floor(h / rows))
+    local y = -(topOffset or 24)
+    for i = 1, rows do
+        placeSlot(panel, prefix .. "Slot" .. i, w, math.max(10, rowH - 2), 6, y, 0.13)
+        y = y - rowH
+    end
+end
+
 local function createChildPanel(parent, key, width, height, pointA, relativePoint, x, y, alpha)
     if not (parent and type(CreateFrame) == "function") then return nil end
     local panel = parent[key] or CreateFrame("Frame", nil, parent)
@@ -275,36 +293,43 @@ local function boardMetrics(frame)
     local height = clamp((frame and frame.GetHeight and frame:GetHeight()) or COMPACT_HEIGHT,
         MIN_COMPACT_HEIGHT, MAX_COMPACT_HEIGHT)
     local contentW = math.max(0, width - (GRID_PADDING * 2))
-    local assignH = clamp(math.floor(height * 0.29), ASSIGN_PANEL_HEIGHT, 90)
-    local assignY = -(height - BOARD_BOTTOM_PADDING - assignH)
-    local topY = GRID_TOP_Y
-    local topH = math.max(72, math.abs(assignY - topY))
-
-    local sideW = clamp(math.floor(contentW * 0.28), 112, 190)
-    local centerW = contentW - (sideW * 2) - (PANEL_GUTTER * 2)
-    if centerW < 132 then
-        centerW = 132
-        sideW = math.max(100, math.floor((contentW - centerW - (PANEL_GUTTER * 2)) / 2))
+    local bodyY = GRID_TOP_Y
+    local bodyH = math.max(112, height - math.abs(bodyY) - BOARD_BOTTOM_PADDING)
+    local leftW = clamp(math.floor(contentW * 0.25), 120, 176)
+    local rightW = clamp(math.floor(contentW * 0.22), 104, 160)
+    local centerW = contentW - leftW - rightW - (PANEL_GUTTER * 2)
+    if centerW < 178 then
+        centerW = 178
+        local remaining = math.max(0, contentW - centerW - (PANEL_GUTTER * 2))
+        leftW = clamp(math.floor(remaining * 0.55), 112, 160)
+        rightW = math.max(96, remaining - leftW)
     end
 
     local leftX = GRID_PADDING
-    local centerX = leftX + sideW + PANEL_GUTTER
+    local centerX = leftX + leftW + PANEL_GUTTER
     local rightX = centerX + centerW + PANEL_GUTTER
-    local centerSubLines = (topH >= 138 and 3) or (topH >= 110 and 2) or 1
-    local cueLines = clamp(math.floor((topH - 16) / 14) - 1, 2, VERBOSE_ACTION_LINES)
-    local assignLines = clamp(math.floor((assignH - 7) / 11) - 1, 2, VERBOSE_ACTION_LINES)
+    local assignH = clamp(math.floor(bodyH * 0.36), ASSIGN_PANEL_HEIGHT, 92)
+    local actionH = math.max(70, bodyH - assignH - PANEL_GUTTER)
+    local assignY = bodyY - actionH - PANEL_GUTTER
+    local centerSubLines = (actionH >= 118 and 3) or (actionH >= 94 and 2) or 1
+    local cueLines = clamp(math.floor((bodyH - 22) / 14), 2, VERBOSE_ACTION_LINES)
+    local assignLines = clamp(math.floor((assignH - 15) / 11), 2, VERBOSE_ACTION_LINES)
 
     return {
         width = width,
         height = height,
         contentW = contentW,
-        topY = topY,
+        topY = bodyY,
+        bodyY = bodyY,
+        bodyH = bodyH,
         leftX = leftX,
         centerX = centerX,
         rightX = rightX,
         assignY = assignY,
-        topH = topH,
-        sideW = sideW,
+        topH = actionH,
+        actionH = actionH,
+        leftW = leftW,
+        rightW = rightW,
         centerW = centerW,
         assignH = assignH,
         centerSubLines = centerSubLines,
@@ -332,28 +357,37 @@ local function layoutMainBoard(f)
 
     if f.leftPanel then
         clearPoints(f.leftPanel)
-        size(f.leftPanel, m.sideW, m.topH)
+        size(f.leftPanel, m.leftW, m.bodyH)
         point(f.leftPanel, "TOPLEFT", f, "TOPLEFT", m.leftX, m.topY)
+        layoutPanelSlots(f.leftPanel, "left", 4, 26)
     end
     if f.centerPanel then
         clearPoints(f.centerPanel)
-        size(f.centerPanel, m.centerW, m.topH)
+        size(f.centerPanel, m.centerW, m.actionH)
         point(f.centerPanel, "TOPLEFT", f, "TOPLEFT", m.centerX, m.topY)
     end
     if f.rightPanel then
         clearPoints(f.rightPanel)
-        size(f.rightPanel, m.sideW, m.topH)
+        size(f.rightPanel, m.rightW, m.bodyH)
         point(f.rightPanel, "TOPLEFT", f, "TOPLEFT", m.rightX, m.topY)
+        layoutPanelSlots(f.rightPanel, "right", 4, 26)
     end
     if f.assignPanel then
         clearPoints(f.assignPanel)
-        size(f.assignPanel, m.contentW, m.assignH)
-        point(f.assignPanel, "TOPLEFT", f, "TOPLEFT", m.leftX, m.assignY)
+        size(f.assignPanel, m.centerW, m.assignH)
+        point(f.assignPanel, "TOPLEFT", f, "TOPLEFT", m.centerX, m.assignY)
+        layoutPanelSlots(f.assignPanel, "assign", 3, 22)
     end
 
-    placeLine(f, "leftDivider", 1, m.topH, m.centerX, m.topY, 0.78)
-    placeLine(f, "rightDivider", 1, m.topH, m.rightX, m.topY, 0.78)
-    placeLine(f, "assignDivider", m.contentW, 1, m.leftX, m.assignY, 0.78)
+    placeLine(f, "leftDivider", 1, m.bodyH, m.centerX - math.floor(PANEL_GUTTER / 2), m.bodyY, 0.42)
+    placeLine(f, "rightDivider", 1, m.bodyH, m.rightX - math.floor(PANEL_GUTTER / 2), m.bodyY, 0.42)
+    placeLine(f, "assignDivider", m.centerW, 1, m.centerX, m.assignY + 1, 0.58)
+
+    if f.modeAccent then
+        clearPoints(f.modeAccent)
+        size(f.modeAccent, m.centerW - 8, 2)
+        point(f.modeAccent, "TOP", f.centerPanel or f, "TOP", 0, -1)
+    end
 
     local centerTextW = math.max(100, m.centerW - 10)
     if f.arcadeText then
@@ -378,13 +412,13 @@ local function layoutMainBoard(f)
         clearPoints(f.subText)
         point(f.subText, "TOP", f.statsText or (f.centerPanel or f), f.statsText and "BOTTOM" or "TOP", 0, -2)
         if f.subText.SetWidth then pcall(f.subText.SetWidth, f.subText, centerTextW) end
-        height(f.subText, math.max(14, m.topH - 64))
+        height(f.subText, math.max(14, m.actionH - 64))
     end
-    if f.unitText and f.unitText.SetWidth then pcall(f.unitText.SetWidth, f.unitText, math.max(76, m.sideW - 16)) end
-    if f.railText and f.railText.SetWidth then pcall(f.railText.SetWidth, f.railText, math.max(76, m.sideW - 16)) end
-    if f.assignText and f.assignText.SetWidth then pcall(f.assignText.SetWidth, f.assignText, math.max(120, m.contentW - 20)) end
-    height(f.unitText, math.max(20, m.topH - 12))
-    height(f.railText, math.max(20, m.topH - 12))
+    if f.unitText and f.unitText.SetWidth then pcall(f.unitText.SetWidth, f.unitText, math.max(76, m.leftW - 16)) end
+    if f.railText and f.railText.SetWidth then pcall(f.railText.SetWidth, f.railText, math.max(76, m.rightW - 16)) end
+    if f.assignText and f.assignText.SetWidth then pcall(f.assignText.SetWidth, f.assignText, math.max(120, m.centerW - 20)) end
+    height(f.unitText, math.max(20, m.bodyH - 12))
+    height(f.railText, math.max(20, m.bodyH - 12))
     height(f.assignText, math.max(20, m.assignH - 12))
     f._accCenterSubLines = m.centerSubLines
     f._accCueLines = m.cueLines
@@ -426,11 +460,13 @@ function UI:CreateFrame()
     local fcfg = db.frame or { point = "CENTER", x = 0, y = 120, scale = 1.0 }
 
     local f = CreateFrame("Frame", "ArenaCoachTBCFrame", UIParent)
-    -- v2.8.15: prototype-A is now a single visible board. Earlier
+    -- v2.8.23: prototype-A is now closer to the original cockpit sketch:
+    -- a persistent left status stack, a center action/player-info column,
+    -- and a right cue rail inside one movable shell. Earlier
     -- releases used separate satellite frames; if the user moved the
     -- center frame, those satellites could sit elsewhere and the HUD
     -- still looked like plain floating text. The board keeps the agreed
-    -- left/center/right/bottom structure together.
+    -- left/action/right/player-info structure together.
     local savedWidth = clamp(fcfg.width or COMPACT_WIDTH, MIN_COMPACT_WIDTH, MAX_COMPACT_WIDTH)
     local savedHeight = clamp(fcfg.height or COMPACT_HEIGHT, MIN_COMPACT_HEIGHT, MAX_COMPACT_HEIGHT)
     f:SetSize(savedWidth, savedHeight)
@@ -470,25 +506,24 @@ function UI:CreateFrame()
         if dragBar.SetHeight then pcall(dragBar.SetHeight, dragBar, HEADER_HEIGHT) end
     end
 
-    local topY = GRID_TOP_Y
-    local leftX = GRID_PADDING
-    local centerX = leftX + SIDE_PANEL_WIDTH
-    local rightX = centerX + CENTER_PANEL_WIDTH
-    local assignY = topY - TOP_ROW_HEIGHT
-    local contentW = COMPACT_WIDTH - (GRID_PADDING * 2)
+    local m = boardMetrics(f)
 
-    local leftPanel = createChildPanel(f, "leftPanel", SIDE_PANEL_WIDTH, TOP_ROW_HEIGHT,
-        "TOPLEFT", "TOPLEFT", leftX, topY, 0.18)
-    local centerPanel = createChildPanel(f, "centerPanel", CENTER_PANEL_WIDTH, TOP_ROW_HEIGHT,
-        "TOPLEFT", "TOPLEFT", centerX, topY, 0.16)
-    local rightPanel = createChildPanel(f, "rightPanel", SIDE_PANEL_WIDTH, TOP_ROW_HEIGHT,
-        "TOPLEFT", "TOPLEFT", rightX, topY, 0.18)
-    local assignPanel = createChildPanel(f, "assignPanel", contentW, ASSIGN_PANEL_HEIGHT,
-        "TOPLEFT", "TOPLEFT", leftX, assignY, 0.18)
+    local leftPanel = createChildPanel(f, "leftPanel", m.leftW, m.bodyH,
+        "TOPLEFT", "TOPLEFT", m.leftX, m.bodyY, 0.16)
+    local centerPanel = createChildPanel(f, "centerPanel", m.centerW, m.actionH,
+        "TOPLEFT", "TOPLEFT", m.centerX, m.bodyY, 0.14)
+    local rightPanel = createChildPanel(f, "rightPanel", m.rightW, m.bodyH,
+        "TOPLEFT", "TOPLEFT", m.rightX, m.bodyY, 0.16)
+    local assignPanel = createChildPanel(f, "assignPanel", m.centerW, m.assignH,
+        "TOPLEFT", "TOPLEFT", m.centerX, m.assignY, 0.16)
 
-    placeLine(f, "leftDivider", 1, TOP_ROW_HEIGHT, centerX, topY, 0.78)
-    placeLine(f, "rightDivider", 1, TOP_ROW_HEIGHT, rightX, topY, 0.78)
-    placeLine(f, "assignDivider", contentW, 1, leftX, assignY, 0.78)
+    placeLine(f, "leftDivider", 1, m.bodyH, m.centerX - math.floor(PANEL_GUTTER / 2), m.bodyY, 0.42)
+    placeLine(f, "rightDivider", 1, m.bodyH, m.rightX - math.floor(PANEL_GUTTER / 2), m.bodyY, 0.42)
+    placeLine(f, "assignDivider", m.centerW, 1, m.centerX, m.assignY + 1, 0.58)
+    if centerPanel and centerPanel.CreateTexture then
+        f.modeAccent = centerPanel:CreateTexture(nil, "ARTWORK")
+        colorTexture(f.modeAccent, 1.0, 0.82, 0.26, 0.72)
+    end
 
     -- Small build marker for rapid local-copy/release verification.
     f.versionText = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -503,7 +538,7 @@ function UI:CreateFrame()
     f.dragGrip:SetJustifyH("LEFT")
     f.dragGrip:SetWidth(16)
     f.dragGrip:SetTextColor(0.78, 0.62, 0.34)
-    f.dragGrip:SetText("|||")
+    f.dragGrip:SetText("||")
     improveTextContrast(f.dragGrip, 1.0)
 
     f.resizeGrip = CreateFrame("Frame", nil, f)
@@ -538,7 +573,7 @@ function UI:CreateFrame()
         pcall(f.arcadeText.SetFont, f.arcadeText, fontPath, 17, "THICKOUTLINE")
     end
     f.arcadeText:SetJustifyH("CENTER")
-    f.arcadeText:SetWidth(CENTER_PANEL_WIDTH - 10)
+    f.arcadeText:SetWidth(m.centerW - 10)
     f.arcadeText:SetText(string.format("!! %s !!", L("UI_ARCADE_READY")))
     improveTextContrast(f.arcadeText, 1.0, 1, -1)
 
@@ -552,7 +587,7 @@ function UI:CreateFrame()
         pcall(f.bigText.SetFont, f.bigText, fontPath, 20, "OUTLINE")
     end
     f.bigText:SetJustifyH("CENTER")
-    f.bigText:SetWidth(CENTER_PANEL_WIDTH - 10)
+    f.bigText:SetWidth(m.centerW - 10)
     f.bigText:SetText(L("REASON_DEFAULT"))
     improveTextContrast(f.bigText, 1.0, 1, -1)
 
@@ -566,7 +601,7 @@ function UI:CreateFrame()
         pcall(f.statsText.SetFont, f.statsText, fontPath, 11, "OUTLINE")
     end
     f.statsText:SetJustifyH("CENTER")
-    f.statsText:SetWidth(CENTER_PANEL_WIDTH - 10)
+    f.statsText:SetWidth(m.centerW - 10)
     f.statsText:SetText("")
     improveTextContrast(f.statsText, 0.95, 1, -1)
 
@@ -576,7 +611,7 @@ function UI:CreateFrame()
     f.subText:SetPoint("TOP", f.statsText, "BOTTOM", 0, -3)
     if f.subText.SetSpacing then pcall(f.subText.SetSpacing, f.subText, 2) end
     f.subText:SetJustifyH("CENTER")
-    f.subText:SetWidth(CENTER_PANEL_WIDTH - 10)
+    f.subText:SetWidth(m.centerW - 10)
     f.subText:SetText("")
     improveTextContrast(f.subText, 0.95, 1, -1)
 
@@ -590,7 +625,7 @@ function UI:CreateFrame()
         end
         if f.unitText.SetSpacing then pcall(f.unitText.SetSpacing, f.unitText, 1) end
         f.unitText:SetJustifyH("LEFT")
-        f.unitText:SetWidth(SIDE_PANEL_WIDTH - 16)
+        f.unitText:SetWidth(m.leftW - 16)
         f.unitText:SetText(waitingUnitText())
         improveTextContrast(f.unitText, 0.95, 1, -1)
     end
@@ -605,7 +640,7 @@ function UI:CreateFrame()
         end
         if f.railText.SetSpacing then pcall(f.railText.SetSpacing, f.railText, 1) end
         f.railText:SetJustifyH("LEFT")
-        f.railText:SetWidth(SIDE_PANEL_WIDTH - 16)
+        f.railText:SetWidth(m.rightW - 16)
         f.railText:SetText(waitingCueText())
         improveTextContrast(f.railText, 0.95, 1, -1)
     end
@@ -620,7 +655,7 @@ function UI:CreateFrame()
         end
         if f.assignText.SetSpacing then pcall(f.assignText.SetSpacing, f.assignText, 1) end
         f.assignText:SetJustifyH("LEFT")
-        f.assignText:SetWidth(contentW - 20)
+        f.assignText:SetWidth(m.centerW - 20)
         f.assignText:SetText(waitingAssignmentText())
         improveTextContrast(f.assignText, 0.95, 1, -1)
     end
@@ -1165,6 +1200,9 @@ function UI:Apply(recommendation)
     local target = recommendation.primaryTargetName
                 or recommendation.primaryTargetClass
                 or ""
+    if f.modeAccent then
+        colorTexture(f.modeAccent, color[1], color[2], color[3], 0.78)
+    end
 
     if f.arcadeText then
         f.arcadeText:SetTextColor(color[1], color[2], color[3])

@@ -26,7 +26,7 @@ behaviour is what tests can't see.
 - [ ] `/acc test` runs the readable ~1-minute realistic 3v3 arena replay through the engine: starts OPEN before gates, shows defensive pressure when the healer is CCed/trained, returns to an offensive kill/swap call, then resets without rapid flicker.
 - [ ] With `/acc off` active, `/acc test` prints an enabled-for-test line and the HUD still advances instead of staying on the initial waiting text.
 - [ ] `/acc test` timed events repaint the board as chat timestamps advance; the center action should not remain `!! READY !! / waiting for opener` after the 5s and 10s scenario lines.
-- [ ] `/acc test hud` runs the visual-only prototype-A HUD demo: integrated board with left focus panel, center action, right cue panel, lower assignments, nameplate border on any visible enemy, and the thin edge cue only if `/acc glow on` is enabled. The first/waiting beat already shows all four zones with placeholders.
+- [ ] `/acc test hud` runs the visual-only prototype-A HUD demo: integrated board with left status stack, center action, center player-info/assignments, right cue rail, nameplate border on any visible enemy, and the thin edge cue only if `/acc glow on` is enabled. The first/waiting beat already shows all four zones with placeholders.
 - [ ] `/acc test bg` runs the battleground walk-through (flag carrier priority, low-HP straggler, CALL_BG_DEFEND)
 - [ ] `/acc test world` runs the world-PvP walk-through (single-target focus)
 - [ ] `/acc enemy war mage priest druid pala` populates manual enemy list and the engine emits a recommendation
@@ -36,17 +36,17 @@ behaviour is what tests can't see.
 - [ ] Frame visible in arena / BG / world PvP / duel; **hidden in cities and quest hubs** (auto-hide gate, v2.2.5)
 - [ ] OPEN / KILL / SWAP / DEFEND / RESET modes each render with a distinct colour (yellow / red / orange / blue / grey)
 - [ ] HUD top-right version marker matches the installed addon release
-- [ ] Main HUD board stays compact (roughly 460x168 before user scaling) and does not cover party frames, arena frames, action bars, cast bars, nameplates, DBM bars, WeakAura clusters, chat, or damage meters
-- [ ] Prototype-A zones are present inside one visible board: left focus, center action, right cue/icon rail, and lower assignments, including waiting/pre-gate placeholders before live target data arrives
-- [ ] The board has a light translucent shell, top drag strip/grip, lower-right resize grip, and internal dividers, so `/acc unlock` makes it obvious where to click/drag without darkening the fight
-- [ ] Dragging the lower-right grip resizes the integrated board; left focus, center action, right cue, and lower assignments stay inside one divided box and the size persists after `/reload`
-- [ ] On the default compact board, the center action/detail text stays inside the center section and never crosses the divider into the assignment row
-- [ ] On a taller/wider resized board with `/acc verbose on`, the lower assignment row can show the full five-player review list without colliding with the center action or right cue rail
+- [ ] Main HUD board stays compact (roughly 500x180 before user scaling) and does not cover party frames, arena frames, action bars, cast bars, nameplates, DBM bars, WeakAura clusters, chat, or damage meters
+- [ ] Prototype-A zones are present inside one visible board: left status stack, center action, center player-info/assignments, and right cue/icon rail, including waiting/pre-gate placeholders before live target data arrives
+- [ ] The board has a light translucent shell, top drag strip/grip, lower-right resize grip, internal dividers, slot backgrounds, and a mode-coloured center accent, so `/acc unlock` makes it obvious where to click/drag without darkening the fight
+- [ ] Dragging the lower-right grip resizes the integrated board; left status, center action, center player info, and right cue rail stay inside one divided box and the size persists after `/reload`
+- [ ] On the default compact board, the center action/detail text stays inside the center action section and never crosses into the player-info/assignment section
+- [ ] On a taller/wider resized board with `/acc verbose on`, the player-info section can show the full five-player review list without colliding with the center action or right cue rail
 - [ ] `/acc unlock` lets the integrated board drag/resize; `/acc lock` prevents it from moving or resizing
 - [ ] Arcade warning plate renders passive cues (`!! READY !!`, `!! BURST !!`, `!! DANGER !!`, `!! PINCH !!`) inside the compact toast without covering the playfield
 - [ ] Target stats row shows `HP <n>%   kill <n>%   BURST READY` when there's a primary target; hidden on DEFEND / RESET
-- [ ] Assignment module shows one compact action per living friendly in 3v3; in 5v5 normal mode it caps at three lines, while `/acc verbose on` shows all five
-- [ ] Left focus strip shows current primary target and a pressured friendly when known
+- [ ] Player-info module shows one compact action per living friendly in 3v3; in 5v5 normal mode it caps at three lines, while `/acc verbose on` shows all five when the board is tall enough
+- [ ] Left status stack shows current primary target, swap target, and a pressured friendly when known
 - [ ] Right cue rail shows callout icons/text for burst, purge, HoJ, peel, dispel, or other top cues
 - [ ] If no fresh evaluation arrives for a few seconds, the HUD text fades away and clears stale nameplate/edge cues
 - [ ] Optional edge cue is thin, static, low-alpha, and dark on RESET; it must not pulse or flash around the screen
