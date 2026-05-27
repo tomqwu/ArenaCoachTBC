@@ -951,7 +951,7 @@ local function handleSlash(input)
             chatPrint("usage: /acc strategy safe|balanced|greedy")
         end
     elseif cmd == "test" then
-        Core:RunTestMode()
+        Core:RunTestMode(rest)
     elseif cmd == "enemy" then
         Core:RunEnemySim(rest)
     elseif cmd == "selftest" then

@@ -22,7 +22,7 @@ behaviour is what tests can't see.
 - [ ] `/acc reset` wipes SavedVariables; `/reload` restores defaults
 - [ ] `/acc debug` toggles debug printing
 - [ ] `/acc test` runs the readable ~1-minute realistic 3v3 arena replay through the engine: starts OPEN before gates, shows defensive pressure when the healer is CCed/trained, returns to an offensive kill/swap call, then resets without rapid flicker.
-- [ ] `/acc test hud` runs the visual-only HUD demo: arcade warning plate, mode label, target stats row (HP %, kill prob %, BURST READY), nameplate border on any visible enemy, and the thin edge cue only if `/acc glow on` is enabled.
+- [ ] `/acc test hud` runs the visual-only compact HUD demo: arcade cue, mode label, target stats row (HP %, kill prob %, BURST READY), assignments, nameplate border on any visible enemy, and the thin edge cue only if `/acc glow on` is enabled.
 - [ ] `/acc test bg` runs the battleground walk-through (flag carrier priority, low-HP straggler, CALL_BG_DEFEND)
 - [ ] `/acc test world` runs the world-PvP walk-through (single-target focus)
 - [ ] `/acc enemy war mage priest druid pala` populates manual enemy list and the engine emits a recommendation
@@ -32,10 +32,11 @@ behaviour is what tests can't see.
 - [ ] Frame visible in arena / BG / world PvP / duel; **hidden in cities and quest hubs** (auto-hide gate, v2.2.5)
 - [ ] OPEN / KILL / SWAP / DEFEND / RESET modes each render with a distinct colour (yellow / red / orange / blue / grey)
 - [ ] HUD top-right version marker matches the installed addon release
-- [ ] Arcade warning plate renders big passive cues (`!! READY !!`, `!! BURST !!`, `!! DANGER !!`, `!! PINCH !!`) inside the frame without covering the playfield
+- [ ] Main HUD stays compact (roughly 340x168 before user scaling) and does not cover party frames, arena frames, action bars, cast bars, nameplates, DBM bars, WeakAura clusters, chat, or damage meters
+- [ ] Arcade warning plate renders passive cues (`!! READY !!`, `!! BURST !!`, `!! DANGER !!`, `!! PINCH !!`) inside the compact toast without covering the playfield
 - [ ] Target stats row shows `HP <n>%   kill <n>%   BURST READY` when there's a primary target; hidden on DEFEND / RESET
-- [ ] Assignment block shows one compact action per living friendly (for example Warrior MS, Shaman purge, Paladin HoJ)
-- [ ] If no fresh evaluation arrives for several seconds, the HUD text fades away and clears stale nameplate/edge cues
+- [ ] Assignment block shows one compact action per living friendly in 3v3; in 5v5 normal mode it caps at three lines, while `/acc verbose on` shows all five
+- [ ] If no fresh evaluation arrives for a few seconds, the HUD text fades away and clears stale nameplate/edge cues
 - [ ] Optional edge cue is thin, static, low-alpha, and dark on RESET; it must not pulse or flash around the screen
 - [ ] DEFEND/URGENT does not create a full-screen red flash; use HUD colour, nameplate, arcade cue, and sound cues instead
 - [ ] Nameplate of the kill target gets a red border; swap target gets orange (when in SWAP mode)

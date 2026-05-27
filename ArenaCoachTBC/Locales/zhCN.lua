@@ -21,7 +21,7 @@ ns.locales.zhCN = {
     HELP_HEADER   = "ArenaCoachTBC 命令：",
     HELP_TOGGLE   = "/acc toggle           - 显示/隐藏框体",
     HELP_LOCK     = "/acc lock / unlock    - 锁定/解锁框体",
-    HELP_TEST     = "/acc test [hud|print] - 真实竞技场模拟（hud 为视觉演示，print 为文字版）",
+    HELP_TEST     = "/acc test [arena|hud|bg|world|print] - 真实模拟或视觉演示",
     HELP_DEBUG    = "/acc debug            - 切换调试日志",
     HELP_RESET    = "/acc reset            - 重置存档变量",
     HELP_STRAT    = "/acc strategy safe|balanced|greedy - 设定策略激进度",
@@ -31,7 +31,7 @@ ns.locales.zhCN = {
     HELP_TRACE    = "/acc trace [on|off|dump|clear|status] - 决策追踪日志",
     HELP_RECORD   = "/acc record [on|off|dump|clear|status] - 记录战斗日志用于离线回放",
     HELP_WHATIF    = "/acc whatif <子命令>  - 重放录像并比较结果",
-    TEST_DEMO_START = "|cffc8a86b[ACC]|r 演示开始 — 14秒 RMP 3v3 推演（模式切换、爆发提示、防御提示、对手习惯提示）。",
+    TEST_DEMO_START = "|cffc8a86b[ACC]|r 演示开始 — 可读节奏的 RMP 3v3 推演（模式切换、爆发提示、防御提示、对手习惯提示）。",
     TEST_DEMO_END   = "|cffc8a86b[ACC]|r 演示结束。/acc test print 可查看仅文字版本。",
     TEST_DEMO_NO_UI = "|cffc8a86b[ACC]|r 演示需要游戏内 UI（仅在客户端中可用）。",
 

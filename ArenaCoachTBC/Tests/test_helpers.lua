@@ -29,6 +29,11 @@ function mockMethods:GetPoint()           return "CENTER", nil, "CENTER", 0, 0 e
 function mockMethods:GetChecked()         return self._checked end
 function mockMethods:SetChecked(v)        self._checked = v and true or false end
 function mockMethods:GetName()            return self._name end
+function mockMethods:SetSize(w, h)        self._width = w; self._height = h end
+function mockMethods:GetWidth()           return self._width end
+function mockMethods:GetHeight()          return self._height end
+function mockMethods:SetPoint(...)        self._point = {...} end
+function mockMethods:ClearAllPoints()     self._point = nil end
 -- v2.1.3: track FontString-style text so UI tests can assert on
 -- rendered output (`f.bigText._text`).
 function mockMethods:SetText(text)        self._text = tostring(text or "") end
@@ -36,8 +41,12 @@ function mockMethods:GetText()            return self._text end
 function mockMethods:SetTextColor()       end
 function mockMethods:SetJustifyH()        end
 function mockMethods:SetJustifyV()        end
-function mockMethods:SetWidth()           end
-function mockMethods:SetFont()            end
+function mockMethods:SetWidth(w)          self._width = w end
+function mockMethods:SetFont(path, size, flags)
+    self._fontPath = path
+    self._fontSize = size
+    self._fontFlags = flags
+end
 function mockMethods:SetAlpha(v)          self._alpha = v end
 function mockMethods:GetAlpha()           return self._alpha end
 

@@ -118,7 +118,7 @@ If burst is blocked, the decision records the blocker for trace and WeakAura dis
 
 ### DBM-Style Player Assignments
 
-Each recommendation can include per-friendly assignments. The built-in HUD shows up to five compact lines, one per player. Examples:
+Each recommendation can include per-friendly assignments. The built-in HUD shows up to three compact lines in normal mode so a 3v3 team gets one action per player without covering the fight; `/acc verbose on` expands to all five for 5v5 review. Examples:
 
 - Warrior: MS / Hamstring -> kill target
 - Shaman: Purge / shock -> kill target

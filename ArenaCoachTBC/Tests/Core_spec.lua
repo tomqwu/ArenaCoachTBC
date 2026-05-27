@@ -360,6 +360,21 @@ H.it(g, "/acc test runs", function()
     H.assertTrue(#captured >= 5)
 end)
 
+H.it(g, "/acc test hud forwards the hud subcommand", function()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    _G.ArenaCoachTBCDB.frame.verbose = true
+    _G.C_Timer = nil
+    if not H.ns.UI.frame then H.ns.UI:CreateFrame() end
+    startCapture()
+    SlashCmdList["ARENACOACH"]("test hud")
+    stopCapture()
+    local sawHudStart = false
+    for _, ln in ipairs(captured) do
+        if ln:find("arena RMP 3v3 HUD walk-through", 1, true) then sawHudStart = true end
+    end
+    H.assertTrue(sawHudStart, "slash /acc test hud should run the HUD tour, not the real-arena replay")
+end)
+
 H.it(g, "/acc enemy runs", function()
     _G.ArenaCoachTBCDB = nil; Core:InitDB()
     startCapture()

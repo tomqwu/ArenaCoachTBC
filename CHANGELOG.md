@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.11] - 2026-05-27
+
+### Changed
+- **Compact prototype-A HUD.** The live frame is now a 340x168 action toast instead of a large center board: smaller arcade cue, smaller main action text, tighter stats/reason rows, quieter backdrop, and up to three default assignment lines so a 3v3 team still gets per-player advice without covering other addons.
+- **Faster stale fade.** Out-of-sync recommendations now begin fading after 2.5 seconds and finish after 1.5 seconds, clearing stale nameplate/edge cues with the frame.
+
+### Fixed
+- **`/acc test hud` subcommand routing.** Slash-command input now forwards the `hud`, `bg`, `world`, and `print` arguments into `RunTestMode`, so the visual HUD tour can be launched from chat instead of always falling back to the default realistic replay.
+
 ## [2.8.10] - 2026-05-27
 
 ### Changed

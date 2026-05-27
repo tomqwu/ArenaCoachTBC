@@ -19,13 +19,16 @@ _G.ArenaCoachTBCDB = {
 }
 
 
-H.it(g, "CreateFrame builds a frame with icon rows", function()
+H.it(g, "CreateFrame builds compact prototype-A action toast", function()
+    UI.frame = nil
     local f = UI:CreateFrame()
     H.assertNotNil(f)
     H.assertNotNil(f.arcadeText)
     H.assertNotNil(f.versionText)
-    H.assertNotNil(f.friendlyIconMap)
-    H.assertNotNil(f.enemyIconMap)
+    H.assertTrue((f._width or 999) <= 360, "HUD width should stay compact")
+    H.assertTrue((f._height or 999) <= 180, "HUD height should stay compact")
+    H.assertTrue((f.arcadeText._fontSize or 999) <= 22, "arcade cue should not be raid-warning sized")
+    H.assertTrue((f.bigText._fontSize or 999) <= 26, "main action text should fit a compact toast")
 end)
 
 H.it(g, "CreateFrame shows addon version in the HUD", function()
@@ -84,6 +87,34 @@ H.it(g, "Apply renders DBM-style player action assignments", function()
     H.assertTrue(txt:find("Warrior:", 1, true) ~= nil, "player assignment missing: " .. txt)
     H.assertTrue(txt:find("Shaman:", 1, true) ~= nil, "party assignment missing: " .. txt)
     H.assertTrue(txt:find("Holyman", 1, true) ~= nil, "assignment target missing: " .. txt)
+end)
+
+H.it(g, "Apply caps default assignments but verbose mode shows the full team", function()
+    _G.ArenaCoachTBCDB = {
+        enabled = true, locked = false, language = "auto",
+        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0, verbose = false },
+        alerts = { sound = false, screenFlash = false, edgeGlow = false, nameplate = false },
+        strategy = {}, debug = false,
+    }
+    UI:CreateFrame()
+    local actions = {
+        { name = "Warrior", actionKey = "ACTION_WARRIOR_KILL", targetName = "Holyman" },
+        { name = "Shaman", actionKey = "ACTION_SHAMAN_PURGE", targetName = "Holyman" },
+        { name = "Paladin", actionKey = "ACTION_PALADIN_HOJ", targetName = "Holyman" },
+        { name = "Druid", actionKey = "ACTION_DRUID_CC", targetName = "Mage" },
+        { name = "Priest", actionKey = "ACTION_PRIEST_DEFEND", targetName = "Warrior" },
+    }
+    UI:Apply({ mode = "KILL", primaryTargetName = "Holyman", callouts = {}, priority = "HIGH", playerActions = actions })
+    local compact = UI.frame.actionText and UI.frame.actionText._text or ""
+    H.assertTrue(compact:find("Warrior:", 1, true) ~= nil, "first assignment missing: " .. compact)
+    H.assertTrue(compact:find("Paladin:", 1, true) ~= nil, "third assignment missing: " .. compact)
+    H.assertTrue(compact:find("Druid:", 1, true) == nil, "compact HUD should cap after three assignments: " .. compact)
+
+    _G.ArenaCoachTBCDB.frame.verbose = true
+    UI:Apply({ mode = "KILL", primaryTargetName = "Holyman", callouts = {}, priority = "HIGH", playerActions = actions })
+    local verbose = UI.frame.actionText and UI.frame.actionText._text or ""
+    H.assertTrue(verbose:find("Druid:", 1, true) ~= nil, "verbose HUD should show fourth assignment: " .. verbose)
+    H.assertTrue(verbose:find("Priest:", 1, true) ~= nil, "verbose HUD should show fifth assignment: " .. verbose)
 end)
 
 H.it(g, "Apply renders arcade warning cue for burst windows", function()

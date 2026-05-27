@@ -21,7 +21,7 @@ ns.locales.enUS = {
     HELP_HEADER   = "ArenaCoachTBC commands:",
     HELP_TOGGLE   = "/acc toggle           - show/hide frame",
     HELP_LOCK     = "/acc lock / unlock    - lock or unlock the frame",
-    HELP_TEST     = "/acc test [hud|print] - realistic arena sim (hud = visual demo, print = chat-only)",
+    HELP_TEST     = "/acc test [arena|hud|bg|world|print] - real sim or visual demos",
     HELP_DEBUG    = "/acc debug            - toggle debug logging",
     HELP_RESET    = "/acc reset            - reset SavedVariables",
     HELP_STRAT    = "/acc strategy safe|balanced|greedy - set aggression",
@@ -32,7 +32,7 @@ ns.locales.enUS = {
     HELP_RECORD   = "/acc record [on|off|dump|clear|status] - record CLEU log for offline replay",
     HELP_BUGREPORT = "/acc bugreport       - print sanitised payload for GitHub issues",
     HELP_WHATIF   = "/acc whatif <sub>   - counterfactual replay of the current recording",
-    TEST_DEMO_START = "|cffc8a86b[ACC]|r demo starting - 14s RMP 3v3 walk-through (mode flips, BURST_NOW pulse, DEFEND cue, profile callout).",
+    TEST_DEMO_START = "|cffc8a86b[ACC]|r demo starting - readable RMP 3v3 walk-through (mode flips, BURST_NOW pulse, DEFEND cue, profile callout).",
     TEST_DEMO_END   = "|cffc8a86b[ACC]|r demo complete. /acc test print for the chat-only smoke version.",
     TEST_DEMO_NO_UI = "|cffc8a86b[ACC]|r demo needs a live UI (in-game only).",
 
