@@ -140,6 +140,8 @@ v2.8.34 tightens arena preparation: `PLAYER_ENTERING_WORLD` clears volatile heal
 
 v2.8.35 makes the DBM-style surface specific-first. `UI:Apply()` now derives a primary action phrase from the highest-priority callout (`BURST_NOW` beats routine callouts), then falls back to target actions such as `Kill <target>` or `Swap <target>`. Abstract mode labels remain as color/sound routing and metadata, but the big center copy no longer says only `KILL`, `DEFEND`, `攻`, or `守`.
 
+v2.8.36 is a CI hygiene follow-up for v2.8.35. The behavior is unchanged, but `Coverage_extras_spec.lua` now exercises the new DBM-alert fallback branches under a clean `luacov` run so GitHub's 99% coverage gate matches local validation.
+
 v2.8.32 changes the live default to a compact DBM-style center alert plus the existing arena-gated SoundKit cues. The alert is movable, low-background, and transient; v2.8.35 makes its main line action-first (`Purge Holyman`, `Tremor down - shaman refresh`, `Kill Holyman`) and lets it fade through the same stale-recommendation timer as the board. This avoids keeping a large fixed box over party frames, arena frames, action bars, DBM bars, WeakAuras, or chat during real combat.
 
 The larger Obsidian board remains available for review and tuning through `/acc hud board`; `/acc hud both` shows both surfaces. The board follows the agreed prototype-A layout as one compact texture-backed instrument. It defaults to 540x212, clamps no smaller than 500x196, and keeps the left status stack, center action panel, bottom player-info/assignment strip, and right cue rail together when dragged or resized.

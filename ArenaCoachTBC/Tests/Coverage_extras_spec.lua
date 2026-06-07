@@ -134,6 +134,77 @@ H.it(g, "UI Apply with primaryTargetName uses it as label", function()
     })
 end)
 
+H.it(g, "UI DBM alert fallback branches stay concrete", function()
+    local savedAPI = _G.ArenaCoachTBC
+    _G.ArenaCoachTBC = nil
+    _G.ArenaCoachTBCDB = {
+        enabled = true, locked = false, language = "auto",
+        frame = { point = "CENTER", x = 0, y = 0, scale = 1, displayMode = "bogus" },
+        alerts = { sound = false, screenFlash = false, edgeGlow = false, nameplate = false },
+        strategy = {}, debug = false,
+    }
+    UI.frame = nil
+    UI.alertFrame = nil
+    UI.unitFrame = nil
+    UI.railFrame = nil
+    UI.assignFrame = nil
+    local f = UI:CreateFrame()
+    H.assertEq(f.versionText:GetText(), "v2.8.36")
+    _G.ArenaCoachTBC = { GetVersion = function() return "2.8.36-api" end }
+    UI:RefreshVersionText()
+    H.assertEq(f.versionText:GetText(), "v2.8.36-api")
+
+    UI:Apply({ mode = "OPEN", callouts = {}, priority = "LOW", _forceShow = true })
+    H.assertEq(f.bigText:GetText(), "Prepare opener")
+    UI:Apply({ mode = "DEFEND", callouts = {}, priority = "LOW", _forceShow = true })
+    H.assertEq(f.bigText:GetText(), "Stabilize team")
+    UI:Apply({ mode = "RESET", callouts = {}, priority = "LOW", _forceShow = true })
+    H.assertEq(f.bigText:GetText(), "Reset / line")
+    UI:Apply({ mode = "KILL", callouts = {}, priority = "LOW", _forceShow = true })
+    H.assertEq(f.bigText:GetText(), "Awaiting opener...")
+
+    UI:_ApplyAlert({ reasonKey = "REASON_RESET" }, "RESET", { 1, 1, 1 }, "RESET", "", false, nil, "manual")
+    H.assertTrue((UI.alertFrame.sub:GetText() or ""):find("LoS", 1, true) ~= nil,
+        "direct alert fallback should still localize the reason")
+    _G.ArenaCoachTBC = savedAPI
+end)
+
+H.it(g, "UI detached modules and secondary burst detail branches render", function()
+    _G.ArenaCoachTBCDB = {
+        enabled = true, locked = false, language = "auto",
+        frame = {
+            point = "CENTER", x = 0, y = 0, scale = 1,
+            displayMode = "board", detachedModules = true,
+        },
+        alerts = { sound = false, screenFlash = false, edgeGlow = false, nameplate = false },
+        strategy = {}, debug = false,
+    }
+    UI.frame = nil
+    UI.alertFrame = nil
+    UI.unitFrame = nil
+    UI.railFrame = nil
+    UI.assignFrame = nil
+    UI:CreateFrame()
+    UI._calloutLastShown = {}
+    H.advanceTime(5)
+    UI:Apply({
+        mode = "KILL",
+        primaryTargetName = "Holyman",
+        callouts = { "CALL_PURGE", "BURST_NOW" },
+        burstAllowed = true,
+        playerActions = {
+            { unit = "player", name = "Warrior", actionKey = "ACTION_WARRIOR_KILL", targetName = "Holyman" },
+        },
+        priority = "HIGH",
+        _forceShow = true,
+    })
+    H.assertTrue(UI.unitFrame:IsShown(), "detached focus strip should show when it has content")
+    H.assertTrue(UI.railFrame:IsShown(), "detached cue rail should show when it has content")
+    H.assertTrue(UI.assignFrame:IsShown(), "detached assignments should show when they have content")
+    H.assertTrue((UI.frame.subText:GetText() or ""):find("Purge Holyman", 1, true) ~= nil,
+        "non-burst top callout should move to the detail line when BURST NOW is promoted")
+end)
+
 H.it(g, "UI renders spell texture icons when available", function()
     UI:CreateFrame()
     UI._calloutLastShown = {}

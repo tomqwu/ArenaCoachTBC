@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.36] - 2026-06-07
+
+### Fixed
+- **CI coverage gate now matches a clean GitHub runner.** Added focused coverage for the new DBM-alert fallback paths, invalid display-mode fallback, detached module show path, version fallback, and burst-promoted detail line. This fixes the primary GitHub `tests` workflow failure from `v2.8.35` without changing the live alert behavior.
+
+### Tests
+- Clean local validation now mirrors CI: removed old luacov files before running the full suite.
+- Local validation: 698/698 tests passing, locale parity green at 163 keys per locale, package-shape gate green, standalone StrategyEngine smoke green, and clean luacov total coverage is 99.03%.
+
 ## [2.8.35] - 2026-06-07
 
 ### Changed
