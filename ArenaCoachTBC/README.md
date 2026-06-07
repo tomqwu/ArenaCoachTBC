@@ -8,6 +8,10 @@ A strategy coach addon for **TBC Classic / TBC Anniversary** arena. Watches your
 
 **自适应任意队伍组合与 PvP 场景**——通过能力推理驱动战术（致死打击？嗜血？群驱散？自由祝福？驱散？），而非职业硬编码。竞技场启用完整阵容/控制链/对手档案逻辑；战场与户外 PvP 使用铭牌与受击事件探测敌人，跳过不稳定的阵容匹配，并在玩家或可治疗队友低血量时保留防御建议。
 
+The default live HUD is a compact DBM-style center alert with SoundKit cues, not the full tactical board. Use `/acc hud board` or `/acc hud both` when you want the larger Obsidian review layout for tuning, screenshots, or post-fight analysis.
+
+默认实战 HUD 是类似 DBM 的中央短警报，并配合客户端内置音效；完整战术面板默认不常驻。需要调试、截图或复盘时可用 `/acc hud board` 或 `/acc hud both` 打开黑曜石面板。
+
 If the recommendation stops refreshing, the HUD fades out and clears stale visual cues instead of leaving old text over the fight.
 
 如果推荐停止刷新，HUD 会淡出并清理过期视觉提示，而不是把旧文字留在战斗画面上。
@@ -45,6 +49,7 @@ The addon stores SavedVariables in `ArenaCoachTBCDB`.
 | `/acc` or `/arenacoach` | alias root | 命令根 |
 | `/acc help` | print all commands | 显示所有命令 |
 | `/acc toggle` | show / hide the recommendation frame | 显示 / 隐藏提示框 |
+| `/acc hud alert\|board\|both` | choose live DBM alert, full board, or both | 选择实战短警报、完整面板或同时显示 |
 | `/acc lock` / `/acc unlock` | lock or unlock the frame for dragging/resizing | 锁定 / 解锁拖动与缩放 |
 | `/acc off` / `/acc on` (aliases `/acc disable` / `/acc enable`) | **master switch.** Stops the engine + hides every visual layer. Persists across `/reload`. | **主开关**。停止引擎并隐藏所有视觉层，`/reload` 后保持。 |
 | `/acc glow on\|off` | toggle the optional thin mode-coloured edge cue | 切换可选的细边缘提示 |
@@ -202,7 +207,7 @@ The addon publishes its current recommendation and full state through the global
 | `GetFriendlies()` | full friendlies map / 完整己方表 |
 | `GetEnemyByGUID(guid)` | one enemy / 单个敌方 |
 | `GetCombatPhase()` | "PRE" / "ACTIVE" / "POST" |
-| `GetVersion()` | "2.8.31" |
+| `GetVersion()` | "2.8.32" |
 
 ### Sample custom trigger / 自定义触发器示例
 

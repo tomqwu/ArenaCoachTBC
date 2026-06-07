@@ -13,10 +13,13 @@ ns.UI = ns.UI or {}
 
 local UI = ns.UI
 UI.frame = nil
+UI.alertFrame = nil
 
-local ADDON_VERSION = "2.8.31"
+local ADDON_VERSION = "2.8.32"
 local STALE_FADE_START = 2.5
 local STALE_FADE_SECONDS = 1.5
+local ALERT_WIDTH = 460
+local ALERT_HEIGHT = 92
 local COMPACT_WIDTH = 540
 local COMPACT_HEIGHT = 212
 local MIN_COMPACT_WIDTH = 500
@@ -339,6 +342,31 @@ local function addonEnabled()
     return not (ArenaCoachTBCDB and ArenaCoachTBCDB.enabled == false)
 end
 
+local function displayMode()
+    local mode = ArenaCoachTBCDB
+        and ArenaCoachTBCDB.frame
+        and ArenaCoachTBCDB.frame.displayMode
+        or "alert"
+    if mode ~= "alert" and mode ~= "board" and mode ~= "both" then
+        mode = "alert"
+    end
+    return mode
+end
+
+local function boardEnabled()
+    local mode = displayMode()
+    return mode == "board" or mode == "both"
+end
+
+local function alertEnabled()
+    local mode = displayMode()
+    return mode == "alert" or mode == "both"
+end
+
+local function isShown(frame)
+    return frame and frame.IsShown and frame:IsShown()
+end
+
 local function layoutScaffoldActive(recommendation)
     if recommendation and recommendation._forceShow then return true end
     local phase = ns.Core and ns.Core.state and ns.Core.state.combatPhase
@@ -561,6 +589,7 @@ end
 -- ============================================================
 function UI:CreateFrame()
     if self.frame then
+        if not self.alertFrame then self:CreateAlertFrame() end
         if not self.assignFrame then self:CreateAssignmentsFrame() end
         if not self.unitFrame then self:CreateUnitStripFrame() end
         if not self.railFrame then self:CreateCueRailFrame() end
@@ -834,8 +863,85 @@ function UI:CreateFrame()
     self:CreateUnitStripFrame()
     self:CreateCueRailFrame()
     self:CreateAssignmentsFrame()
+    self:CreateAlertFrame()
     if not addonEnabled() then self:Hide() end
     return f
+end
+
+function UI:CreateAlertFrame()
+    if self.alertFrame then return self.alertFrame end
+    if type(CreateFrame) ~= "function" then return nil end
+
+    local db = ArenaCoachTBCDB or {}
+    local cfg = db.alertFrame or { point = "CENTER", x = 0, y = 145, scale = 1.0 }
+    local af = CreateFrame("Frame", "ArenaCoachTBCAlertFrame", UIParent)
+    af:SetSize(ALERT_WIDTH, ALERT_HEIGHT)
+    af:SetPoint(cfg.point or "CENTER", UIParent, cfg.point or "CENTER",
+        cfg.x or 0, cfg.y or 145)
+    af:SetScale(cfg.scale or 1.0)
+    af:SetMovable(true)
+    af:SetClampedToScreen(true)
+    af:EnableMouse(true)
+    if af.SetFrameStrata then pcall(af.SetFrameStrata, af, "HIGH") end
+    if af.SetFrameLevel then pcall(af.SetFrameLevel, af, 30) end
+
+    -- Very light reading plate: enough to mark the draggable alert
+    -- surface, not enough to become another fixed tactical box.
+    setBackdrop(af, 0.04, 8)
+    af._alertBg = solidTexture(af, "alertBg", "BACKGROUND", OBSIDIAN_R, OBSIDIAN_G, OBSIDIAN_B, 0.10)
+    if af._alertBg then
+        clearPoints(af._alertBg)
+        if af._alertBg.SetAllPoints then pcall(af._alertBg.SetAllPoints, af._alertBg, af) end
+    end
+
+    af.kicker = af:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    af.kicker:SetPoint("TOP", af, "TOP", 0, -2)
+    if af.kicker.SetFont then
+        local fontPath = (af.kicker.GetFont and select(1, af.kicker:GetFont())) or "Fonts\\FRIZQT__.TTF"
+        pcall(af.kicker.SetFont, af.kicker, fontPath, 14, "OUTLINE")
+    end
+    af.kicker:SetJustifyH("CENTER")
+    af.kicker:SetWidth(ALERT_WIDTH)
+    af.kicker:SetTextColor(BRASS_R, BRASS_G, BRASS_B)
+    af.kicker:SetText(L("UI_TITLE"))
+    improveTextContrast(af.kicker, 1.0, 1, -1)
+
+    af.main = af:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
+    af.main:SetPoint("TOP", af.kicker, "BOTTOM", 0, -2)
+    if af.main.SetFont then
+        local fontPath = (af.main.GetFont and select(1, af.main:GetFont())) or "Fonts\\FRIZQT__.TTF"
+        pcall(af.main.SetFont, af.main, fontPath, 34, "THICKOUTLINE")
+    end
+    af.main:SetJustifyH("CENTER")
+    af.main:SetWidth(ALERT_WIDTH)
+    af.main:SetText("")
+    improveTextContrast(af.main, 1.0, 2, -2)
+
+    af.sub = af:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    af.sub:SetPoint("TOP", af.main, "BOTTOM", 0, -1)
+    if af.sub.SetFont then
+        local fontPath = (af.sub.GetFont and select(1, af.sub:GetFont())) or "Fonts\\FRIZQT__.TTF"
+        pcall(af.sub.SetFont, af.sub, fontPath, 14, "OUTLINE")
+    end
+    af.sub:SetJustifyH("CENTER")
+    af.sub:SetWidth(ALERT_WIDTH)
+    af.sub:SetText("")
+    improveTextContrast(af.sub, 1.0, 1, -1)
+
+    af.handle = af:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    af.handle:SetPoint("TOPLEFT", af, "TOPLEFT", 4, -2)
+    af.handle:SetTextColor(BRASS_R, BRASS_G, BRASS_B)
+    af.handle:SetText("||")
+    improveTextContrast(af.handle, 1.0, 1, -1)
+
+    installDrag(af, "alertFrame")
+    af:SetScript("OnUpdate", function(_, dt)
+        if UI and UI._UpdateStaleFade then UI:_UpdateStaleFade(dt) end
+    end)
+    af._hasAlert = false
+    af:Hide()
+    self.alertFrame = af
+    return af
 end
 
 function UI:CreateUnitStripFrame()
@@ -1378,8 +1484,8 @@ local function shouldHideQuietRecommendation(recommendation, ctx, forceShow)
 end
 
 function UI:_SetFrameAlpha(alpha)
-    local frames = { self.frame, self.unitFrame, self.railFrame, self.assignFrame }
-    for i = 1, 4 do
+    local frames = { self.frame, self.alertFrame, self.unitFrame, self.railFrame, self.assignFrame }
+    for i = 1, #frames do
         local f = frames[i]
         if f then
             f._accAlpha = alpha
@@ -1403,9 +1509,11 @@ function UI:_ResetStaleFade(active)
 end
 
 function UI:_HideStaleFrame()
-    if self.frame then
-        self:_SetFrameAlpha(0)
-        self.frame:Hide()
+    self:_SetFrameAlpha(0)
+    if self.frame then self.frame:Hide() end
+    if self.alertFrame then
+        self.alertFrame._hasAlert = false
+        self.alertFrame:Hide()
     end
     if self.unitFrame then self.unitFrame:Hide() end
     if self.railFrame then self.railFrame:Hide() end
@@ -1416,7 +1524,10 @@ function UI:_HideStaleFrame()
 end
 
 function UI:_UpdateStaleFade(dt)
-    if not (self.frame and self._staleFadeActive and self.frame:IsShown()) then return end
+    if not self._staleFadeActive then return end
+    if not (isShown(self.frame) or isShown(self.alertFrame)
+            or isShown(self.unitFrame) or isShown(self.railFrame)
+            or isShown(self.assignFrame)) then return end
     self._staleElapsed = (self._staleElapsed or 0) + (dt or 0)
     local age = self._staleElapsed
     if age <= STALE_FADE_START then return end
@@ -1442,18 +1553,76 @@ function calloutText(key, recommendation)
     return (text:gsub("%%s", L("UI_TARGET_FALLBACK")))
 end
 
+function UI:_ApplyAlert(recommendation, mode, color, label, target, showTarget, detailText)
+    local af = self.alertFrame or (self.CreateAlertFrame and self:CreateAlertFrame())
+    if not af then return end
+    if not alertEnabled() then
+        af._hasAlert = false
+        af:Hide()
+        return
+    end
+
+    if af.kicker then
+        af.kicker:SetText(string.format("%s  ·  v%s", L("UI_TITLE"), addonVersion()))
+    end
+    if af.main then
+        af.main:SetTextColor(color[1], color[2], color[3])
+        if showTarget and target and target ~= "" then
+            af.main:SetText(string.format("!! %s !!  %s", label, target))
+        else
+            af.main:SetText(string.format("!! %s !!", label))
+        end
+    end
+    if af.sub then
+        local detail = detailText
+        if (not detail or detail == "") and recommendation and recommendation.reasonKey then
+            detail = L(recommendation.reasonKey)
+        end
+        if (not detail or detail == "") and recommendation and recommendation.callouts
+           and recommendation.callouts[1] then
+            local top = recommendation.callouts[1]
+            detail = string.format("%s  %s", calloutIcon(top, 18), calloutText(top, recommendation))
+        end
+        if not detail or detail == "" then
+            detail = L(arcadeCueKey(recommendation, mode))
+        end
+        af.sub:SetText(detail)
+        af.sub:SetTextColor(BONE_R, BONE_G, BONE_B)
+    end
+
+    af._hasAlert = true
+    if not isShown(af) then af:Show() end
+end
+
 function UI:Show()
     if not addonEnabled() then
         self:Hide()
         return
     end
-    if self.frame then self.frame:Show() end
-    if self.unitFrame and self.unitFrame._hasUnits then self.unitFrame:Show() end
-    if self.railFrame and self.railFrame._hasCues then self.railFrame:Show() end
-    if self.assignFrame and self.assignFrame._hasAssignments then self.assignFrame:Show() end
+    local showBoard = boardEnabled()
+    if self.frame then
+        if showBoard then self.frame:Show() else self.frame:Hide() end
+    end
+    if self.alertFrame then
+        if alertEnabled() and self.alertFrame._hasAlert then
+            self.alertFrame:Show()
+        else
+            self.alertFrame:Hide()
+        end
+    end
+    if showBoard and detachedModulesEnabled() then
+        if self.unitFrame and self.unitFrame._hasUnits then self.unitFrame:Show() end
+        if self.railFrame and self.railFrame._hasCues then self.railFrame:Show() end
+        if self.assignFrame and self.assignFrame._hasAssignments then self.assignFrame:Show() end
+    else
+        if self.unitFrame then self.unitFrame:Hide() end
+        if self.railFrame then self.railFrame:Hide() end
+        if self.assignFrame then self.assignFrame:Hide() end
+    end
 end
 function UI:Hide()
     if self.frame then self.frame:Hide() end
+    if self.alertFrame then self.alertFrame:Hide() end
     if self.unitFrame then self.unitFrame:Hide() end
     if self.railFrame then self.railFrame:Hide() end
     if self.assignFrame then self.assignFrame:Hide() end
@@ -1464,7 +1633,8 @@ function UI:Toggle()
         self:Hide()
         return
     end
-    if self.frame:IsShown() then
+    if (boardEnabled() and isShown(self.frame))
+       or (alertEnabled() and isShown(self.alertFrame)) then
         self:Hide()
     else
         self:Show()
@@ -1491,12 +1661,7 @@ function UI:Apply(recommendation)
     local ctx = ns.Core and ns.Core.state and ns.Core.state.pvpContext
     local forceShow = recommendation._forceShow   -- set by /acc test demo
     if (ctx == "none" or ctx == "world_idle") and not forceShow then
-        f:Hide()
-        if self.unitFrame then self.unitFrame:Hide() end
-        if self.railFrame then self.railFrame:Hide() end
-        if self.assignFrame then self.assignFrame:Hide() end
-        if ns.ScreenEdgeGlow then ns.ScreenEdgeGlow:Hide() end
-        if ns.Nameplate then ns.Nameplate:ClearAll() end
+        self:_HideStaleFrame()
         return
     end
     -- v2.8.30: avoid the visible pop/fade loop for empty RESET beats.
@@ -1508,7 +1673,9 @@ function UI:Apply(recommendation)
         self:_HideStaleFrame()
         return
     end
-    if not f:IsShown() then f:Show() end
+    local showBoard = boardEnabled()
+    if showBoard and not f:IsShown() then f:Show() end
+    if not self.alertFrame and self.CreateAlertFrame then self:CreateAlertFrame() end
     if not self.unitFrame and self.CreateUnitStripFrame then self:CreateUnitStripFrame() end
     if not self.railFrame and self.CreateCueRailFrame then self:CreateCueRailFrame() end
     if not self.assignFrame and self.CreateAssignmentsFrame then self:CreateAssignmentsFrame() end
@@ -1732,7 +1899,9 @@ function UI:Apply(recommendation)
         end
     end
     capLines(subParts, f._accCenterSubLines or 1)
-    f.subText:SetText(table.concat(subParts, "\n"))
+    local detailText = table.concat(subParts, "\n")
+    f.subText:SetText(detailText)
+    self:_ApplyAlert(recommendation, mode, color, label, target, showTarget, detailText)
     local scaffold = layoutScaffoldActive(recommendation)
     local integratedUnitText = formatUnitStrip(recommendation, true)
     local integratedRailText = formatCueRail(recommendation, true)
@@ -1743,7 +1912,7 @@ function UI:Apply(recommendation)
     setAssignmentSlots(f, recommendation.playerActions, scaffold)
     if f.assignText and f.assignText.Hide then f.assignText:Hide() end
 
-    if detachedModulesEnabled() then
+    if detachedModulesEnabled() and showBoard then
         setModuleText(self.unitFrame, "text", formatUnitStrip(recommendation, scaffold), "_hasUnits")
         setModuleText(self.railFrame, "text", formatCueRail(recommendation, scaffold), "_hasCues")
         setModuleText(self.assignFrame, "actionText", formatPlayerActions(recommendation.playerActions, scaffold), "_hasAssignments")
@@ -1751,6 +1920,11 @@ function UI:Apply(recommendation)
         setModuleText(self.unitFrame, "text", "", "_hasUnits")
         setModuleText(self.railFrame, "text", "", "_hasCues")
         setModuleText(self.assignFrame, "actionText", "", "_hasAssignments")
+    end
+    if showBoard then
+        if not f:IsShown() then f:Show() end
+    else
+        f:Hide()
     end
 
     -- v2.0.2 / v2.1: PvP-context gate. The aggressive alerts (screen

@@ -31,7 +31,12 @@ local DEFAULTS = {
     -- v2.5.0: `highContrast` swaps the mode colour palette to fully
     -- saturated primaries. Toggle via /acc highcontrast on|off.
     frame    = { point = "CENTER", x = 0, y = 120, scale = 1.0,
-                 verbose = false, highContrast = false },
+                 verbose = false, highContrast = false,
+                 -- v2.8.32: default to a DBM-style transient alert.
+                 -- The larger Obsidian board remains available via
+                 -- /acc hud board or /acc hud both for review/debug.
+                 displayMode = "alert" },
+    alertFrame = { point = "CENTER", x = 0, y = 145, scale = 1.0 },
     -- v2.8.15: prototype-A is integrated into the main board; the old
     -- satellite-frame defaults are kept for optional/manual detached use.
     assignmentFrame = { point = "CENTER", x = 0, y = 16, scale = 1.0 },
@@ -953,6 +958,7 @@ local function helpText()
     chatPrint(Core.L("HELP_TRACE"))
     chatPrint(Core.L("HELP_RECORD"))
     chatPrint(Core.L("HELP_BUGREPORT"))
+    chatPrint(Core.L("HELP_HUD"))
     chatPrint(Core.L("HELP_WHATIF"))
     chatPrint(Core.L("HELP_HELP"))
 end
@@ -1029,6 +1035,22 @@ local function handleSlash(input)
             db.frame.verbose and "on" or "off",
             db.frame.verbose and "full callouts + comp badge + chain steps"
                              or "Quiet HUD — top callout only"))
+    elseif cmd == "hud" or cmd == "display" then
+        -- v2.8.32: DBM-style center alert is the default live
+        -- surface. The board is still useful for review and tuning.
+        db.frame = db.frame or {}
+        local arg = (rest or ""):lower()
+        if arg == "alert" or arg == "board" or arg == "both" then
+            db.frame.displayMode = arg
+            if ns.UI then
+                if arg == "alert" and ns.UI.frame then ns.UI.frame:Hide() end
+                if arg == "board" and ns.UI.alertFrame then ns.UI.alertFrame:Hide() end
+            end
+            chatPrint("HUD display: " .. arg)
+            if ns.Core and ns.Core.Evaluate then ns.Core:Evaluate() end
+        else
+            chatPrint("usage: /acc hud alert|board|both")
+        end
     elseif cmd == "off" or cmd == "disable" then
         -- v2.2.5: master kill switch. Sets db.enabled = false which
         -- short-circuits Evaluate() at the top, and hides the frame +

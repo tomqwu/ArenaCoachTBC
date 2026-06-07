@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.32] - 2026-06-07
+
+### Changed
+- **Default live HUD is now a DBM-style alert instead of the full fixed board.** ArenaCoachTBC now shows a compact movable center warning such as `!! KILL !! Holyman`, `!! SWAP !! Mage`, or `!! DEFEND !!`, with the top actionable callout on a subline and the existing arena-gated SoundKit cues for mode/callout changes.
+- **The Obsidian board is now opt-in for review/tuning.** Use `/acc hud board` to show the full divided board or `/acc hud both` to compare the alert and board together. `/acc hud alert` returns to the live default and hides the board immediately.
+
+### Fixed
+- **Stale fade works in alert-only mode.** The DBM-style alert participates in the same stale-recommendation fade timer as the board, then clears nameplate and edge cues when the situation is out of sync.
+
+### Tests
+- Added UI and slash-command coverage for alert creation, default alert rendering, board suppression, board mode, stale alert fade, and `/acc hud alert|board|both`.
+- Local validation: 690/690 tests passing, locale parity green at 155 keys per locale, package-shape gate green, and luacov total coverage is 99.37%.
+
 ## [2.8.31] - 2026-06-07
 
 ### Fixed

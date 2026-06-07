@@ -31,6 +31,7 @@ ns.locales.enUS = {
     HELP_TRACE    = "/acc trace [on|off|dump|clear|status] - decision-trace log",
     HELP_RECORD   = "/acc record [on|off|dump|clear|status] - record CLEU log for offline replay",
     HELP_BUGREPORT = "/acc bugreport       - print sanitised payload for GitHub issues",
+    HELP_HUD      = "/acc hud alert|board|both - choose DBM alert or full board",
     HELP_WHATIF   = "/acc whatif <sub>   - counterfactual replay of the current recording",
     TEST_DEMO_START = "|cffc8a86b[ACC]|r demo starting - readable RMP 3v3 walk-through (mode flips, BURST_NOW pulse, DEFEND cue, profile callout).",
     TEST_DEMO_END   = "|cffc8a86b[ACC]|r demo complete. /acc test print for the chat-only smoke version.",

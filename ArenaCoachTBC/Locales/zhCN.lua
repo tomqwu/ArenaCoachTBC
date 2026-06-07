@@ -30,6 +30,7 @@ ns.locales.zhCN = {
     HELP_SIMULATE = "/acc simulate [key|stop] - 回放脚本化场景",
     HELP_TRACE    = "/acc trace [on|off|dump|clear|status] - 决策追踪日志",
     HELP_RECORD   = "/acc record [on|off|dump|clear|status] - 记录战斗日志用于离线回放",
+    HELP_HUD      = "/acc hud alert|board|both - 选择DBM式警报或完整面板",
     HELP_WHATIF    = "/acc whatif <子命令>  - 重放录像并比较结果",
     TEST_DEMO_START = "|cffc8a86b[ACC]|r 演示开始 — 可读节奏的 RMP 3v3 推演（模式切换、爆发提示、防御提示、对手习惯提示）。",
     TEST_DEMO_END   = "|cffc8a86b[ACC]|r 演示结束。/acc test print 可查看仅文字版本。",

@@ -26,7 +26,8 @@ function OPT:BuildPanel()
     desc:SetText(
         "Strategy coach for TBC 5v5 melee cleave.\n" ..
         "Use /acc help in chat for full command list.\n\n" ..
-        "Commands: /acc toggle | /acc lock | /acc unlock | /acc test | /acc debug |\n" ..
+        "Commands: /acc toggle | /acc hud alert|board|both | /acc lock | /acc unlock |\n" ..
+        "/acc test | /acc debug |\n" ..
         "/acc reset | /acc strategy safe|balanced|greedy | /acc enemy <c1>..<c5> | /acc help"
     )
 

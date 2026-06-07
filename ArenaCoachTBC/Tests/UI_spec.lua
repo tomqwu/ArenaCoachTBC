@@ -12,7 +12,7 @@ local g = H.describe("UI")
 -- Make sure a DB is initialised so the frame has defaults to read.
 _G.ArenaCoachTBCDB = {
     enabled = true, locked = false, language = "auto",
-    frame = { point = "CENTER", x = 0, y = 120, scale = 1.0 },
+    frame = { point = "CENTER", x = 0, y = 120, scale = 1.0, displayMode = "board" },
     alerts = { sound = true, raidWarning = false, partyChat = false, screenFlash = false },
     strategy = {},
     debug = false,
@@ -24,8 +24,10 @@ H.it(g, "CreateFrame builds prototype-A module set", function()
     UI.assignFrame = nil
     UI.unitFrame = nil
     UI.railFrame = nil
+    UI.alertFrame = nil
     local f = UI:CreateFrame()
     H.assertNotNil(f)
+    H.assertNotNil(UI.alertFrame)
     H.assertNotNil(UI.unitFrame)
     H.assertNotNil(UI.railFrame)
     H.assertNotNil(UI.assignFrame)
@@ -125,10 +127,97 @@ H.it(g, "CreateFrame builds prototype-A module set", function()
         "bottom assignment strip should expose a visible slot header")
 end)
 
+H.it(g, "CreateFrame builds DBM-style alert layer", function()
+    _G.ArenaCoachTBCDB = {
+        enabled = true, locked = false, language = "auto",
+        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0, displayMode = "alert" },
+        alertFrame = { point = "CENTER", x = 12, y = 144, scale = 1.0 },
+        alerts = { sound = false, screenFlash = false, edgeGlow = false, nameplate = false },
+        strategy = {}, debug = false,
+    }
+    UI.frame = nil
+    UI.assignFrame = nil
+    UI.unitFrame = nil
+    UI.railFrame = nil
+    UI.alertFrame = nil
+    UI:CreateFrame()
+    local af = UI.alertFrame
+    H.assertNotNil(af)
+    H.assertFalse(af:IsShown(), "alert layer should start dormant until a recommendation arrives")
+    H.assertTrue((af._width or 999) <= 500, "DBM-style alert should stay much smaller than the review board")
+    H.assertTrue((af._height or 999) <= 100, "alert should be a compact warning strip")
+    H.assertTrue((af._alertBg._color and af._alertBg._color[4] or 1) <= 0.12,
+        "alert reading plate should be light, not another dark fixed board")
+    H.assertTrue((af.main._fontSize or 0) >= 32, "main warning should be readable during combat")
+    H.assertEq(af.handle._text, "||")
+end)
+
+H.it(g, "default alert mode shows DBM callout and hides the board", function()
+    _G.ArenaCoachTBCDB = {
+        enabled = true, locked = false, language = "auto",
+        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0 },
+        alerts = { sound = false, screenFlash = false, edgeGlow = false, nameplate = false },
+        strategy = {}, debug = false,
+    }
+    H.ns.Core = H.ns.Core or {}
+    H.ns.Core.state = H.ns.Core.state or {}
+    H.ns.Core.state.pvpContext = "arena"
+    UI.frame = nil
+    UI.assignFrame = nil
+    UI.unitFrame = nil
+    UI.railFrame = nil
+    UI.alertFrame = nil
+    UI:CreateFrame()
+    UI._calloutLastShown = {}
+    H.advanceTime(5)
+    UI:Apply({
+        mode = "KILL",
+        primaryTargetName = "Holyman",
+        primaryTargetClass = "PRIEST",
+        primaryTargetHp = 0.47,
+        callouts = { "CALL_PURGE" },
+        priority = "HIGH",
+    })
+    H.assertTrue(UI.alertFrame:IsShown(), "default display should show the center alert")
+    H.assertFalse(UI.frame:IsShown(), "default display should not keep the full board on screen")
+    H.assertTrue((UI.alertFrame.main._text or ""):find("KILL", 1, true) ~= nil,
+        "alert main text should include the mode")
+    H.assertTrue((UI.alertFrame.main._text or ""):find("Holyman", 1, true) ~= nil,
+        "alert main text should include the target")
+    H.assertTrue((UI.alertFrame.sub._text or ""):find("Holyman", 1, true) ~= nil,
+        "alert detail should carry the top actionable callout")
+    local on = UI.alertFrame._scripts.OnUpdate
+    H.assertNotNil(on)
+    on(UI.alertFrame, UI.staleFadeStart + (UI.staleFadeSeconds / 2))
+    H.assertTrue(UI.alertFrame._accAlpha < 1 and UI.alertFrame._accAlpha > 0,
+        "alert should fade when the recommendation goes stale")
+    on(UI.alertFrame, UI.staleFadeSeconds)
+    H.assertFalse(UI.alertFrame:IsShown(), "stale alert should disappear")
+    H.ns.Core.state.pvpContext = nil
+end)
+
+H.it(g, "board display mode keeps the review board and suppresses alert", function()
+    _G.ArenaCoachTBCDB = {
+        enabled = true, locked = false, language = "auto",
+        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0, displayMode = "board" },
+        alerts = { sound = false, screenFlash = false, edgeGlow = false, nameplate = false },
+        strategy = {}, debug = false,
+    }
+    UI.frame = nil
+    UI.assignFrame = nil
+    UI.unitFrame = nil
+    UI.railFrame = nil
+    UI.alertFrame = nil
+    UI:CreateFrame()
+    UI:Apply({ mode = "SWAP", primaryTargetName = "Mage", callouts = {}, priority = "HIGH" })
+    H.assertTrue(UI.frame:IsShown(), "board mode should keep the full instrument visible")
+    H.assertFalse(UI.alertFrame:IsShown(), "board mode should not also show the center alert")
+end)
+
 H.it(g, "layout keeps center copy inside its section on wide boards", function()
     _G.ArenaCoachTBCDB = {
         enabled = true, locked = false, language = "auto",
-        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0, width = 720, height = 260, verbose = true },
+        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0, width = 720, height = 260, verbose = true, displayMode = "board" },
         alerts = { sound = false, screenFlash = false, edgeGlow = false, nameplate = false },
         strategy = {}, debug = false,
     }
@@ -184,7 +273,7 @@ end)
 H.it(g, "CreateFrame restores and saves resized prototype-A board dimensions", function()
     _G.ArenaCoachTBCDB = {
         enabled = true, locked = false, language = "auto",
-        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0, width = 520, height = 210 },
+        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0, width = 520, height = 210, displayMode = "board" },
         alerts = { sound = false, screenFlash = false, edgeGlow = false, nameplate = false },
         strategy = {}, debug = false,
     }
@@ -215,7 +304,7 @@ end)
 H.it(g, "master off keeps the HUD hidden even when a frame or forced beat exists", function()
     _G.ArenaCoachTBCDB = {
         enabled = false, locked = false, language = "auto",
-        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0 },
+        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0, displayMode = "board" },
         alerts = { sound = false, screenFlash = false, edgeGlow = false, nameplate = false },
         strategy = {}, debug = false,
     }
@@ -433,7 +522,7 @@ end)
 H.it(g, "Apply divides assignment strip into five stable arena slots", function()
     _G.ArenaCoachTBCDB = {
         enabled = true, locked = false, language = "auto",
-        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0, verbose = false },
+        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0, verbose = false, displayMode = "board" },
         alerts = { sound = false, screenFlash = false, edgeGlow = false, nameplate = false },
         strategy = {}, debug = false,
     }
@@ -468,7 +557,7 @@ end)
 H.it(g, "prototype-A modules have independent movable saved positions", function()
     _G.ArenaCoachTBCDB = {
         enabled = true, locked = false, language = "auto",
-        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0 },
+        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0, displayMode = "board" },
         assignmentFrame = { point = "CENTER", x = 0, y = 16, scale = 1.0 },
         unitFrame = { point = "CENTER", x = -258, y = 120, scale = 1.0 },
         railFrame = { point = "CENTER", x = 258, y = 120, scale = 1.0 },
@@ -630,7 +719,7 @@ end)
 H.it(g, "arena quality: formatted top callout renders with target name instead of raw percent-s", function()
     _G.ArenaCoachTBCDB = {
         enabled = true, locked = false, language = "auto",
-        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0, verbose = false },
+        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0, verbose = false, displayMode = "board" },
         alerts = { sound = false, screenFlash = false, edgeGlow = false, nameplate = false },
         strategy = {}, debug = false,
     }
@@ -663,7 +752,7 @@ H.it(g, "v2.0.2: Apply does NOT screen-flash outside arena (BG/world)", function
     -- Stub IsActiveBattlefieldArena to return false (simulating WSG / world).
     _G.ArenaCoachTBCDB = {
         enabled = true, locked = false, language = "auto",
-        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0 },
+        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0, displayMode = "board" },
         alerts = { sound = true, screenFlash = true },
         strategy = {}, debug = false,
     }
@@ -679,7 +768,7 @@ end)
 H.it(g, "v2.0.2: Apply does NOT play voice cue outside arena", function()
     _G.ArenaCoachTBCDB = {
         enabled = true, locked = false, language = "auto",
-        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0 },
+        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0, displayMode = "board" },
         alerts = { sound = true, screenFlash = false },
         strategy = {}, debug = false,
     }
@@ -701,7 +790,7 @@ H.it(g, "Apply with URGENT does not trigger full-screen flash", function()
     -- Re-establish the DB in case another spec replaced it during dofile.
     _G.ArenaCoachTBCDB = {
         enabled = true, locked = false, language = "auto",
-        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0 },
+        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0, displayMode = "board" },
         alerts = { sound = true, screenFlash = true },
         strategy = {}, debug = false,
     }

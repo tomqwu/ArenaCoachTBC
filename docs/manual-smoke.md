@@ -16,6 +16,7 @@ behaviour is what tests can't see.
 - [ ] `/acc` prints help text
 - [ ] `/acc help` same
 - [ ] `/acc toggle` hides and shows the frame
+- [ ] `/acc hud alert|board|both` switches between the default DBM-style alert, the full review board, and both surfaces. Switching to `alert` immediately hides the board; switching to `board` immediately hides the alert.
 - [ ] `/acc lock` / `/acc unlock` toggles drag-lock; frame can be repositioned and resized from the lower-right grip when unlocked
 - [ ] `/acc off` (alias `/acc disable`) hides the frame + thin edge cue + nameplate paint and short-circuits the engine; persists across `/reload`
 - [ ] While `/acc off` is active, `/acc toggle` and any remaining `/acc test` timer beat do not reopen the HUD
@@ -27,35 +28,36 @@ behaviour is what tests can't see.
 - [ ] `/acc debug` toggles debug printing
 - [ ] `/acc test` runs the readable ~1-minute realistic 3v3 arena replay through the engine: starts OPEN before gates, shows defensive pressure when the healer is CCed/trained, returns to an offensive kill/swap call, then resets without rapid flicker.
 - [ ] With `/acc off` active, `/acc test` prints an enabled-for-test line and the HUD still advances instead of staying on the initial waiting text.
-- [ ] `/acc test` timed events repaint the board as chat timestamps advance; the center action should not remain `!! READY !! / waiting for opener` after the 5s and 10s scenario lines.
-- [ ] `/acc test hud` runs the visual-only prototype-A HUD demo: integrated board with left status stack, center action, center player-info/assignments, right cue rail, nameplate border on any visible enemy, and the thin edge cue only if `/acc glow on` is enabled. The first/waiting beat already shows all four zones with placeholders.
+- [ ] `/acc test` timed events repaint the active HUD display as chat timestamps advance; the center action should not remain `!! READY !! / waiting for opener` after the 5s and 10s scenario lines.
+- [ ] `/acc test hud` runs the visual demo through the current display mode. Use `/acc hud alert` for the live DBM alert check, `/acc hud board` for the integrated board check, or `/acc hud both` when comparing both surfaces.
 - [ ] `/acc test bg` runs the battleground walk-through (flag carrier priority, low-HP straggler, CALL_BG_DEFEND)
 - [ ] `/acc test world` runs the world-PvP walk-through (single-target focus)
 - [ ] `/acc enemy war mage priest druid pala` populates manual enemy list and the engine emits a recommendation
 
 ## Visual
 
-- [ ] Frame visible in arena / BG / world PvP / duel; **hidden in cities and quest hubs** (auto-hide gate, v2.2.5)
+- [ ] Default alert visible in arena / BG / world PvP / duel; **hidden in cities and quest hubs** (auto-hide gate, v2.2.5)
 - [ ] OPEN / KILL / SWAP / DEFEND / RESET modes each render with a distinct colour (yellow / red / orange / blue / grey)
-- [ ] HUD top-right version marker matches the installed addon release
-- [ ] Main HUD board stays compact (roughly 540x212 before user scaling) and does not cover party frames, arena frames, action bars, cast bars, nameplates, DBM bars, WeakAura clusters, chat, or damage meters
-- [ ] Prototype-A zones are present inside one visible board: left status stack, center action, center player-info/assignments, and right cue/icon rail, including waiting/pre-gate placeholders before live target data arrives
-- [ ] The board reads as Obsidian Signal: warm obsidian translucent shell, brass rules/reticles, cyan information accents, bone-white data text, restrained crimson signal colour, top drag strip/grip, signal/ruler accents, lower-right resize grip, internal dividers, slot backgrounds, target health bar, and mode-coloured center accent
-- [ ] Metadata strip shows `OBSIDIAN / SIGNAL / <mode>` while still keeping the top-right version marker visible
-- [ ] Focus and cue headers do not wrap or split words on the default compact board
+- [ ] Alert version marker matches the installed addon release; `/acc hud board` still shows the board top-right version marker
+- [ ] Default alert is compact, centered, movable, low-background, and does not cover party frames, arena frames, action bars, cast bars, nameplates, DBM bars, WeakAura clusters, chat, or damage meters
+- [ ] Default alert main line reads like a DBM boss warning: `!! KILL !! Holyman`, `!! SWAP !! Mage`, or `!! DEFEND !!`, with the top actionable callout on the subline
+- [ ] `/acc hud board` shows the optional prototype-A zones inside one visible board: left status stack, center action, center player-info/assignments, and right cue/icon rail, including waiting/pre-gate placeholders before live target data arrives
+- [ ] Optional board reads as Obsidian Signal: warm obsidian translucent shell, brass rules/reticles, cyan information accents, bone-white data text, restrained crimson signal colour, top drag strip/grip, signal/ruler accents, lower-right resize grip, internal dividers, slot backgrounds, target health bar, and mode-coloured center accent
+- [ ] Board metadata strip shows `OBSIDIAN / SIGNAL / <mode>` while still keeping the top-right version marker visible
+- [ ] Focus and cue headers do not wrap or split words on the optional compact board
 - [ ] DEFEND and RESET hide the inactive target-health bar/label so defensive advice has a clean center panel
-- [ ] Dragging the lower-right grip resizes the integrated board; left status, center action, center player info, and right cue rail stay inside one divided box and the size persists after `/reload`
-- [ ] On the default compact board, the center action/detail text stays inside the center action section and never crosses into the player-info/assignment section
+- [ ] Dragging the alert moves only the alert; dragging the board lower-right grip resizes the integrated board when `/acc hud board` is active
+- [ ] On the optional compact board, the center action/detail text stays inside the center action section and never crosses into the player-info/assignment section
 - [ ] Bottom assignment strip divides into 1, 2, 3, or 5 small cards based on current player actions/bracket; unused cells are hidden in 2v2, and 5v5 uses five stable cells
 - [ ] Bottom assignment strip highlights the player's own card first with `YOU` / `你`, a stronger plate, and a readable action line before teammate cards
 - [ ] On a taller/wider resized board with `/acc verbose on`, the player-info cards remain inside the bottom strip without colliding with the center action or right cue rail
-- [ ] `/acc unlock` lets the integrated board drag/resize; `/acc lock` prevents it from moving or resizing
+- [ ] `/acc unlock` lets the alert move and the integrated board drag/resize; `/acc lock` prevents movement/resizing
 - [ ] Signal strip renders passive cues (`READY`, `BURST`, `DANGER`, `PINCH`) inside the compact center instrument without covering the playfield
 - [ ] Target stats row shows `HP <n>%   kill <n>%   BURST READY` when there's a primary target; hidden on DEFEND / RESET
 - [ ] Player-info module shows one compact action card per advised friendly in 3v3; in 5v5 it fills five small cards instead of a paragraph block, with the player's own card visually dominant
 - [ ] Left status stack shows current primary target, swap target, and a pressured friendly when known
 - [ ] Right cue rail shows callout icons/text for burst, purge, HoJ, peel, dispel, or other top cues
-- [ ] If no fresh evaluation arrives for a few seconds, the HUD text fades away and clears stale nameplate/edge cues
+- [ ] If no fresh evaluation arrives for a few seconds, the alert or board fades away and clears stale nameplate/edge cues
 - [ ] Empty `RESET` beats with no primary/swap target stay hidden instead of repeatedly popping and fading
 - [ ] Optional edge cue is thin, static, low-alpha, and dark on RESET; it must not pulse or flash around the screen
 - [ ] DEFEND/URGENT does not create a full-screen red flash; use HUD colour, nameplate, arcade cue, and sound cues instead
