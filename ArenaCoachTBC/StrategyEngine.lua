@@ -103,6 +103,10 @@ end
 -- ============================================================
 local function isAlive(e) return e and e.alive ~= false and (e.healthPct or 100) > 0 end
 
+local function classToken(unit)
+    return unit and unit.class and tostring(unit.class):upper() or nil
+end
+
 local function roleOf(enemy)
     if enemy.roleGuess then return enemy.roleGuess end
     local Classes = ns.Classes
@@ -679,22 +683,37 @@ local FEAR_THREAT_CLASSES = {
     WARRIOR = true,
 }
 
-local TREMOR_RELEVANT_CALLOUTS = {
+local FEAR_THREAT_CALLOUTS = {
+    CALL_TREMOR_DOWN           = true,
     CALL_TREMOR_FEAR           = true,
     CALL_SAVE_TREMOR_HOJ       = true,
     CALL_PATTERN_FEAR_INTO_POLY = true,
 }
 
-local function hasLivingFriendlyShaman(state)
+local TREMOR_CAPABILITY_CALLOUTS = {
+    CALL_TREMOR_DOWN           = true,
+    CALL_TREMOR_FEAR           = true,
+    CALL_SAVE_TREMOR_HOJ       = true,
+}
+
+local function hasTremorSupport(state)
+    local caps = state and state.ownCapabilities
+    if caps and caps.hasTremor == true then return true end
+
     for _, f in pairs((state and state.friendlies) or {}) do
-        if f.alive ~= false and f.class == "SHAMAN" then return true end
+        if f.alive ~= false and classToken(f) == "SHAMAN" then return true end
     end
     return false
 end
 
+local function tremorCalloutAllowed(state, key)
+    if not TREMOR_CAPABILITY_CALLOUTS[key] then return true end
+    return hasTremorSupport(state)
+end
+
 local function hasFearThreat(state, callouts)
     for _, key in ipairs(callouts or {}) do
-        if TREMOR_RELEVANT_CALLOUTS[key] then return true end
+        if FEAR_THREAT_CALLOUTS[key] then return true end
     end
     for _, e in pairs((state and state.enemies) or {}) do
         if isAlive(e) and FEAR_THREAT_CLASSES[e.class] then return true end
@@ -705,7 +724,7 @@ end
 local function shouldRefreshTremor(state, callouts)
     local obs = (state and state.observations) or {}
     if obs.tremorActive ~= false then return false end
-    if not hasLivingFriendlyShaman(state) then return false end
+    if not hasTremorSupport(state) then return false end
     return hasFearThreat(state, callouts)
 end
 
@@ -753,14 +772,20 @@ local function buildCallouts(state, comp, primaryTarget, mode)
     local out = {}
     local seen = {}
     local function push(key)
-        if key and not seen[key] and drAllowsCallout(key, primaryTarget, state) then
+        if key and not seen[key] and tremorCalloutAllowed(state, key)
+           and drAllowsCallout(key, primaryTarget, state) then
             table.insert(out, key); seen[key] = true
+            return true
         end
+        return false
     end
     local function prepend(key)
-        if key and not seen[key] and drAllowsCallout(key, primaryTarget, state) then
+        if key and not seen[key] and tremorCalloutAllowed(state, key)
+           and drAllowsCallout(key, primaryTarget, state) then
             table.insert(out, 1, key); seen[key] = true
+            return true
         end
+        return false
     end
 
     if comp and comp.callouts then
@@ -823,8 +848,9 @@ local function buildCallouts(state, comp, primaryTarget, mode)
         local function checkTendency(key, threshold, callKey)
             local v = OP:EstimateOrDefault(profile, key, 0.5)
             if v >= threshold then
-                push(callKey)
-                table.insert(contrib, string.format("%s=%.2f", key, v))
+                if push(callKey) then
+                    table.insert(contrib, string.format("%s=%.2f", key, v))
+                end
             end
         end
         checkTendency("kicksFirstHeal",  0.7, "CALL_FAKE_KICK_2")

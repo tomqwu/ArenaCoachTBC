@@ -233,6 +233,29 @@ H.it(g, "Tremor refresh advice clears when the aura is active", function()
     H.assertNotEq(findAction(rec.playerActions, "party1").actionKey, "ACTION_SHAMAN_TREMOR_REFRESH")
 end)
 
+H.it(g, "Tremor-specific advice is suppressed when our team has no shaman", function()
+    local state = SE:BuildTestState({"ROGUE","MAGE","PRIEST"})
+    state.combatPhase = "ACTIVE"
+    state.pvpContext = "arena"
+    state.observations = { tremorActive = false, windfuryActive = true, hojReady = true }
+    state.friendlies.player.class = "WARRIOR"
+    state.friendlies.party1.class = "ROGUE"
+    state.friendlies.party2.class = "PALADIN"
+    state.friendlies.party3.class = "DRUID"
+    state.friendlies.party4.class = "PRIEST"
+    state.ownCapabilities = { hasTremor = false }
+
+    local rec = SE:Evaluate(state)
+    for _, callout in ipairs(rec.callouts or {}) do
+        H.assertNotEq(callout, "CALL_TREMOR_DOWN")
+        H.assertNotEq(callout, "CALL_TREMOR_FEAR")
+        H.assertNotEq(callout, "CALL_SAVE_TREMOR_HOJ")
+    end
+    for _, action in ipairs(rec.playerActions or {}) do
+        H.assertNotEq(action.actionKey, "ACTION_SHAMAN_TREMOR_REFRESH")
+    end
+end)
+
 H.it(g, "Tremor down does not wake targetless RESET states", function()
     local state = SE:BuildTestState({"ROGUE","MAGE","PRIEST"})
     state.combatPhase = "ACTIVE"
@@ -756,6 +779,23 @@ H.it(g, "Evaluate pushes CALL_SAVE_TREMOR_HOJ when trinketsFear >= 0.7 with enou
     H.assertTrue(found, "expected CALL_SAVE_TREMOR_HOJ in callouts")
     local _, count = (rec.profileContrib or ""):gsub("trinketsFear", "")
     H.assertEq(count, 1, "profileContrib should list trinketsFear once")
+end)
+
+H.it(g, "Evaluate suppresses profile Tremor callout without Tremor support", function()
+    local state = SE:BuildTestState({"WARLOCK","DRUID","WARRIOR"})
+    state.combatPhase = "ACTIVE"
+    state.friendlies.player.class = "WARRIOR"
+    state.friendlies.party1.class = "ROGUE"
+    state.friendlies.party2.class = "PALADIN"
+    state.friendlies.party3.class = "DRUID"
+    state.friendlies.party4.class = "PRIEST"
+    state.ownCapabilities = { hasTremor = false }
+    seedProfile(state, "trinketsFear", 10, 3)  -- 10/13 ~ 0.77
+
+    local rec = SE:Evaluate(state)
+    for _, c in ipairs(rec.callouts or {}) do
+        H.assertNotEq(c, "CALL_SAVE_TREMOR_HOJ")
+    end
 end)
 
 H.it(g, "Evaluate pushes CALL_BURST_BLOCK_INCOMING when iceBlockBelow30 >= 0.7", function()

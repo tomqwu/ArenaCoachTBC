@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.40] - 2026-06-07
+
+### Fixed
+- **Tremor/Totem advice is now roster-gated.** The engine suppresses `CALL_TREMOR_FEAR`, `CALL_TREMOR_DOWN`, and profile-driven `CALL_SAVE_TREMOR_HOJ` unless the friendly team has a living shaman or explicit Tremor capability.
+- **Opponent-profile notes no longer claim suppressed Tremor advice.** Profile contribution logging only records a tendency when its matching callout was actually inserted.
+
+### Tests
+- Added StrategyEngine regressions for no-shaman arena states and no-shaman opponent-profile states so impossible Tremor advice cannot leak back into the HUD.
+- Local validation: 704/704 tests passing, locale parity green at 168 keys per locale, package-shape gate green, standalone StrategyEngine smoke green, and clean luacov total coverage is 99.11%.
+
 ## [2.8.39] - 2026-06-07
 
 ### Changed
