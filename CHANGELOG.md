@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.35] - 2026-06-07
+
+### Changed
+- **DBM-style center text now names the actual mechanic or action.** The live alert and optional board no longer promote abstract mode words like `KILL`, `DEFEND`, `攻`, or `守` as the big center line when a concrete cue exists. The primary line now reads like `Purge Holyman`, `Tremor down - shaman refresh`, `BURST NOW`, `Kill Holyman`, or `Swap Frostbiter`; mode remains only as color/context.
+- **Generic arcade buzz words were demoted.** The small signal strip now stays as a quiet live marker instead of repeating vague state words such as `DANGER` or `ATTACK`.
+
+### Tests
+- Added UI regression coverage that the default alert and board foreground concrete DBM-style action text instead of mode labels.
+- Local validation: 696/696 tests passing, locale parity green at 163 keys per locale, package-shape gate green, and luacov total coverage is 99.55%.
+
 ## [2.8.34] - 2026-06-07
 
 ### Fixed

@@ -15,7 +15,7 @@ local UI = ns.UI
 UI.frame = nil
 UI.alertFrame = nil
 
-local ADDON_VERSION = "2.8.34"
+local ADDON_VERSION = "2.8.35"
 local STALE_FADE_START = 2.5
 local STALE_FADE_SECONDS = 1.5
 local ALERT_WIDTH = 460
@@ -738,14 +738,15 @@ function UI:CreateFrame()
     f.arcadeText:SetText(string.format("!! %s !!", L("UI_ARCADE_READY")))
     improveTextContrast(f.arcadeText, 1.0, 1, -1)
 
-    -- Main recommendation line ("KILL: Warlock"). This remains the
-    -- largest element, but no longer consumes a raid-warning sized band.
+    -- Main recommendation line. It names the actual mechanic/action
+    -- ("Grounding next Polymorph", "Kill Holyman"), not an abstract
+    -- mode glyph.
     f.bigText = f:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
     f.bigText:SetPoint("TOP", f.arcadeText, "BOTTOM", 0, -1)
     if f.bigText.SetFont then
         local fontPath = (f.bigText.GetFont and select(1, f.bigText:GetFont()))
             or "Fonts\\FRIZQT__.TTF"
-        pcall(f.bigText.SetFont, f.bigText, fontPath, 22, "THICKOUTLINE")
+        pcall(f.bigText.SetFont, f.bigText, fontPath, 20, "THICKOUTLINE")
     end
     f.bigText:SetJustifyH("CENTER")
     f.bigText:SetWidth(m.centerW - 10)
@@ -910,7 +911,7 @@ function UI:CreateAlertFrame()
     af.main:SetPoint("TOP", af.kicker, "BOTTOM", 0, -2)
     if af.main.SetFont then
         local fontPath = (af.main.GetFont and select(1, af.main:GetFont())) or "Fonts\\FRIZQT__.TTF"
-        pcall(af.main.SetFont, af.main, fontPath, 34, "THICKOUTLINE")
+        pcall(af.main.SetFont, af.main, fontPath, 28, "THICKOUTLINE")
     end
     af.main:SetJustifyH("CENTER")
     af.main:SetWidth(ALERT_WIDTH)
@@ -1130,7 +1131,7 @@ local function arcadeCueKey(recommendation, mode)
 end
 
 local function arcadeCueText(recommendation, mode)
-    return string.format("S I G N A L  ·  %s  ·  L I V E", L(arcadeCueKey(recommendation, mode)))
+    return "S I G N A L  ·  L I V E"
 end
 
 -- v2.7.0: each callout key maps to a representative spell whose in-game
@@ -1554,7 +1555,95 @@ function calloutText(key, recommendation)
     return (text:gsub("%%s", L("UI_TARGET_FALLBACK")))
 end
 
-function UI:_ApplyAlert(recommendation, mode, color, label, target, showTarget, detailText)
+local function localeFormat(key, ...)
+    local text = L(key)
+    local ok, formatted = pcall(string.format, text, ...)
+    return ok and formatted or text
+end
+
+local function cleanReasonText(text)
+    text = tostring(text or "")
+    text = text:gsub("^defensive%s*%-%s*", "")
+    text = text:gsub("^Defensive%s*%-%s*", "")
+    text = text:gsub("^防御%s*%-%s*", "")
+    text = text:gsub("^reset%s*%-%s*", "")
+    text = text:gsub("^Reset%s*%-%s*", "")
+    text = text:gsub("^重置%s*%-%s*", "")
+    return text
+end
+
+local function targetActionText(recommendation, mode, target, showTarget)
+    if showTarget and target and target ~= "" then
+        if mode == "OPEN" then return localeFormat("UI_ALERT_OPEN_TARGET", target) end
+        if mode == "KILL" then return localeFormat("UI_ALERT_KILL_TARGET", target) end
+        if mode == "SWAP" then return localeFormat("UI_ALERT_SWAP_TARGET", target) end
+    end
+    if recommendation and recommendation.reasonKey then
+        local reason = cleanReasonText(L(recommendation.reasonKey))
+        if reason ~= "" then return reason end
+    end
+    if recommendation and recommendation.reason and recommendation.reason ~= "" then
+        return cleanReasonText(recommendation.reason)
+    end
+    if mode == "RESET" then return L("UI_ALERT_RESET") end
+    if mode == "OPEN" then return L("UI_ALERT_PREPARE") end
+    if mode == "DEFEND" then return L("UI_ALERT_STABILIZE") end
+    return L("REASON_DEFAULT")
+end
+
+local function primaryAlertText(recommendation, mode, target, showTarget)
+    if recommendation and (recommendation.burstAllowed or hasCallout(recommendation, "BURST_NOW")) then
+        return calloutText("BURST_NOW", recommendation), "BURST_NOW"
+    end
+    if recommendation and recommendation.callouts and recommendation.callouts[1] then
+        local key = recommendation.callouts[1]
+        return calloutText(key, recommendation), key
+    end
+    return targetActionText(recommendation, mode, target, showTarget), nil
+end
+
+local function recommendationStatsText(recommendation, mode, showTarget, colored)
+    local parts = {}
+    local function tag(hex, body)
+        if not colored then return body end
+        return string.format("|cff%s%s|r", hex, body)
+    end
+    if showTarget and recommendation and recommendation.primaryTargetHp then
+        local hp = pct(recommendation.primaryTargetHp)
+        if hp then
+            table.insert(parts, tag("ddd2ad", string.format("%s %d%%", L("UI_HP_LABEL"), hp)))
+        end
+    end
+    if showTarget and recommendation and recommendation.killProb then
+        local kp = pct(recommendation.killProb)
+        if kp then
+            local hex
+            if kp >= 60 then hex = "dc333a"
+            elseif kp >= 30 then hex = "c89e56"
+            else hex = "57c7db" end
+            table.insert(parts, tag(hex, string.format("%s %d%%", L("UI_KILL_PROB_LABEL"), kp)))
+        end
+    end
+    if recommendation and recommendation.burstAllowed and mode == "KILL" then
+        table.insert(parts, tag("c89e56", "★ " .. L("UI_BURST_READY")))
+    end
+    return table.concat(parts, "  ·  ")
+end
+
+local function alertContextText(recommendation, mode, target, showTarget, mainText, mainCalloutKey, statsText)
+    local parts = {}
+    if mainCalloutKey and showTarget and target and target ~= "" then
+        table.insert(parts, targetActionText(recommendation, mode, target, showTarget))
+    end
+    if recommendation and recommendation.reasonKey then
+        local reason = cleanReasonText(L(recommendation.reasonKey))
+        if reason ~= "" and reason ~= mainText then table.insert(parts, reason) end
+    end
+    if statsText and statsText ~= "" then table.insert(parts, statsText) end
+    return table.concat(parts, "  ·  ")
+end
+
+function UI:_ApplyAlert(recommendation, mode, color, label, target, showTarget, detailText, mainActionText, contextText)
     local af = self.alertFrame or (self.CreateAlertFrame and self:CreateAlertFrame())
     if not af then return end
     if not alertEnabled() then
@@ -1568,16 +1657,13 @@ function UI:_ApplyAlert(recommendation, mode, color, label, target, showTarget, 
     end
     if af.main then
         af.main:SetTextColor(color[1], color[2], color[3])
-        if showTarget and target and target ~= "" then
-            af.main:SetText(string.format("!! %s !!  %s", label, target))
-        else
-            af.main:SetText(string.format("!! %s !!", label))
-        end
+        af.main:SetText(mainActionText or targetActionText(recommendation, mode, target, showTarget))
     end
     if af.sub then
-        local detail = detailText
+        local detail = contextText
+        if not detail or detail == "" then detail = detailText end
         if (not detail or detail == "") and recommendation and recommendation.reasonKey then
-            detail = L(recommendation.reasonKey)
+            detail = cleanReasonText(L(recommendation.reasonKey))
         end
         if (not detail or detail == "") and recommendation and recommendation.callouts
            and recommendation.callouts[1] then
@@ -1697,6 +1783,8 @@ function UI:Apply(recommendation)
     local target = recommendation.primaryTargetName
                 or recommendation.primaryTargetClass
                 or ""
+    local showTarget = (mode == "OPEN" or mode == "KILL" or mode == "SWAP")
+    local mainActionText, mainCalloutKey = primaryAlertText(recommendation, mode, target, showTarget)
     if f.metaText then
         local bracket = (ns.Core and ns.Core.state and ns.Core.state.bracket) or "PvP"
         f.metaText:SetText(string.format("O B S I D I A N  /  %s  /  %s", tostring(bracket), mode))
@@ -1711,16 +1799,7 @@ function UI:Apply(recommendation)
     end
 
     f.bigText:SetTextColor(color[1], color[2], color[3])
-    -- v2.1.3: DEFEND and RESET are not target-attached modes. Showing
-    -- "DEFEND: SomeEnemy" reads as "defend against SomeEnemy" which is
-    -- the opposite of the intent (defensive abilities on YOUR team).
-    -- Only OPEN / KILL / SWAP get the "<mode>: <name>" form.
-    local showTarget = (mode == "OPEN" or mode == "KILL" or mode == "SWAP")
-    if showTarget and target and target ~= "" then
-        f.bigText:SetText(string.format("%s: %s", label, target))
-    else
-        f.bigText:SetText(label)
-    end
+    f.bigText:SetText(mainActionText)
 
     -- v2.1.6: target stats row. We surface what the engine knows about
     -- the primary kill target so a glance at the HUD tells the player
@@ -1730,36 +1809,7 @@ function UI:Apply(recommendation)
     -- escapes so the eye picks out the action-relevant value. v2.8.26
     -- retuned this into the Obsidian Signal cyan/brass/crimson palette.
     if f.statsText then
-        local parts = {}
-        local function tag(hex, body)
-            return string.format("|cff%s%s|r", hex, body)
-        end
-        if showTarget and recommendation.primaryTargetHp then
-            local hp = math.floor((recommendation.primaryTargetHp * 100) + 0.5)
-            -- HP rendered in bone-white — the neutral reference value
-            -- the player calibrates the others against.
-            table.insert(parts, tag("ddd2ad",
-                string.format("%s %d%%", L("UI_HP_LABEL"), hp)))
-        end
-        if showTarget and recommendation.killProb then
-            local kp = math.floor((recommendation.killProb * 100) + 0.5)
-            -- Obsidian Signal grading: cool watch state, brass setup,
-            -- crimson commitment when the kill is actually plausible.
-            local hex
-            if kp >= 60 then hex = "dc333a"       -- crimson signal
-            elseif kp >= 30 then hex = "c89e56"   -- brass amber
-            else hex = "57c7db" end                -- cool watch state
-            table.insert(parts, tag(hex,
-                string.format("%s %d%%", L("UI_KILL_PROB_LABEL"), kp)))
-        end
-        if recommendation.burstAllowed and mode == "KILL" then
-            -- Brass + a leading sigil so BURST READY reads as a deliberate
-            -- instrument cue rather than another loud alarm.
-            table.insert(parts, tag("c89e56", "★ " .. L("UI_BURST_READY")))
-        end
-        -- Wider " · " separator + leading/trailing space so segments
-        -- breathe instead of running together.
-        f.statsText:SetText(table.concat(parts, "  ·  "))
+        f.statsText:SetText(recommendationStatsText(recommendation, mode, showTarget, true))
     end
 
     if f.healthBarFill then
@@ -1834,8 +1884,10 @@ function UI:Apply(recommendation)
             -- instead of a pipe-separated text blob.
             for _, key in ipairs(recommendation.callouts) do
                 if not recentlyShown(key) then
-                    table.insert(subParts,
-                        string.format("%s  %s", calloutIcon(key, 18), calloutText(key, recommendation)))
+                    if key ~= mainCalloutKey then
+                        table.insert(subParts,
+                            string.format("%s  %s", calloutIcon(key, 18), calloutText(key, recommendation)))
+                    end
                     self._calloutLastShown[key] = nowTs
                 end
             end
@@ -1845,8 +1897,10 @@ function UI:Apply(recommendation)
             -- shows the Bloodlust icon next to it.
             local top = recommendation.callouts[1]
             if not recentlyShown(top) then
-                table.insert(subParts,
-                    string.format("%s  %s", calloutIcon(top, 18), calloutText(top, recommendation)))
+                if top ~= mainCalloutKey then
+                    table.insert(subParts,
+                        string.format("%s  %s", calloutIcon(top, 18), calloutText(top, recommendation)))
+                end
                 self._calloutLastShown[top] = nowTs
             end
         end
@@ -1902,7 +1956,10 @@ function UI:Apply(recommendation)
     capLines(subParts, f._accCenterSubLines or 1)
     local detailText = table.concat(subParts, "\n")
     f.subText:SetText(detailText)
-    self:_ApplyAlert(recommendation, mode, color, label, target, showTarget, detailText)
+    local contextText = alertContextText(recommendation, mode, target, showTarget,
+        mainActionText, mainCalloutKey, recommendationStatsText(recommendation, mode, showTarget, false))
+    self:_ApplyAlert(recommendation, mode, color, label, target, showTarget,
+        detailText, mainActionText, contextText)
     local scaffold = layoutScaffoldActive(recommendation)
     local integratedUnitText = formatUnitStrip(recommendation, true)
     local integratedRailText = formatCueRail(recommendation, true)

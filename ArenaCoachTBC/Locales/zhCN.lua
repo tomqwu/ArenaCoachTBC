@@ -125,6 +125,12 @@ ns.locales.zhCN = {
     UI_ARCADE_PINCH      = "危机",
     UI_ARCADE_HOLD       = "停手",
     UI_ARCADE_PUSH       = "压上",
+    UI_ALERT_OPEN_TARGET = "起手 %s",
+    UI_ALERT_KILL_TARGET = "击杀 %s",
+    UI_ALERT_SWAP_TARGET = "转火 %s",
+    UI_ALERT_STABILIZE   = "稳住队伍",
+    UI_ALERT_RESET       = "断战 / 拉柱",
+    UI_ALERT_PREPARE     = "准备起手",
 
     -- DBM-style per-player assignment labels
     ACTION_OPEN_SETUP       = "准备起手",

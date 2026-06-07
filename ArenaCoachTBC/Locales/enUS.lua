@@ -125,6 +125,12 @@ ns.locales.enUS = {
     UI_ARCADE_PINCH      = "PINCH",
     UI_ARCADE_HOLD       = "HOLD",
     UI_ARCADE_PUSH       = "PUSH",
+    UI_ALERT_OPEN_TARGET = "Open %s",
+    UI_ALERT_KILL_TARGET = "Kill %s",
+    UI_ALERT_SWAP_TARGET = "Swap %s",
+    UI_ALERT_STABILIZE   = "Stabilize team",
+    UI_ALERT_RESET       = "Reset / line",
+    UI_ALERT_PREPARE     = "Prepare opener",
 
     -- DBM-style per-player assignment labels
     ACTION_OPEN_SETUP       = "set up opener",

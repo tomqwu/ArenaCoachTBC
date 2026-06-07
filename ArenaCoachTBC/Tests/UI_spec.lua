@@ -148,7 +148,7 @@ H.it(g, "CreateFrame builds DBM-style alert layer", function()
     H.assertTrue((af._height or 999) <= 100, "alert should be a compact warning strip")
     H.assertTrue((af._alertBg._color and af._alertBg._color[4] or 1) <= 0.12,
         "alert reading plate should be light, not another dark fixed board")
-    H.assertTrue((af.main._fontSize or 0) >= 32, "main warning should be readable during combat")
+    H.assertTrue((af.main._fontSize or 0) >= 26, "main warning should be readable during combat")
     H.assertEq(af.handle._text, "||")
 end)
 
@@ -180,12 +180,14 @@ H.it(g, "default alert mode shows DBM callout and hides the board", function()
     })
     H.assertTrue(UI.alertFrame:IsShown(), "default display should show the center alert")
     H.assertFalse(UI.frame:IsShown(), "default display should not keep the full board on screen")
-    H.assertTrue((UI.alertFrame.main._text or ""):find("KILL", 1, true) ~= nil,
-        "alert main text should include the mode")
+    H.assertTrue((UI.alertFrame.main._text or ""):find("Purge", 1, true) ~= nil,
+        "alert main text should name the concrete action")
     H.assertTrue((UI.alertFrame.main._text or ""):find("Holyman", 1, true) ~= nil,
         "alert main text should include the target")
-    H.assertTrue((UI.alertFrame.sub._text or ""):find("Holyman", 1, true) ~= nil,
-        "alert detail should carry the top actionable callout")
+    H.assertTrue((UI.alertFrame.main._text or ""):find("KILL", 1, true) == nil,
+        "alert main text should not promote abstract mode labels")
+    H.assertTrue((UI.alertFrame.sub._text or ""):find("Kill", 1, true) ~= nil,
+        "alert detail should carry supporting target context")
     local on = UI.alertFrame._scripts.OnUpdate
     H.assertNotNil(on)
     on(UI.alertFrame, UI.staleFadeStart + (UI.staleFadeSeconds / 2))
@@ -599,7 +601,10 @@ H.it(g, "Apply renders arcade warning cue for burst windows", function()
         priority = "HIGH",
     })
     local txt = UI.frame.arcadeText and UI.frame.arcadeText._text or ""
-    H.assertTrue(txt:find("BURST", 1, true) ~= nil, "burst arcade cue missing: " .. txt)
+    H.assertTrue(txt:find("S I G N A L", 1, true) ~= nil, "signal strip should remain a quiet live marker: " .. txt)
+    H.assertTrue(txt:find("BURST", 1, true) == nil, "generic burst buzzword should not replace the action line: " .. txt)
+    H.assertTrue((UI.frame.bigText._text or ""):find("BURST NOW", 1, true) ~= nil,
+        "burst should be promoted to the concrete main action")
     H.assertNil(UI._flash, "arcade cue must not use the fullscreen flash helper")
 end)
 
@@ -615,8 +620,64 @@ H.it(g, "Apply renders arcade pinch cue for outnumbered BG/world warnings", func
         priority = "HIGH",
     })
     local txt = UI.frame.arcadeText and UI.frame.arcadeText._text or ""
-    H.assertTrue(txt:find("PINCH", 1, true) ~= nil, "pinch arcade cue missing: " .. txt)
+    H.assertTrue(txt:find("PINCH", 1, true) == nil, "pinch should not be a generic center buzzword: " .. txt)
+    H.assertTrue((UI.frame.bigText._text or ""):find("Outnumbered", 1, true) ~= nil,
+        "outnumbered mechanic should be the main action text")
     H.ns.Core.state.pvpContext = nil
+end)
+
+H.it(g, "DBM alert main text uses specific mechanics instead of mode labels", function()
+    _G.ArenaCoachTBCDB = {
+        enabled = true, locked = false, language = "auto",
+        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0, displayMode = "alert" },
+        alerts = { sound = false, screenFlash = false, edgeGlow = false, nameplate = false },
+        strategy = {}, debug = false,
+    }
+    H.ns.Core = H.ns.Core or {}
+    H.ns.Core.state = H.ns.Core.state or {}
+    H.ns.Core.state.pvpContext = "arena"
+    UI.frame = nil
+    UI.assignFrame = nil
+    UI.unitFrame = nil
+    UI.railFrame = nil
+    UI.alertFrame = nil
+    UI:CreateFrame()
+    UI._calloutLastShown = {}
+    H.advanceTime(5)
+
+    UI:Apply({
+        mode = "DEFEND",
+        reasonKey = "REASON_DEFEND_TRAINED",
+        callouts = { "CALL_TREMOR_DOWN" },
+        priority = "URGENT",
+    })
+    local text = UI.alertFrame.main._text or ""
+    H.assertTrue(text:find("Tremor down", 1, true) ~= nil,
+        "top mechanic should become the DBM-style main alert: " .. text)
+    H.assertTrue(text:find("DEFEND", 1, true) == nil,
+        "abstract DEFEND should not be the main combat copy: " .. text)
+    H.ns.Core.state.pvpContext = nil
+end)
+
+H.it(g, "board main text falls back to concrete target actions", function()
+    _G.ArenaCoachTBCDB = {
+        enabled = true, locked = false, language = "auto",
+        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0, displayMode = "board" },
+        alerts = { sound = false, screenFlash = false, edgeGlow = false, nameplate = false },
+        strategy = {}, debug = false,
+    }
+    UI.frame = nil
+    UI.assignFrame = nil
+    UI.unitFrame = nil
+    UI.railFrame = nil
+    UI.alertFrame = nil
+    UI:CreateFrame()
+    UI:Apply({ mode = "SWAP", primaryTargetName = "Frostbiter", callouts = {}, priority = "HIGH" })
+    local text = UI.frame.bigText._text or ""
+    H.assertTrue(text:find("Swap Frostbiter", 1, true) ~= nil,
+        "target action should be explicit when no mechanic callout exists: " .. text)
+    H.assertTrue(text:find("SWAP:", 1, true) == nil,
+        "board should not use mode-colon-target as the main line: " .. text)
 end)
 
 H.it(g, "stale recommendations fade out and clear visual layers", function()
@@ -736,7 +797,7 @@ H.it(g, "arena quality: formatted top callout renders with target name instead o
         _forceShow = true,
     })
 
-    local text = UI.frame.subText:GetText()
+    local text = UI.frame.bigText:GetText()
     H.assertTrue(text:find("Holyman", 1, true) ~= nil, "formatted callout should include target name")
     H.assertTrue(text:find("%%s") == nil, "formatted callout must not leak raw %s")
 end)

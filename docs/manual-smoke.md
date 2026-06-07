@@ -7,6 +7,7 @@ behaviour is what tests can't see.
 
 - [ ] `lua5.1 tools/check_package_shape.lua` passes before tagging; the TOC, `.pkgmeta`, release workflow, CurseForge project ID, BCC game-version upload flag, and version constants are in sync.
 - [ ] The GitHub release zip lists `ArenaCoachTBC/ArenaCoachTBC.toc`, contains more than 20 non-empty addon files, and does not include `ArenaCoachTBC/Tests/` or `.pkgmeta`.
+- [ ] After pushing a stable `vX.Y.Z` tag, the GitHub `Release` workflow's BigWigs packager step succeeds and CurseForge shows the uploaded file. If CurseForge upload fails or remains under review, the release is not considered complete.
 - [ ] Fresh client: copy `ArenaCoachTBC/` into `WoW/_classic_/Interface/AddOns/` (or `_classic_era_` for Anniversary)
 - [ ] At login screen, addon listed and enabled, no "Out of date" warning
 - [ ] Login: no Lua errors in BugSack / `/console scriptErrors 1`
@@ -40,7 +41,7 @@ behaviour is what tests can't see.
 - [ ] OPEN / KILL / SWAP / DEFEND / RESET modes each render with a distinct colour (yellow / red / orange / blue / grey)
 - [ ] Alert version marker matches the installed addon release; `/acc hud board` still shows the board top-right version marker
 - [ ] Default alert is compact, centered, movable, low-background, and does not cover party frames, arena frames, action bars, cast bars, nameplates, DBM bars, WeakAura clusters, chat, or damage meters
-- [ ] Default alert main line reads like a DBM boss warning: `!! KILL !! Holyman`, `!! SWAP !! Mage`, or `!! DEFEND !!`, with the top actionable callout on the subline
+- [ ] Default alert main line reads like a DBM boss warning with the mechanic/action first: `Purge Holyman`, `Tremor down - shaman refresh`, `BURST NOW`, `Kill Holyman`, or `Swap Mage`; abstract mode words such as `KILL`, `DEFEND`, `攻`, or `守` are not the big center text when a specific action exists
 - [ ] `/acc hud board` shows the optional prototype-A zones inside one visible board: left status stack, center action, center player-info/assignments, and right cue/icon rail, including waiting/pre-gate placeholders before live target data arrives
 - [ ] Optional board reads as Obsidian Signal: warm obsidian translucent shell, brass rules/reticles, cyan information accents, bone-white data text, restrained crimson signal colour, top drag strip/grip, signal/ruler accents, lower-right resize grip, internal dividers, slot backgrounds, target health bar, and mode-coloured center accent
 - [ ] Board metadata strip shows `OBSIDIAN / SIGNAL / <mode>` while still keeping the top-right version marker visible
@@ -52,7 +53,7 @@ behaviour is what tests can't see.
 - [ ] Bottom assignment strip highlights the player's own card first with `YOU` / `你`, a stronger plate, and a readable action line before teammate cards
 - [ ] On a taller/wider resized board with `/acc verbose on`, the player-info cards remain inside the bottom strip without colliding with the center action or right cue rail
 - [ ] `/acc unlock` lets the alert move and the integrated board drag/resize; `/acc lock` prevents movement/resizing
-- [ ] Signal strip renders passive cues (`READY`, `BURST`, `DANGER`, `PINCH`) inside the compact center instrument without covering the playfield
+- [ ] Signal strip stays passive (`SIGNAL · LIVE`) while the big center line carries the actual DBM-style action
 - [ ] Target stats row shows `HP <n>%   kill <n>%   BURST READY` when there's a primary target; hidden on DEFEND / RESET
 - [ ] Player-info module shows one compact action card per advised friendly in 3v3; in 5v5 it fills five small cards instead of a paragraph block, with the player's own card visually dominant
 - [ ] Left status stack shows current primary target, swap target, and a pressured friendly when known

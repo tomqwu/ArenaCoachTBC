@@ -145,7 +145,7 @@ H.it(g, "UI renders spell texture icons when available", function()
         primaryTargetClass = "PRIEST", callouts = { "CALL_HOJ_KILL" },
         priority = "HIGH", _forceShow = true,
     })
-    H.assertNotNil(UI.frame.subText:GetText():find("|TInterface/Icons/Spell_Holy_HammerOfJustice", 1, true))
+    H.assertNotNil((UI.frame.railText:GetText() or ""):find("|TInterface/Icons/Spell_Holy_HammerOfJustice", 1, true))
     _G.GetSpellTexture = saved
 end)
 
@@ -168,9 +168,10 @@ H.it(g, "UI formats purge fallback target and verbose comp badge", function()
         comp = "RMP", compLabel = "Rogue / Mage / Priest",
         compSpecConfirmed = true, _forceShow = true,
     })
-    local text = UI.frame.subText:GetText()
-    H.assertNotNil(text:find("Purge target", 1, true))
-    H.assertNotNil(text:find("Rogue / Mage / Priest", 1, true))
+    local main = UI.frame.bigText:GetText()
+    local detail = UI.frame.subText:GetText()
+    H.assertNotNil(main:find("Purge target", 1, true))
+    H.assertNotNil(detail:find("Rogue / Mage / Priest", 1, true))
 end)
 
 H.it(g, "UI falls back to raw keys when Core localization is absent", function()

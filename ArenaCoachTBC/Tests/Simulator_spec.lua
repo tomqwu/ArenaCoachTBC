@@ -257,8 +257,11 @@ H.it(g, "timed simulator callbacks repaint the HUD from engine recommendations",
     local ran, err = SIM:Run("real-arena", { printEvents = false })
     H.assertTrue(ran, "Run failed: " .. tostring(err))
     H.assertNotNil(UI.frame)
-    H.assertTrue((UI.frame.bigText._text or ""):find("Holyman", 1, true) ~= nil,
-        "initial timed simulation state should paint the opener target")
+    local initialText = (UI.alertFrame and UI.alertFrame.main and UI.alertFrame.main._text)
+        or (UI.frame.bigText and UI.frame.bigText._text)
+        or ""
+    H.assertTrue(initialText ~= "" and initialText ~= (Core.L("REASON_DEFAULT") or "Awaiting opener..."),
+        "initial timed simulation state should paint a concrete opener/action")
     for _, fn in ipairs(pending) do fn() end
     H.assertTrue((UI.frame.bigText._text or "") ~= (Core.L("REASON_DEFAULT") or "Awaiting opener..."),
         "scheduled callbacks should not leave the HUD stuck on the waiting text")
