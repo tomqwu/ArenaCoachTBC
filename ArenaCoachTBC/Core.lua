@@ -1796,8 +1796,10 @@ local function onPlayerEnteringWorld()
     -- evaluation tick.
     Core.state.enemies         = {}
     Core.state.enemyClassList  = {}
+    Core.state.observations    = {}
     Core.state.lastPrimaryGUID = nil
     Core.state.combatPhase     = "PRE"
+    Core._friendlyDamageTs     = {}
 
     Core:InitDB()
     Core:RefreshFriendlies()

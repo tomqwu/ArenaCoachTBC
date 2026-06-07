@@ -605,48 +605,55 @@ local function shouldDefend(state)
     -- outnumbered callout instead of DEFEND. Cooldowns CAN save a
     -- 2v3; this ordering preserves that.
 
-    local lowest = lowestDefensiveFriendly(state)
-    -- M11 #71: defensive HP threshold shifts with aggression.
-    -- Greedy: 30 (only defend on real emergencies). Safe: 50 (defend earlier).
-    local hpThreshold = 40
-    local agg = state.aggression or (state.config and state.config.strategy and state.config.strategy.aggression)
-    if agg == "greedy" then hpThreshold = 30
-    elseif agg == "safe" then hpThreshold = 50 end
-    if lowest and (lowest.healthPct or 100) < hpThreshold then return true, "low_healer" end
-    if ourHealerCCd(state) then return true, "healer_cc" end
+    local phase = state.combatPhase or "PRE"
+    local ctx = state.pvpContext
+    local arenaPrep = phase == "PRE" and (ctx == nil or ctx == "arena")
 
-    local obs = state.observations or {}
-    if obs.enemyBloodlustActive then return true, "enemy_lust" end
-    if obs.multipleBurstsDetected then return true, "multi_burst" end
+    -- Arena PRE is opener planning. Live emergency signals can be stale
+    -- before gates, so only static pre-plans below may DEFEND here.
+    if not arenaPrep then
+        local lowest = lowestDefensiveFriendly(state)
+        -- M11 #71: defensive HP threshold shifts with aggression.
+        -- Greedy: 30 (only defend on real emergencies). Safe: 50 (defend earlier).
+        local hpThreshold = 40
+        local agg = state.aggression or (state.config and state.config.strategy and state.config.strategy.aggression)
+        if agg == "greedy" then hpThreshold = 30
+        elseif agg == "safe" then hpThreshold = 50 end
+        if lowest and (lowest.healthPct or 100) < hpThreshold then return true, "low_healer" end
+        if ourHealerCCd(state) then return true, "healer_cc" end
 
-    -- v2.7.3 (narrowed): outnumbered override. Only fires when enemy
-    -- count >= 4 AND enemy-friend delta >= 2 (catches 2v4, 2v5, 1v3,
-    -- 1v4 — never 2v3 / 1v2). Original v2.7.1 user case was a 2v4
-    -- where defensives can't save anyone; v2.7.3 keeps that fix but
-    -- doesn't veto the salvageable cases.
-    --
-    -- Arena-only: BG/world enemy counts come from nameplate scans,
-    -- which include hostile players who aren't actively fighting you.
-    -- Arena's `arenaN` unit IDs ARE the opposing team.
-    if (state.pvpContext == nil or state.pvpContext == "arena") then
-        local nFriendly = aliveCount(state.friendlies)
-        local nEnemy    = aliveCount(state.enemies)
-        if nFriendly > 0 and nEnemy >= 4 and (nEnemy - nFriendly) >= 2 then
-            return false, "outnumbered_no_defend"
+        local obs = state.observations or {}
+        if obs.enemyBloodlustActive then return true, "enemy_lust" end
+        if obs.multipleBurstsDetected then return true, "multi_burst" end
+
+        -- v2.7.3 (narrowed): outnumbered override. Only fires when enemy
+        -- count >= 4 AND enemy-friend delta >= 2 (catches 2v4, 2v5, 1v3,
+        -- 1v4 — never 2v3 / 1v2). Original v2.7.1 user case was a 2v4
+        -- where defensives can't save anyone; v2.7.3 keeps that fix but
+        -- doesn't veto the salvageable cases.
+        --
+        -- Arena-only: BG/world enemy counts come from nameplate scans,
+        -- which include hostile players who aren't actively fighting you.
+        -- Arena's `arenaN` unit IDs ARE the opposing team.
+        if (state.pvpContext == nil or state.pvpContext == "arena") then
+            local nFriendly = aliveCount(state.friendlies)
+            local nEnemy    = aliveCount(state.enemies)
+            if nFriendly > 0 and nEnemy >= 4 and (nEnemy - nFriendly) >= 2 then
+                return false, "outnumbered_no_defend"
+            end
         end
-    end
 
-    if obs.healerUnderPressure then return true, "trained" end
+        if obs.healerUnderPressure then return true, "trained" end
+    end
 
     -- enemy comp = triple DPS, no clean opener (arena-only —
     -- M15 v2.1: skip Strategies:Identify for non-arena contexts where
     -- comp matches would be coincidence, not signal)
-    local ctx = state.pvpContext
     if ctx == nil or ctx == "arena" then
         local Strategies = ns.Strategies
         local comp = Strategies and (Strategies:Identify(state.enemyClassList or {}, state.enemies, state.bracket))
         if comp and comp.defaultMode == "DEFEND" then
-            if (state.combatPhase or "PRE") == "PRE" then
+            if phase == "PRE" then
                 return true, "triple_dps_pre"
             end
         end

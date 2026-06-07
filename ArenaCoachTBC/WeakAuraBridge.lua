@@ -157,11 +157,11 @@ function API.GetDebugState()
     return {
         last       = WAB._last,
         state      = WAB._state,
-        version    = "2.8.33",
+        version    = "2.8.34",
         addon      = ADDON_NAME,
     }
 end
-function API.GetVersion() return "2.8.33" end
+function API.GetVersion() return "2.8.34" end
 
 function WAB:Publish(recommendation, state)
     self._last  = recommendation

@@ -428,6 +428,18 @@ H.it(g, "comp openTarget biases PRE target selection", function()
     H.assertEq(rec.primaryTargetClass, "WARLOCK")
 end)
 
+H.it(g, "arena quality: pre-gates ignores stale healer-train pressure", function()
+    local state = SE:BuildTestState({"ROGUE","MAGE","PRIEST"})
+    state.combatPhase = "PRE"
+    state.pvpContext = "arena"
+    state.observations = { healerUnderPressure = true }
+
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.mode, "OPEN",
+        "arena prep must plan the opener, not show live DEFEND from stale train state")
+    H.assertNotEq(rec.reasonKey, "REASON_DEFEND_TRAINED")
+end)
+
 H.it(g, "arena quality: 2v2 Warrior/Paladin pre-gates opens paladin instead of fake DEFEND", function()
     local state = SE:BuildTestState({ "WARRIOR", "PALADIN" })
     state.combatPhase = "PRE"

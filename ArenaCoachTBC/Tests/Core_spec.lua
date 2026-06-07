@@ -560,6 +560,8 @@ H.it(g, "v2.7.2: PLAYER_ENTERING_WORLD resets per-match state", function()
                        name = "PhantomName", alive = false, healthPct = 0 },
     }
     Core.state.enemyClassList = { "MAGE" }
+    Core.state.observations = { healerUnderPressure = true }
+    Core._friendlyDamageTs = { 101, 102, 103 }
     Core.state.lastPrimaryGUID = "ghost1"
     Core.state.combatPhase = "POST"
     EB:Dispatch("PLAYER_ENTERING_WORLD")
@@ -568,6 +570,9 @@ H.it(g, "v2.7.2: PLAYER_ENTERING_WORLD resets per-match state", function()
     H.assertNil(Core.state.lastPrimaryGUID, "PEW must clear lastPrimaryGUID")
     H.assertNil(next(Core.state.enemies),
         "PEW must clear state.enemies so phantom names don't leak into the next match")
+    H.assertFalse(Core.state.observations.healerUnderPressure,
+        "PEW must clear stale healer-train pressure before pre-gates evaluation")
+    H.assertEq(#Core._friendlyDamageTs, 0, "PEW must clear stale healer damage samples")
 end)
 
 H.it(g, "EventBus GROUP_ROSTER_UPDATE handler runs", function()

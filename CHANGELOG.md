@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.34] - 2026-06-07
+
+### Fixed
+- **Arena prep no longer shows live DEFEND from stale pressure.** Before gates open, arena recommendations now stay in opener planning unless a static matchup pre-plan explicitly calls for a defensive start. Stale `healerUnderPressure`, old friendly damage samples, low HP, CC, or burst observations from a prior match can no longer paint `DEFEND - healer trained` before combat begins.
+- **Fresh arena entry clears volatile pressure state.** `PLAYER_ENTERING_WORLD` now resets old healer-train observations and friendly damage timestamps alongside enemy identities and target history.
+
+### Tests
+- Added StrategyEngine coverage for pre-gates arena state with stale healer pressure staying `OPEN`.
+- Added Core reset coverage for clearing stale healer pressure and old damage samples on arena/world entry.
+- Local validation: 694/694 tests passing, locale parity green at 157 keys per locale, package-shape gate green, and luacov total coverage is 99.50%.
+
 ## [2.8.33] - 2026-06-07
 
 ### Added

@@ -15,7 +15,7 @@ local UI = ns.UI
 UI.frame = nil
 UI.alertFrame = nil
 
-local ADDON_VERSION = "2.8.33"
+local ADDON_VERSION = "2.8.34"
 local STALE_FADE_START = 2.5
 local STALE_FADE_SECONDS = 1.5
 local ALERT_WIDTH = 460
