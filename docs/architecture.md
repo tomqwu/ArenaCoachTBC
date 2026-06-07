@@ -188,7 +188,9 @@ BG/world 的敌人发现是机会式的。`Core:RefreshEnemiesNonArena()` 会扫
 
 `UI:Apply` checks `Core.state.pvpContext` and hides the frame + thin edge cue + nameplate overlays when the context is explicitly `"none"` or `"world_idle"`. This stops the engine from drawing a stale rec on screen between fights and stops `onNameplateChange` from re-evaluating in cities (where the firehose of nameplate add/remove events was a major frame-rate hit before v2.2.5).
 
-v2.8.3 adds a stale-recommendation fade timer on the HUD frame; v2.8.11 tightens it; v2.8.32 extends the same timer to the DBM-style alert. Each fresh `UI:Apply` resets opacity to 1.0. If no fresh recommendation refreshes the visible HUD surface after 2.5 seconds, opacity fades over 1.5 seconds; at the end the alert/board hides and clears nameplate / edge cues. This handles the "situation out of sync" case without flashing or forcing the user to manually toggle the frame.
+v2.8.3 adds a stale-recommendation fade timer on the HUD frame; v2.8.11 tightens it; v2.8.32 extends the same timer to the DBM-style alert; v2.8.37 retunes it for readability. Each fresh `UI:Apply` resets opacity to 1.0. If no fresh recommendation refreshes the visible HUD surface after 7 seconds, opacity fades over 5 seconds; at the end the alert/board hides and clears nameplate / edge cues. The bottom player-action stack has its own DBM-style ten-second bar decay, so the latest personal instruction remains readable even when the next engine tick is delayed. This handles the "situation out of sync" case without flashing or forcing the user to manually toggle the frame.
+
+v2.8.37 also changes the live HUD hierarchy: top strip = strategy summary (bracket, aggression, current plan), center alert = the player's own action when `playerActions` contains a `unit="player"` assignment, right rail = persistent strategy/profile context plus the highest-value cue, bottom = slow action bars with the player's row first and teammate rows as supporting context.
 
 `/acc off` and `/acc on` (aliases `/acc disable` / `/acc enable`) toggle `db.enabled`. When off, `Core:Evaluate` short-circuits at the top — no event handlers, no engine work, all visual layers hidden. Persists across `/reload`. The default `/acc test` path runs the simulator with `state.simulatorActive` and `pvpContext="arena"` so the engine scorer can be exercised outside a queue. Its timed `C_Timer.After` callbacks use a simulator-owned tick that calls `StrategyEngine:Evaluate`, sets `_forceShow`, applies the HUD, and publishes the WeakAura payload; this keeps the out-of-arena replay visible even though the normal live context gate would hide non-PvP UI. The visual-only `/acc test hud` demo bypasses both gates via a per-beat `recommendation._forceShow` flag so the walk-through paints the prototype-A modules outside arena.
 
@@ -225,6 +227,10 @@ The engine's `Evaluate` returns roughly this / 引擎 `Evaluate` 返回大致结
   opponentSignature  = "<class_set>#<hash>",
   aggression         = "greedy|balanced|safe",
   rating             = number,
+  playerActions      = {
+    { unit = "player", class = "SHAMAN", actionKey = "ACTION_SHAMAN_TREMOR_REFRESH", priority = "URGENT" },
+    ...
+  },
 }
 ```
 

@@ -112,19 +112,19 @@ H.it(g, "CreateFrame builds prototype-A module set", function()
     H.assertEq(f.dragGrip._text, "||")
     H.assertTrue((f.title._textColor and f.title._textColor[1] or 0) >= 0.70,
         "title should use the brass hierarchy color")
-    H.assertTrue((f.metaText._text or ""):find("O B S I D I A N", 1, true) ~= nil,
-        "metadata strip should carry the Obsidian Signal signature")
+    H.assertTrue((f.metaText._text or ""):find("Strategy", 1, true) ~= nil,
+        "metadata strip should carry the current strategy instead of decorative copy")
     H.assertFalse(UI.unitFrame:IsShown(), "detached left focus strip should start dormant")
     H.assertFalse(UI.railFrame:IsShown(), "detached right cue rail should start dormant")
     H.assertFalse(UI.assignFrame:IsShown(), "detached assignment module should start dormant")
     H.assertTrue((f.unitText._text or ""):find("Target", 1, true) ~= nil,
         "waiting focus strip should show structural labels")
-    H.assertTrue((f.railText._text or ""):find("Burst", 1, true) ~= nil,
-        "waiting cue rail should show structural labels")
+    H.assertTrue((f.railText._text or ""):find("Profile", 1, true) ~= nil,
+        "waiting strategy rail should reserve profile context")
     H.assertTrue((f.assignText._text or ""):find("Assignments", 1, true) ~= nil,
         "waiting assignment panel should show structural labels")
-    H.assertTrue((f.assignHeader._text or ""):find("S L O T S", 1, true) ~= nil,
-        "bottom assignment strip should expose a visible slot header")
+    H.assertTrue((f.assignHeader._text or ""):find("Y O U R", 1, true) ~= nil,
+        "bottom assignment strip should prioritize the player's action")
 end)
 
 H.it(g, "CreateFrame builds DBM-style alert layer", function()
@@ -140,6 +140,9 @@ H.it(g, "CreateFrame builds DBM-style alert layer", function()
     UI.unitFrame = nil
     UI.railFrame = nil
     UI.alertFrame = nil
+    H.ns.Core = H.ns.Core or {}
+    H.ns.Core.state = H.ns.Core.state or {}
+    H.ns.Core.state.pvpContext = nil
     UI:CreateFrame()
     local af = UI.alertFrame
     H.assertNotNil(af)
@@ -167,6 +170,9 @@ H.it(g, "default alert mode shows DBM callout and hides the board", function()
     UI.unitFrame = nil
     UI.railFrame = nil
     UI.alertFrame = nil
+    H.ns.Core = H.ns.Core or {}
+    H.ns.Core.state = H.ns.Core.state or {}
+    H.ns.Core.state.pvpContext = nil
     UI:CreateFrame()
     UI._calloutLastShown = {}
     H.advanceTime(5)
@@ -449,6 +455,61 @@ H.it(g, "Apply promotes and highlights the player action even if actions are uno
     H.assertFalse(UI.frame.assignSlotTexts[2]._accIsSelf, "party slot should not inherit the self highlight")
 end)
 
+H.it(g, "Apply makes the player's own action the main alert and a slow DBM-style bar", function()
+    _G.ArenaCoachTBCDB = {
+        enabled = true, locked = false, language = "auto",
+        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0, displayMode = "both" },
+        alerts = { sound = false, screenFlash = false, edgeGlow = false, nameplate = false },
+        strategy = { aggression = "safe" }, debug = false,
+    }
+    H.ns.Core = H.ns.Core or {}
+    H.ns.Core.state = H.ns.Core.state or {}
+    H.ns.Core.state.pvpContext = "arena"
+    H.ns.Core.state.bracket = 3
+    UI.frame = nil
+    UI.alertFrame = nil
+    UI.assignFrame = nil
+    UI.unitFrame = nil
+    UI.railFrame = nil
+    UI:CreateFrame()
+    UI:Apply({
+        mode = "DEFEND",
+        primaryTargetName = "Holyman",
+        callouts = { "CALL_TREMOR_DOWN" },
+        priority = "URGENT",
+        aggression = "safe",
+        compLabel = "RMP",
+        profileContrib = "trinketsFear=0.83",
+        playerActions = {
+            { unit = "party1", name = "Leaves", class = "DRUID", actionKey = "ACTION_DRUID_DEFEND", targetName = "You" },
+            { unit = "player", name = "Totemkin", class = "SHAMAN", actionKey = "ACTION_SHAMAN_TREMOR_REFRESH" },
+        },
+    })
+    H.assertTrue((UI.frame.bigText._text or ""):find("Refresh Tremor", 1, true) ~= nil,
+        "board main line should foreground the player's own action")
+    H.assertTrue((UI.alertFrame.main._text or ""):find("Refresh Tremor", 1, true) ~= nil,
+        "DBM alert should foreground the player's own action")
+    H.assertTrue((UI.alertFrame.sub._text or ""):find("Tremor down", 1, true) ~= nil,
+        "global callout should remain as supporting context")
+    H.assertTrue((UI.frame.metaText._text or ""):find("safe", 1, true) ~= nil,
+        "top strategy strip should include aggression")
+    H.assertTrue((UI.frame.railText._text or ""):find("trinketsFear", 1, true) ~= nil,
+        "strategy rail should keep opponent profile context")
+    local fill = UI.frame.assignPanel.assignFill1
+    H.assertNotNil(fill)
+    local startWidth = fill._width or 0
+    H.assertTrue(startWidth > 100, "fresh personal action bar should start mostly full")
+    H.advanceTime(5)
+    UI.frame._scripts.OnUpdate(UI.frame, 0.1)
+    H.assertTrue((fill._width or 0) < startWidth and (fill._width or 0) > 0,
+        "personal action bar should decay slowly over time")
+    H.advanceTime(6)
+    UI.frame._scripts.OnUpdate(UI.frame, 0.1)
+    H.assertFalse(fill._shown, "expired personal action bar should clear after its readable window")
+    H.ns.Core.state.pvpContext = nil
+    H.ns.Core.state.bracket = nil
+end)
+
 H.it(g, "Apply renders left focus strip and right cue rail", function()
     H.ns.Core = H.ns.Core or {}
     H.ns.Core.state = H.ns.Core.state or {}
@@ -476,8 +537,8 @@ H.it(g, "Apply renders left focus strip and right cue rail", function()
     H.assertTrue(focus:find("42", 1, true) ~= nil, "primary target hp missing: " .. focus)
     H.assertTrue(focus:find("Frostbiter", 1, true) ~= nil, "secondary target missing: " .. focus)
     H.assertTrue(focus:find("Leaves", 1, true) ~= nil, "lowest friendly missing: " .. focus)
-    H.assertTrue(rail:find("Cues", 1, true) ~= nil, "cue rail header missing: " .. rail)
-    H.assertTrue(rail:find("B R I E F", 1, true) ~= nil, "short cue subtitle missing: " .. rail)
+    H.assertTrue(rail:find("Strategy", 1, true) ~= nil, "strategy rail header missing: " .. rail)
+    H.assertTrue(rail:find("S T R A T E G Y", 1, true) ~= nil, "strategy subtitle missing: " .. rail)
     H.assertTrue(rail:find("T A C T I C A L", 1, true) == nil,
         "long cue subtitle should not wrap in the side rail: " .. rail)
     H.assertTrue(rail:find("Holyman", 1, true) ~= nil, "cue rail should render target-aware callout: " .. rail)
@@ -486,10 +547,10 @@ H.it(g, "Apply renders left focus strip and right cue rail", function()
         "target health bar should reflect partial health")
     H.assertTrue((UI.frame.healthLabel._text or ""):find("42", 1, true) ~= nil,
         "target health label should show current percent")
-    H.assertTrue((UI.frame.metaText._text or ""):find("KILL", 1, true) ~= nil,
-        "console meta strip should show current mode")
-    H.assertTrue((UI.frame.metaText._text or ""):find("O B S I D I A N", 1, true) ~= nil,
-        "console meta strip should preserve the visual language signature")
+    H.assertTrue((UI.frame.metaText._text or ""):find("Strategy", 1, true) ~= nil,
+        "console meta strip should show current strategy")
+    H.assertTrue((UI.frame.metaText._text or ""):find("Holyman", 1, true) ~= nil,
+        "console meta strip should include the active plan")
     H.assertTrue(UI.frame:IsShown(), "integrated board should show when focus and cue content exists")
     H.ns.Core.state.pvpContext = nil
     H.ns.Core.state.friendlies = nil
@@ -513,8 +574,8 @@ H.it(g, "Apply force-show keeps prototype-A scaffold visible without live data",
     H.assertNotNil(UI.frame.assignText)
     H.assertTrue((UI.frame.unitText._text or ""):find("waiting", 1, true) ~= nil,
         "force-show focus scaffold should include placeholders")
-    H.assertTrue((UI.frame.railText._text or ""):find("Burst", 1, true) ~= nil,
-        "force-show cue scaffold should include burst placeholder")
+    H.assertTrue((UI.frame.railText._text or ""):find("Profile", 1, true) ~= nil,
+        "force-show strategy scaffold should include profile placeholder")
     H.assertTrue((UI.frame.assignText._text or ""):find("Assignments", 1, true) ~= nil,
         "force-show assignments scaffold should include header")
     H.ns.Core.state.pvpContext = nil
@@ -528,6 +589,11 @@ H.it(g, "Apply divides assignment strip into five stable arena slots", function(
         alerts = { sound = false, screenFlash = false, edgeGlow = false, nameplate = false },
         strategy = {}, debug = false,
     }
+    UI.frame = nil
+    UI.assignFrame = nil
+    UI.unitFrame = nil
+    UI.railFrame = nil
+    UI.alertFrame = nil
     UI:CreateFrame()
     local actions = {
         { name = "Warrior", actionKey = "ACTION_WARRIOR_KILL", targetName = "Holyman" },
@@ -591,6 +657,20 @@ H.it(g, "prototype-A modules have independent movable saved positions", function
 end)
 
 H.it(g, "Apply renders arcade warning cue for burst windows", function()
+    _G.ArenaCoachTBCDB = {
+        enabled = true, locked = false, language = "auto",
+        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0, displayMode = "board" },
+        alerts = { sound = false, screenFlash = false, edgeGlow = false, nameplate = false },
+        strategy = {}, debug = false,
+    }
+    UI.frame = nil
+    UI.assignFrame = nil
+    UI.unitFrame = nil
+    UI.railFrame = nil
+    UI.alertFrame = nil
+    H.ns.Core = H.ns.Core or {}
+    H.ns.Core.state = H.ns.Core.state or {}
+    H.ns.Core.state.pvpContext = nil
     UI:CreateFrame()
     UI._flash = nil
     UI:Apply({
@@ -768,8 +848,8 @@ H.it(g, "pre-gates OPEN plan does not fade just because the room is quiet", func
     H.assertTrue(UI.frame:IsShown(), "stable pre-gates opener plan should remain visible")
     H.assertTrue((UI.frame.unitText._text or ""):find("Priest", 1, true) ~= nil,
         "pre-gates opener should render in the integrated focus panel")
-    H.assertTrue((UI.frame.railText._text or ""):find("Burst", 1, true) ~= nil,
-        "pre-gates opener should keep the integrated cue scaffold visible")
+    H.assertTrue((UI.frame.railText._text or ""):find("Strategy", 1, true) ~= nil,
+        "pre-gates opener should keep the integrated strategy scaffold visible")
     H.assertTrue((UI.frame.assignText._text or ""):find("Assignments", 1, true) ~= nil,
         "pre-gates opener should keep integrated assignments scaffold visible")
     H.assertEq(UI.frame._accAlpha, 1)

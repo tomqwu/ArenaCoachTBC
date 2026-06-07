@@ -15,9 +15,10 @@ local UI = ns.UI
 UI.frame = nil
 UI.alertFrame = nil
 
-local ADDON_VERSION = "2.8.36"
-local STALE_FADE_START = 2.5
-local STALE_FADE_SECONDS = 1.5
+local ADDON_VERSION = "2.8.37"
+local STALE_FADE_START = 7.0
+local STALE_FADE_SECONDS = 5.0
+local ACTION_BAR_SECONDS = 10.0
 local ALERT_WIDTH = 460
 local ALERT_HEIGHT = 92
 local COMPACT_WIDTH = 540
@@ -221,34 +222,48 @@ local function layoutAssignmentSlots(frame, slots)
     local w = panel:GetWidth() or 0
     local h = panel:GetHeight() or 0
     local headerH = 18
-    local gap = 4
+    local gap = 3
     local innerX = 6
     local innerW = math.max(20, w - (innerX * 2))
-    local cardH = math.max(20, h - headerH - 9)
+    local stackH = math.max(20, h - headerH - 9)
     local cardY = -(headerH + 4)
-    local cardW = math.max(20, math.floor((innerW - (gap * (slots - 1))) / slots))
+    local cardH = math.max(10, math.floor((stackH - (gap * (slots - 1))) / slots))
 
     frame._accAssignSlots = slots
+    frame._accAssignSlotMetrics = {}
+    local actionBars = rawget(frame, "_accActionBars")
     for i = 1, VERBOSE_ACTION_LINES do
         local bg = panel["assignCard" .. i] or panel:CreateTexture(nil, "BACKGROUND")
         panel["assignCard" .. i] = bg
+        local fill = panel["assignFill" .. i] or panel:CreateTexture(nil, "BORDER")
+        panel["assignFill" .. i] = fill
         local text = frame.assignSlotTexts and frame.assignSlotTexts[i]
         if i <= slots then
-            local x = innerX + ((i - 1) * (cardW + gap))
+            local x = innerX
+            local y = cardY - ((i - 1) * (cardH + gap))
+            local bar = actionBars and actionBars[i]
+            local frac = bar and bar._frac or 1
+            frame._accAssignSlotMetrics[i] = { x = x, y = y, w = innerW, h = cardH }
             clearPoints(bg)
-            size(bg, cardW, cardH)
-            point(bg, "TOPLEFT", panel, "TOPLEFT", x, cardY)
+            size(bg, innerW, cardH)
+            point(bg, "TOPLEFT", panel, "TOPLEFT", x, y)
             colorTexture(bg, OBSIDIAN_WARM_R, OBSIDIAN_WARM_G, OBSIDIAN_WARM_B, 0.42)
             if bg.Show then bg:Show() end
+            clearPoints(fill)
+            size(fill, math.max(1, math.floor(innerW * frac)), cardH)
+            point(fill, "TOPLEFT", panel, "TOPLEFT", x, y)
+            colorTexture(fill, BRASS_R, BRASS_G, BRASS_B, 0.28)
+            if fill.Show then fill:Show() end
             if text then
                 clearPoints(text)
-                point(text, "TOPLEFT", panel, "TOPLEFT", x + 4, cardY - 4)
-                if text.SetWidth then pcall(text.SetWidth, text, math.max(20, cardW - 8)) end
-                if text.SetHeight then pcall(text.SetHeight, text, math.max(10, cardH - 6)) end
+                point(text, "TOPLEFT", panel, "TOPLEFT", x + 6, y - 2)
+                if text.SetWidth then pcall(text.SetWidth, text, math.max(20, innerW - 12)) end
+                if text.SetHeight then pcall(text.SetHeight, text, math.max(8, cardH - 3)) end
                 if text.Show then text:Show() end
             end
         else
             if bg.Hide then bg:Hide() end
+            if fill.Hide then fill:Hide() end
             if text and text.Hide then text:Hide() end
         end
     end
@@ -328,9 +343,10 @@ end
 
 local function waitingCueText()
     return table.concat({
-        moduleHeader("UI_MODULE_CUES"),
-        waitingLine("UI_MODULE_BURST"),
-        waitingLine("UI_MODULE_UTILITY"),
+        moduleHeader("UI_MODULE_STRATEGY"),
+        waitingLine("UI_MODULE_PLAN"),
+        waitingLine("UI_MODULE_PROFILE"),
+        waitingLine("UI_MODULE_CUES"),
     }, "\n")
 end
 
@@ -519,7 +535,7 @@ local function layoutMainBoard(f)
     end
     if f.healthBarFill then
         clearPoints(f.healthBarFill)
-        size(f.healthBarFill, f._accHealthBarFillWidth or 1, 8)
+        size(f.healthBarFill, rawget(f, "_accHealthBarFillWidth") or 1, 8)
         point(f.healthBarFill, "LEFT", f.healthBarBg or (f.centerPanel or f), "LEFT", 0, 0)
     end
     if f.healthLabel then
@@ -645,7 +661,8 @@ function UI:CreateFrame()
     f.metaText:SetJustifyH("CENTER")
     f.metaText:SetWidth(220)
     f.metaText:SetTextColor(BRASS_DIM_R, BRASS_DIM_G, BRASS_DIM_B)
-    f.metaText:SetText("O B S I D I A N  /  S I G N A L  /  L I V E")
+    f.metaText:SetText(string.format("%s: PvP · balanced · %s",
+        L("UI_MODULE_STRATEGY"), L("REASON_DEFAULT")))
     improveTextContrast(f.metaText, 0.85)
 
     local dragBar = solidTexture(f, "dragBar", "BACKGROUND", OBSIDIAN_WARM_R, OBSIDIAN_WARM_G, OBSIDIAN_WARM_B, 0.56)
@@ -817,7 +834,7 @@ function UI:CreateFrame()
         end
         f.assignHeader:SetJustifyH("LEFT")
         f.assignHeader:SetWidth(m.contentW - 20)
-        f.assignHeader:SetText(consoleHeader("UI_ACTIONS_HEADER", "R O L E · S L O T S", "03"))
+        f.assignHeader:SetText(consoleHeader("UI_ACTIONS_HEADER", "Y O U R · A C T I O N S", "03"))
         improveTextContrast(f.assignHeader, 0.95, 1, -1)
 
         f.assignText = assignPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -856,6 +873,7 @@ function UI:CreateFrame()
         layoutMainBoard(self)
     end)
     f:SetScript("OnUpdate", function(_, dt)
+        if UI and UI._UpdateActionBars then UI:_UpdateActionBars(dt) end
         if UI and UI._UpdateStaleFade then UI:_UpdateStaleFade(dt) end
     end)
 
@@ -1186,6 +1204,8 @@ local function calloutIcon(key, size)
 end
 
 local calloutText
+local aggressionText
+local strategyPlanText
 
 local function normalizedAssignmentSlots(count)
     count = tonumber(count) or 0
@@ -1252,7 +1272,7 @@ end
 
 local function assignmentCardText(action, index)
     if not action then
-        return string.format("|cff8f7b49P·%02d|r\n%s", index, waitingValue())
+        return string.format("|cff8f7b49P·%02d|r  %s", index, waitingValue())
     end
     local who = action.name or action.unit or action.class or "?"
     local role = action.class or action.role or action.unit or ""
@@ -1262,10 +1282,10 @@ local function assignmentCardText(action, index)
         and ("|cffff6464" .. target .. "|r")
         or "|cff7a715dREADY|r"
     if isSelfAction(action) then
-        return string.format("|cffffd24a%s|r |cff8f7b49P·%02d|r |cff5bc4d8%s|r\n|cffffffff%s|r\n|cff8f7b49->|r %s",
+        return string.format("|cffffd24a%s|r |cff8f7b49P·%02d|r |cff5bc4d8%s|r  |cffffffff%s|r |cff8f7b49->|r %s",
             L("UI_SELF_TAG"), index, role ~= "" and string.upper(role) or "ROLE", text, targetLine)
     end
-    return string.format("|cff8f7b49P·%02d|r |cffffffff%s|r |cff5bc4d8%s|r\n|cffddd2ad%s|r\n|cff8f7b49->|r %s",
+    return string.format("|cff8f7b49P·%02d|r |cffffffff%s|r |cff5bc4d8%s|r  |cffddd2ad%s|r |cff8f7b49->|r %s",
         index, who, role ~= "" and string.upper(role) or "ROLE", text, targetLine)
 end
 
@@ -1277,9 +1297,8 @@ local function formatPlayerActions(actions, scaffold)
     actions = displayActions(actions)
     local verbose = (ArenaCoachTBCDB and ArenaCoachTBCDB.frame
                      and ArenaCoachTBCDB.frame.verbose) or false
-    local panelCap = (UI.frame and UI.frame._accAssignLines) or DEFAULT_ACTION_LINES
-    local maxLines = verbose and math.min(VERBOSE_ACTION_LINES, panelCap)
-        or math.min(DEFAULT_ACTION_LINES, panelCap)
+    local panelCap = (UI.frame and rawget(UI.frame, "_accAssignLines")) or DEFAULT_ACTION_LINES
+    local maxLines = verbose and math.min(VERBOSE_ACTION_LINES, panelCap) or panelCap
     for i = 1, math.min(#actions, maxLines) do
         local a = actions[i]
         local who = a.name or a.unit or a.class or "?"
@@ -1300,13 +1319,129 @@ local function formatPlayerActions(actions, scaffold)
     return table.concat(lines, "\n")
 end
 
+local function currentTime()
+    if type(GetTime) == "function" then return GetTime() end
+    return 0
+end
+
+local function barColorForAction(action)
+    if isSelfAction(action) then return CRIMSON_R, CRIMSON_G, CRIMSON_B, 0.46 end
+    if action and action.priority == "URGENT" then return CYAN_R, CYAN_G, CYAN_B, 0.38 end
+    return BRASS_R, BRASS_G, BRASS_B, 0.26
+end
+
+local function clearActionBars(frame)
+    if not frame then return end
+    frame._accActionBars = {}
+    for i = 1, VERBOSE_ACTION_LINES do
+        local fs = frame.assignSlotTexts and frame.assignSlotTexts[i]
+        if fs then
+            fs._accIsSelf = false
+            fs:SetText("")
+            if fs.Hide then fs:Hide() end
+        end
+        local bg = frame.assignPanel and frame.assignPanel["assignCard" .. i]
+        if bg then
+            bg._accIsSelf = false
+            if bg.Hide then bg:Hide() end
+        end
+        local fill = frame.assignPanel and frame.assignPanel["assignFill" .. i]
+        if fill and fill.Hide then fill:Hide() end
+    end
+end
+
+local function updateActionBarVisual(frame, index, bar, now)
+    if not (frame and bar) then return false end
+    now = now or currentTime()
+    local remaining = (bar.expiresAt or now) - now
+    if remaining <= 0 then
+        local fs = frame.assignSlotTexts and frame.assignSlotTexts[index]
+        local bg = frame.assignPanel and frame.assignPanel["assignCard" .. index]
+        local fill = frame.assignPanel and frame.assignPanel["assignFill" .. index]
+        if fs then
+            fs:SetText("")
+            fs._accIsSelf = false
+            if fs.Hide then fs:Hide() end
+        end
+        if bg then
+            bg._accIsSelf = false
+            if bg.Hide then bg:Hide() end
+        end
+        if fill and fill.Hide then fill:Hide() end
+        return false
+    end
+
+    local frac = clamp(remaining / ACTION_BAR_SECONDS, 0, 1)
+    bar._frac = frac
+    local metrics = frame._accAssignSlotMetrics and frame._accAssignSlotMetrics[index]
+    local fill = frame.assignPanel and frame.assignPanel["assignFill" .. index]
+    local bg = frame.assignPanel and frame.assignPanel["assignCard" .. index]
+    local fs = frame.assignSlotTexts and frame.assignSlotTexts[index]
+    if fill and metrics then
+        clearPoints(fill)
+        size(fill, math.max(1, math.floor(metrics.w * frac)), metrics.h)
+        point(fill, "TOPLEFT", frame.assignPanel, "TOPLEFT", metrics.x, metrics.y)
+        if fill.SetAlpha then fill:SetAlpha(0.22 + (0.78 * frac)) end
+        if fill.Show then fill:Show() end
+    end
+    if bg and bg.SetAlpha then bg:SetAlpha(0.45 + (0.35 * frac)) end
+    if fs and fs.SetAlpha then fs:SetAlpha(0.55 + (0.45 * frac)) end
+    return true
+end
+
+function UI:_UpdateActionBars()
+    local frame = self.frame
+    local actionBars = frame and rawget(frame, "_accActionBars")
+    if not actionBars then return end
+    local now = currentTime()
+    local alive = false
+    for i = 1, VERBOSE_ACTION_LINES do
+        local bar = actionBars[i]
+        if bar and updateActionBarVisual(frame, i, bar, now) then
+            alive = true
+        else
+            actionBars[i] = nil
+            local fs = frame.assignSlotTexts and frame.assignSlotTexts[i]
+            local bg = frame.assignPanel and frame.assignPanel["assignCard" .. i]
+            local fill = frame.assignPanel and frame.assignPanel["assignFill" .. i]
+            if fs and not rawget(frame, "_accScaffoldAssignments") then
+                fs:SetText("")
+                fs._accIsSelf = false
+                if fs.Hide then fs:Hide() end
+            end
+            if bg and not rawget(frame, "_accScaffoldAssignments") then
+                bg._accIsSelf = false
+                if bg.Hide then bg:Hide() end
+            end
+            if fill and not rawget(frame, "_accScaffoldAssignments") and fill.Hide then fill:Hide() end
+        end
+    end
+    if not alive and frame.assignHeader and frame.assignHeader.SetAlpha then
+        frame.assignHeader:SetAlpha(0.70)
+    end
+end
+
 local function setAssignmentSlots(frame, actions, scaffold)
     if not frame then return end
     actions = displayActions(actions)
+    local hasActions = actions and #actions > 0
     local slots = assignmentSlotCount(actions)
     frame._accAssignSlots = slots
     frame._accSelfAssignmentIndex = nil
+    frame._accActionBars = rawget(frame, "_accActionBars") or {}
+    frame._accScaffoldAssignments = scaffold and not hasActions or false
+    if not hasActions and not scaffold then
+        local hasHistory = false
+        for i = 1, VERBOSE_ACTION_LINES do
+            if frame._accActionBars[i] then hasHistory = true; break end
+        end
+        if not hasHistory then
+            clearActionBars(frame)
+            return
+        end
+    end
     layoutAssignmentSlots(frame, slots)
+    local now = currentTime()
     for i = 1, VERBOSE_ACTION_LINES do
         local fs = frame.assignSlotTexts and frame.assignSlotTexts[i]
         local action = actions and actions[i]
@@ -1314,7 +1449,23 @@ local function setAssignmentSlots(frame, actions, scaffold)
         if fs then
             if i <= slots then
                 fs._accIsSelf = selfSlot
-                fs:SetText(assignmentCardText(action, i))
+                if action or scaffold then
+                    local text = assignmentCardText(action, i)
+                    fs:SetText(text)
+                    if action then
+                        frame._accActionBars[i] = {
+                            text = text,
+                            action = action,
+                            isSelf = selfSlot,
+                            expiresAt = now + ACTION_BAR_SECONDS,
+                            _frac = 1,
+                        }
+                    end
+                elseif frame._accActionBars[i] and frame._accActionBars[i].text then
+                    fs:SetText(frame._accActionBars[i].text)
+                else
+                    fs:SetText("")
+                end
                 if fs.Show then fs:Show() end
             else
                 fs._accIsSelf = false
@@ -1327,23 +1478,22 @@ local function setAssignmentSlots(frame, actions, scaffold)
             bg._accIsSelf = selfSlot
             if selfSlot then
                 frame._accSelfAssignmentIndex = i
-                colorTexture(bg, 0.18, 0.12, 0.035, 0.70)
+                colorTexture(bg, 0.18, 0.12, 0.035, 0.78)
             elseif i <= slots then
                 colorTexture(bg, OBSIDIAN_WARM_R, OBSIDIAN_WARM_G, OBSIDIAN_WARM_B, 0.42)
             end
         end
+        local fill = frame.assignPanel and frame.assignPanel["assignFill" .. i]
+        if fill then
+            local r, g, b, a = barColorForAction(action)
+            colorTexture(fill, r, g, b, a)
+        end
+        if frame._accActionBars[i] then
+            updateActionBarVisual(frame, i, frame._accActionBars[i], now)
+        end
     end
     if (not actions or #actions == 0) and not scaffold then
-        for i = 1, VERBOSE_ACTION_LINES do
-            local fs = frame.assignSlotTexts and frame.assignSlotTexts[i]
-            if fs then
-                fs._accIsSelf = false
-                fs:SetText("")
-                if fs.Hide then fs:Hide() end
-            end
-            local bg = frame.assignPanel and frame.assignPanel["assignCard" .. i]
-            if bg then bg._accIsSelf = false end
-        end
+        UI:_UpdateActionBars()
     end
 end
 
@@ -1416,25 +1566,47 @@ end
 local function formatCueRail(recommendation, scaffold)
     if not recommendation then return scaffold and waitingCueText() or "" end
     local lines = {}
-    if recommendation.burstAllowed and recommendation.mode == "KILL" then
-        table.insert(lines, "|cffffd24a●|r " .. L("UI_BURST_READY") .. " |cffffd24aHI|r")
-    end
+    local mode = recommendation.mode or "RESET"
+    local target = recommendation.primaryTargetName or recommendation.primaryTargetClass or ""
+    local showTarget = (mode == "OPEN" or mode == "KILL" or mode == "SWAP")
     local verbose = (ArenaCoachTBCDB and ArenaCoachTBCDB.frame
                      and ArenaCoachTBCDB.frame.verbose) or false
-    local panelCap = (UI.frame and UI.frame._accCueLines) or DEFAULT_ACTION_LINES
-    local maxLines = verbose and math.min(VERBOSE_ACTION_LINES, panelCap)
-        or math.min(DEFAULT_ACTION_LINES, panelCap)
+    local panelCap = (UI.frame and rawget(UI.frame, "_accCueLines")) or DEFAULT_ACTION_LINES
+    local maxLines = verbose and math.min(VERBOSE_ACTION_LINES, panelCap) or panelCap
+    local cueReserve = (recommendation.callouts and #recommendation.callouts > 0) and 1 or 0
+    table.insert(lines, consoleHeader("UI_MODULE_STRATEGY", "S T R A T E G Y", "02"))
+    table.insert(lines, string.format("%s |cffffffff%s|r",
+        consoleTag(L("UI_MODULE_PLAN"), "c8a86b"),
+        strategyPlanText(recommendation, mode, target, showTarget)))
+    if #lines < (maxLines - cueReserve) then
+        table.insert(lines, string.format("%s |cffddd2ad%s|r",
+            consoleTag(L("UI_MODULE_AGGRESSION"), "c8a86b"),
+            aggressionText(recommendation)))
+    end
+    if recommendation.profileContrib and recommendation.profileContrib ~= "" and #lines < (maxLines - cueReserve) then
+        table.insert(lines, string.format("%s |cffddd2ad%s|r",
+            consoleTag(L("UI_MODULE_PROFILE"), "c8a86b"),
+            tostring(recommendation.profileContrib):gsub(",", " ")))
+    elseif scaffold and #lines < (maxLines - cueReserve) then
+        table.insert(lines, waitingLine("UI_MODULE_PROFILE"))
+    end
+    local comp = recommendation.compLabel or recommendation.comp or recommendation.ownArchetypeLabel
+    if comp and comp ~= "" and #lines < (maxLines - cueReserve) then
+        table.insert(lines, string.format("%s |cffffffff%s|r",
+            consoleTag(L("UI_MODULE_COMP"), "52c7df"), comp))
+    end
+
+    if recommendation.burstAllowed and recommendation.mode == "KILL" and #lines < maxLines then
+        table.insert(lines, "|cffffd24a●|r " .. L("UI_BURST_READY") .. " |cffffd24aHI|r")
+    end
     if recommendation.callouts then
-        for i = 1, math.min(#recommendation.callouts, maxLines) do
+        local remaining = math.max(0, maxLines - #lines)
+        for i = 1, math.min(#recommendation.callouts, remaining) do
             local key = recommendation.callouts[i]
             table.insert(lines,
                 string.format("%s  |cffffffff%s|r", calloutIcon(key, 14), calloutText(key, recommendation)))
         end
     end
-    if #lines == 0 then
-        return scaffold and waitingCueText() or ""
-    end
-    table.insert(lines, 1, consoleHeader("UI_MODULE_CUES", "B R I E F", "02"))
     return table.concat(lines, "\n")
 end
 
@@ -1512,7 +1684,10 @@ end
 
 function UI:_HideStaleFrame()
     self:_SetFrameAlpha(0)
-    if self.frame then self.frame:Hide() end
+    if self.frame then
+        clearActionBars(self.frame)
+        self.frame:Hide()
+    end
     if self.alertFrame then
         self.alertFrame._hasAlert = false
         self.alertFrame:Hide()
@@ -1591,6 +1766,33 @@ local function targetActionText(recommendation, mode, target, showTarget)
     return L("REASON_DEFAULT")
 end
 
+local function actionPlainText(action)
+    if not action then return nil end
+    local text = action.text or (action.actionKey and L(action.actionKey)) or action.actionKey
+    if not text or text == "" then return nil end
+    local target = action.targetName or action.targetClass
+    if target and target ~= "" then
+        return text .. " -> " .. target
+    end
+    return text
+end
+
+local function selfActionFrom(recommendation)
+    local actions = recommendation and recommendation.playerActions
+    if type(actions) ~= "table" then return nil end
+    for i = 1, #actions do
+        if isSelfAction(actions[i]) then return actions[i] end
+    end
+    return nil
+end
+
+local function personalActionText(recommendation)
+    local action = selfActionFrom(recommendation)
+    local text = actionPlainText(action)
+    if text and text ~= "" then return text, action end
+    return nil, nil
+end
+
 local function primaryAlertText(recommendation, mode, target, showTarget)
     if recommendation and (recommendation.burstAllowed or hasCallout(recommendation, "BURST_NOW")) then
         return calloutText("BURST_NOW", recommendation), "BURST_NOW"
@@ -1643,7 +1845,32 @@ local function alertContextText(recommendation, mode, target, showTarget, mainTe
     return table.concat(parts, "  ·  ")
 end
 
-function UI:_ApplyAlert(recommendation, mode, color, label, target, showTarget, detailText, mainActionText, contextText)
+local function bracketText()
+    local bracket = ns.Core and ns.Core.state and ns.Core.state.bracket
+    if type(bracket) == "number" then return string.format("%dv%d", bracket, bracket) end
+    if bracket and bracket ~= "" then return tostring(bracket) end
+    return "PvP"
+end
+
+function aggressionText(recommendation)
+    local agg = recommendation and recommendation.aggression
+        or (ns.Core and ns.Core.state and ns.Core.state.aggression)
+        or (ArenaCoachTBCDB and ArenaCoachTBCDB.strategy and ArenaCoachTBCDB.strategy.aggression)
+        or "balanced"
+    return tostring(agg)
+end
+
+function strategyPlanText(recommendation, mode, target, showTarget)
+    return targetActionText(recommendation, mode, target, showTarget)
+end
+
+local function strategyTopText(recommendation, mode, target, showTarget)
+    local plan = strategyPlanText(recommendation, mode, target, showTarget)
+    return string.format("%s: %s · %s · %s",
+        L("UI_MODULE_STRATEGY"), bracketText(), aggressionText(recommendation), plan)
+end
+
+function UI:_ApplyAlert(recommendation, mode, color, label, target, showTarget, detailText, mainActionText, contextText, strategyText)
     local af = self.alertFrame or (self.CreateAlertFrame and self:CreateAlertFrame())
     if not af then return end
     if not alertEnabled() then
@@ -1653,7 +1880,7 @@ function UI:_ApplyAlert(recommendation, mode, color, label, target, showTarget, 
     end
 
     if af.kicker then
-        af.kicker:SetText(string.format("%s  ·  v%s", L("UI_TITLE"), addonVersion()))
+        af.kicker:SetText(string.format("%s  ·  v%s", strategyText or L("UI_TITLE"), addonVersion()))
     end
     if af.main then
         af.main:SetTextColor(color[1], color[2], color[3])
@@ -1784,10 +2011,13 @@ function UI:Apply(recommendation)
                 or recommendation.primaryTargetClass
                 or ""
     local showTarget = (mode == "OPEN" or mode == "KILL" or mode == "SWAP")
-    local mainActionText, mainCalloutKey = primaryAlertText(recommendation, mode, target, showTarget)
+    local globalActionText, mainCalloutKey = primaryAlertText(recommendation, mode, target, showTarget)
+    local selfActionText = personalActionText(recommendation)
+    local mainActionText = selfActionText or globalActionText
+    local suppressedCalloutKey = mainCalloutKey
+    local strategyText = strategyTopText(recommendation, mode, target, showTarget)
     if f.metaText then
-        local bracket = (ns.Core and ns.Core.state and ns.Core.state.bracket) or "PvP"
-        f.metaText:SetText(string.format("O B S I D I A N  /  %s  /  %s", tostring(bracket), mode))
+        f.metaText:SetText(strategyText)
     end
     if f.modeAccent then
         colorTexture(f.modeAccent, color[1], color[2], color[3], 0.78)
@@ -1818,7 +2048,7 @@ function UI:Apply(recommendation)
             local frac = tonumber(hp) or 0
             if frac > 1 then frac = frac / 100 end
             frac = clamp(frac, 0, 1)
-            local barW = f._accHealthBarWidth or 100
+            local barW = rawget(f, "_accHealthBarWidth") or 100
             f._accHealthBarFillWidth = math.max(1, math.floor(barW * frac))
             size(f.healthBarFill, f._accHealthBarFillWidth, 8)
             if frac <= 0.35 then
@@ -1857,6 +2087,9 @@ function UI:Apply(recommendation)
     if recommendation.reasonKey then
         table.insert(subParts, L(recommendation.reasonKey))
     end
+    if selfActionText and globalActionText and globalActionText ~= selfActionText then
+        table.insert(subParts, globalActionText)
+    end
 
     -- v2.4.0 Quiet HUD: show ONLY the top callout in non-verbose mode.
     -- Pre-v2.4 we concatenated every callout with " | " separators,
@@ -1884,7 +2117,7 @@ function UI:Apply(recommendation)
             -- instead of a pipe-separated text blob.
             for _, key in ipairs(recommendation.callouts) do
                 if not recentlyShown(key) then
-                    if key ~= mainCalloutKey then
+                    if key ~= suppressedCalloutKey then
                         table.insert(subParts,
                             string.format("%s  %s", calloutIcon(key, 18), calloutText(key, recommendation)))
                     end
@@ -1897,7 +2130,7 @@ function UI:Apply(recommendation)
             -- shows the Bloodlust icon next to it.
             local top = recommendation.callouts[1]
             if not recentlyShown(top) then
-                if top ~= mainCalloutKey then
+                if top ~= suppressedCalloutKey then
                     table.insert(subParts,
                         string.format("%s  %s", calloutIcon(top, 18), calloutText(top, recommendation)))
                 end
@@ -1953,13 +2186,13 @@ function UI:Apply(recommendation)
             end
         end
     end
-    capLines(subParts, f._accCenterSubLines or 1)
+    capLines(subParts, rawget(f, "_accCenterSubLines") or 1)
     local detailText = table.concat(subParts, "\n")
     f.subText:SetText(detailText)
     local contextText = alertContextText(recommendation, mode, target, showTarget,
         mainActionText, mainCalloutKey, recommendationStatsText(recommendation, mode, showTarget, false))
     self:_ApplyAlert(recommendation, mode, color, label, target, showTarget,
-        detailText, mainActionText, contextText)
+        detailText, mainActionText, contextText, strategyText)
     local scaffold = layoutScaffoldActive(recommendation)
     local integratedUnitText = formatUnitStrip(recommendation, true)
     local integratedRailText = formatCueRail(recommendation, true)
@@ -1999,6 +2232,9 @@ function UI:Apply(recommendation)
     local inArena
     if ctx then
         inArena = (ctx == "arena")
+        if inArena and type(IsActiveBattlefieldArena) == "function" then
+            inArena = IsActiveBattlefieldArena() and true or false
+        end
     else
         inArena = (type(IsActiveBattlefieldArena) ~= "function")
                   or IsActiveBattlefieldArena()

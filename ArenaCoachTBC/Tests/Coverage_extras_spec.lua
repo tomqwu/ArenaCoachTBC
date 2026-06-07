@@ -37,6 +37,35 @@ local ER   = H.ns.ErrorReporter
 local g = H.describe("Coverage.extras")
 
 -- ============================================================
+-- Test helpers: rare mock/assertion branches
+-- ============================================================
+H.it(g, "test helpers cover texture variants and assertion failure messages", function()
+    local f = H.makeMockFrame()
+    f:SetTexture("Interface\\Icons\\Spell_Nature_TremorTotem")
+    H.assertEq(f._texture, "Interface\\Icons\\Spell_Nature_TremorTotem")
+
+    f:SetTexture(0.1, 0.2, 0.3, 0.4)
+    H.assertEq(f._color[2], 0.2)
+
+    local ok, err = pcall(function() H.assertEq(1, 2, "eq mismatch") end)
+    H.assertFalse(ok)
+    H.assertNotNil(tostring(err):find("expected 2", 1, true))
+
+    ok, err = pcall(function() H.assertNotEq(1, 1, "neq mismatch") end)
+    H.assertFalse(ok)
+    H.assertNotNil(tostring(err):find("both were 1", 1, true))
+
+    ok, err = pcall(function() H.assertType("x", "number", "type mismatch") end)
+    H.assertFalse(ok)
+    H.assertNotNil(tostring(err):find("expected number", 1, true))
+
+    H.assertContains({ "focus", "brief" }, "brief")
+    ok, err = pcall(function() H.assertContains({ "focus" }, "brief", "missing") end)
+    H.assertFalse(ok)
+    H.assertNotNil(tostring(err):find("needle not found", 1, true))
+end)
+
+-- ============================================================
 -- EventBus: no-CreateFrame + OnEvent dispatch
 -- ============================================================
 H.it(g, "EventBus.ensureFrame returns a stub frame when CreateFrame absent", function()
@@ -149,10 +178,10 @@ H.it(g, "UI DBM alert fallback branches stay concrete", function()
     UI.railFrame = nil
     UI.assignFrame = nil
     local f = UI:CreateFrame()
-    H.assertEq(f.versionText:GetText(), "v2.8.36")
-    _G.ArenaCoachTBC = { GetVersion = function() return "2.8.36-api" end }
+    H.assertEq(f.versionText:GetText(), "v2.8.37")
+    _G.ArenaCoachTBC = { GetVersion = function() return "2.8.37-api" end }
     UI:RefreshVersionText()
-    H.assertEq(f.versionText:GetText(), "v2.8.36-api")
+    H.assertEq(f.versionText:GetText(), "v2.8.37-api")
 
     UI:Apply({ mode = "OPEN", callouts = {}, priority = "LOW", _forceShow = true })
     H.assertEq(f.bigText:GetText(), "Prepare opener")

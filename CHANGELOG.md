@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.37] - 2026-06-07
+
+### Changed
+- **HUD hierarchy now starts with the player's own action.** When per-player assignments are available, the main board and DBM-style alert foreground what `YOU` should do now, while the global target/callout moves into supporting strategy context.
+- **The top strip is now strategy-first.** The decorative Obsidian signature text was replaced with a live strategy summary showing bracket, aggression, and current plan.
+- **The side rail now keeps strategy/profile context persistent.** It shows the current plan, aggression setting, comp/profile hints, and then only the highest-value tactical cues.
+- **Bottom assignments are now DBM-style action bars.** Player and teammate actions stack top-to-bottom with the player's row first and a slow ten-second bar decay, making fight info readable long enough to capture.
+- **Stale fade is slower and less jumpy.** Recommendations now wait longer before fading and fade over a longer window instead of disappearing almost immediately.
+
+### Tests
+- Added UI coverage for player-action-first alerts, persistent strategy/profile rail content, and slow action-bar decay.
+- Local validation: 700/700 tests passing, locale parity green at 168 keys per locale, package-shape gate green, standalone StrategyEngine smoke green, and clean luacov total coverage is 99.08%.
+
 ## [2.8.36] - 2026-06-07
 
 ### Fixed
