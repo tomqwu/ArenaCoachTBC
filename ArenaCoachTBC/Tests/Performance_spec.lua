@@ -22,6 +22,10 @@ H.load("StrategyEngine.lua")
 local SE = H.ns.StrategyEngine
 local g = H.describe("Performance")
 
+local function coverageBudget(rawBudgetMs, coverageBudgetMs)
+    return package.loaded["luacov"] and coverageBudgetMs or rawBudgetMs
+end
+
 H.it(g, "Evaluate completes in <5ms per call on a 5v5 state (target <1ms)", function()
     local state = SE:BuildTestState({"WARRIOR","MAGE","PRIEST","DRUID","PALADIN"})
     state.combatPhase = "ACTIVE"
@@ -31,7 +35,7 @@ H.it(g, "Evaluate completes in <5ms per call on a 5v5 state (target <1ms)", func
     local iters = 200
     for i = 1, iters do SE:Evaluate(state) end
     local avgMs = ((os.clock() - start) / iters) * 1000
-    local budgetMs = package.loaded["luacov"] and 15 or 5
+    local budgetMs = coverageBudget(5, 35)
     -- 5ms is the raw CI margin; under luacov instrumentation the timing
     -- budget is looser because coverage hooks dominate the measured cost.
     H.assertTrue(avgMs < budgetMs,
@@ -67,12 +71,16 @@ H.it(g, "Evaluate with lookahead+patterns stays within budget (mean<3ms, 99p<10m
     local mean = sum / iters
     local p99  = samples[math.floor(iters * 0.99)] or samples[iters]
 
-    -- Mean budget: 3ms target, 10ms CI margin.
-    H.assertTrue(mean < 10,
-        string.format("Evaluate+lookahead mean %.3fms exceeds 10ms CI budget", mean))
-    -- 99p budget: 10ms target, 30ms CI margin (3x).
-    H.assertTrue(p99 < 30,
-        string.format("Evaluate+lookahead p99 %.3fms exceeds 30ms CI budget", p99))
+    -- Mean budget: 3ms target, 10ms CI margin. Under luacov, coverage
+    -- hooks dominate os.clock() timings, so the raw regression budget is
+    -- preserved while the instrumented suite gets a wider guard.
+    local meanBudget = coverageBudget(10, 25)
+    H.assertTrue(mean < meanBudget,
+        string.format("Evaluate+lookahead mean %.3fms exceeds %dms CI budget", mean, meanBudget))
+    -- 99p budget: 10ms target, 30ms CI margin (3x), with luacov slack.
+    local p99Budget = coverageBudget(30, 75)
+    H.assertTrue(p99 < p99Budget,
+        string.format("Evaluate+lookahead p99 %.3fms exceeds %dms CI budget", p99, p99Budget))
 
     local stats = LA:CacheStats()
     -- We expect cache hits because each Evaluate's Score loops over
@@ -126,10 +134,12 @@ H.it(g, "AV-scale Evaluate completes within budget on 40 enemies", function()
     local start = os.clock()
     for _ = 1, iters do SE:Evaluate(state) end
     local avgMs = ((os.clock() - start) / iters) * 1000
-    -- AV-scale budget: 50ms p99 CI (the 4x-of-10v10 scaling factor).
-    -- Locally aiming <10ms; allow 5x for noisy GH runners.
-    H.assertTrue(avgMs < 50,
-        string.format("AV 40-enemy Evaluate avg %.2fms exceeds 50ms CI budget", avgMs))
+    -- AV-scale budget: 50ms CI in raw runs; luacov coverage hooks make
+    -- large table walks visibly slower, so give the instrumented run a
+    -- wider guard while preserving the real performance ceiling.
+    local budgetMs = coverageBudget(50, 90)
+    H.assertTrue(avgMs < budgetMs,
+        string.format("AV 40-enemy Evaluate avg %.2fms exceeds %dms CI budget", avgMs, budgetMs))
 end)
 
 -- =================================================================
@@ -167,8 +177,9 @@ H.it(g, "Full evaluation cycle Evaluate->UI->WAB stays under 15ms (mean of 100)"
         WAB:Publish(rec, state)
     end
     local avgMs = ((os.clock() - start) / iters) * 1000
-    H.assertTrue(avgMs < 15,
-        string.format("full cycle avg %.3fms exceeds 15ms CI budget", avgMs))
+    local budgetMs = coverageBudget(15, 35)
+    H.assertTrue(avgMs < budgetMs,
+        string.format("full cycle avg %.3fms exceeds %dms CI budget", avgMs, budgetMs))
 
     H.ns.Core.state.pvpContext = nil
 end)

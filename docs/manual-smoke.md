@@ -5,6 +5,8 @@ behaviour is what tests can't see.
 
 ## Install + load
 
+- [ ] `lua5.1 tools/check_package_shape.lua` passes before tagging; the TOC, `.pkgmeta`, release workflow, CurseForge project ID, BCC game-version upload flag, and version constants are in sync.
+- [ ] The GitHub release zip lists `ArenaCoachTBC/ArenaCoachTBC.toc`, contains more than 20 non-empty addon files, and does not include `ArenaCoachTBC/Tests/` or `.pkgmeta`.
 - [ ] Fresh client: copy `ArenaCoachTBC/` into `WoW/_classic_/Interface/AddOns/` (or `_classic_era_` for Anniversary)
 - [ ] At login screen, addon listed and enabled, no "Out of date" warning
 - [ ] Login: no Lua errors in BugSack / `/console scriptErrors 1`

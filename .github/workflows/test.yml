@@ -30,6 +30,9 @@ jobs:
       - name: Locale parity gate
         run: lua5.1 tools/check_locales.lua
 
+      - name: Package metadata gate
+        run: lua5.1 tools/check_package_shape.lua
+
       - name: Run test suite with coverage
         run: |
           rm -f luacov.stats.out luacov.report.out
@@ -83,6 +86,9 @@ jobs:
 
       - name: Locale parity gate
         run: luajit tools/check_locales.lua
+
+      - name: Package metadata gate
+        run: luajit tools/check_package_shape.lua
 
       - name: Run test suite
         run: luajit ArenaCoachTBC/Tests/run_all.lua

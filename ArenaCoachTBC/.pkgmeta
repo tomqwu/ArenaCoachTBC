@@ -1,5 +1,9 @@
 package-as: ArenaCoachTBC
 
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown
+
 enable-nolib-creation: no
 
 ignore:

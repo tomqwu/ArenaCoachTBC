@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.31] - 2026-06-07
+
+### Fixed
+- **CurseForge release uploads now fail loudly instead of disappearing.** Stable-tag releases no longer mark the BigWigs/CurseForge upload step `continue-on-error`, so a rejected or failed upload blocks the release workflow instead of leaving GitHub green while CurseForge has no usable file.
+- **BCC game-version upload is forced for CurseForge.** The BigWigs packager now runs with `-g bcc`, using `## Interface-BCC: 20505` so the file is classified for TBC/BCC Anniversary (`2.5.5`) rather than relying on automatic detection.
+
+### Tests
+- Added `tools/check_package_shape.lua` and wired it into CI. The gate verifies TOC file existence, shipped-file count, version consistency, CurseForge project metadata, `.pkgmeta` inline-comment safety, the GitHub zip-shape validation step, and the non-optional BigWigs upload step.
+- Release workflow now validates the GitHub zip before publishing: it must contain `ArenaCoachTBC/ArenaCoachTBC.toc`, include more than 20 non-empty addon files, and exclude `Tests/` plus dotfiles.
+- Performance budget specs now keep the original raw budgets while applying luacov-specific slack, preventing coverage hook overhead from causing unrelated release flakes.
+- Local validation: 687/687 tests passing, locale parity green at 154 keys per locale, package-shape gate green, local BigWigs dry-run produced a full `ArenaCoachTBC-v2.8.31-bcc.zip`, and luacov total coverage is 99.06%.
+
 ## [2.8.30] - 2026-05-27
 
 ### Fixed

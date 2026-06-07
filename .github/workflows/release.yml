@@ -95,36 +95,72 @@ jobs:
           # top-level entry must be the addon folder so WoW AddOns/ extraction works.
           zip -r "$out" ArenaCoachTBC \
             -x 'ArenaCoachTBC/Tests/*' \
+            -x 'ArenaCoachTBC/Tests/' \
             -x 'ArenaCoachTBC/Tests' \
+            -x 'ArenaCoachTBC/.release/*' \
+            -x 'ArenaCoachTBC/.release/' \
+            -x 'ArenaCoachTBC/.release' \
             -x 'ArenaCoachTBC/.*' \
             -x '*.luacov.*'
           echo "Built: $out"
           ls -la .release/
           echo "path=$out" >> "$GITHUB_OUTPUT"
 
-      - name: Expose .git to the addon subdir (packager prereq)
+      - name: Validate GitHub release zip shape
+        run: |
+          set -euo pipefail
+          zip_path="${{ steps.zip.outputs.path }}"
+          unzip -l "$zip_path"
+          unzip -l "$zip_path" | awk '{print $4}' | grep -qx 'ArenaCoachTBC/ArenaCoachTBC.toc'
+          if unzip -l "$zip_path" | awk '{print $4}' | grep -q '^ArenaCoachTBC/Tests/'; then
+            echo "Release zip must not include test files or an empty Tests directory."
+            exit 1
+          fi
+          if unzip -l "$zip_path" | awk '{print $4}' | grep -q '^ArenaCoachTBC/\.release/'; then
+            echo "Release zip must not include local packager scratch directories."
+            exit 1
+          fi
+          if unzip -l "$zip_path" | awk '{print $4}' | grep -q '^ArenaCoachTBC/\.pkgmeta$'; then
+            echo "Release zip must not include packager metadata."
+            exit 1
+          fi
+          file_count="$(unzip -l "$zip_path" | awk '$1 ~ /^[0-9]+$/ && $1 > 0 { c++ } END { print c + 0 }')"
+          if [[ "$file_count" -lt 20 ]]; then
+            echo "Release zip only has $file_count non-empty files; refusing to publish an empty package."
+            exit 1
+          fi
+
+      - name: Prepare BigWigs packager checkout
         if: steps.v.outputs.kind == 'release'
         run: |
-          # The packager wants the topdir to be a git checkout (it reads
-          # tags + author info via `git`). Our addon files live in
-          # ArenaCoachTBC/ but .git is at the repo root. Symlink it into
-          # the subdir so `-t ArenaCoachTBC` works as a real topdir.
-          ln -s ../.git ArenaCoachTBC/.git
-          ls -la ArenaCoachTBC/.git
+          set -euo pipefail
+          rm -rf .packager
+          mkdir -p .packager
+          cp -a ArenaCoachTBC/. .packager/
+          rm -rf .packager/Tests .packager/.release
+          cp CHANGELOG.md .packager/CHANGELOG.md
+          git -C .packager init
+          git -C .packager config user.name  "github-actions[bot]"
+          git -C .packager config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C .packager add .
+          git -C .packager commit -m "Package ${{ steps.v.outputs.tag }}"
+          git -C .packager tag "${{ steps.v.outputs.tag }}"
+          test -f .packager/ArenaCoachTBC.toc
+          test -f .packager/Core.lua
+          test -f .packager/CHANGELOG.md
 
       - name: Run BigWigs packager (stable tag only - uploads to CurseForge / Wago)
         if: steps.v.outputs.kind == 'release'
         uses: BigWigsMods/packager@v2
         with:
-          # Addon lives at ArenaCoachTBC/, with the .toc at
-          # ArenaCoachTBC/ArenaCoachTBC.toc. The packager action exposes
-          # only `args` + `pandoc`, so set the project root via -t.
-          # The in-addon .pkgmeta provides package-as + ignore list.
-          args: -t ArenaCoachTBC
+          # BigWigs expects the addon TOC at the packaging checkout root.
+          # The repo keeps addon files under ArenaCoachTBC/, so the previous
+          # `-t ArenaCoachTBC` symlink trick produced near-empty CurseForge zips.
+          # .packager is a tiny git checkout whose root is the addon itself.
+          args: -t .packager -g bcc
         env:
           CF_API_KEY: ${{ secrets.CF_API_KEY }}
           WAGO_API_TOKEN: ${{ secrets.WAGO_API_TOKEN }}
-        continue-on-error: true
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v3

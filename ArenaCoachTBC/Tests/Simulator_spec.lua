@@ -126,6 +126,60 @@ H.it(g, "Apply 'aura' / 'aura_off' updates importantBuffs", function()
     H.assertNil(Core.state.enemies.arena1.importantBuffs[42292])
 end)
 
+H.it(g, "Apply debuff_off clears Mortal Strike observation", function()
+    resetState()
+    SIM:Run("rmp", { printEvents = false })
+    SIM:Apply({ type = "debuff", on = 2, spell = S.MORTAL_STRIKE })
+    H.assertEq(Core.state.observations.msActiveOn, Core.state.enemies.arena2.guid)
+    H.assertTrue(Core.state.enemies.arena2.importantDebuffs[S.MORTAL_STRIKE])
+    SIM:Apply({ type = "debuff_off", on = 2, spell = S.MORTAL_STRIKE })
+    H.assertNil(Core.state.observations.msActiveOn)
+    H.assertNil(Core.state.enemies.arena2.importantDebuffs[S.MORTAL_STRIKE])
+end)
+
+H.it(g, "Apply friendly debuff variants marks and clears real arena CC", function()
+    resetState()
+    SIM:Run("rmp", { printEvents = false })
+    local f = Core.state.friendlies.player
+    SIM:Apply({ type = "friendly_debuff", unit = 1, spell = S.FROST_NOVA })
+    SIM:Apply({ type = "friendly_debuff", unit = 1, spell = S.COUNTERSPELL })
+    SIM:Apply({ type = "friendly_debuff", unit = 1, spell = S.BLIND })
+    H.assertTrue(f.debuffs.rooted)
+    H.assertTrue(f.debuffs.silenced)
+    H.assertTrue(f.debuffs.disoriented)
+    SIM:Apply({ type = "friendly_debuff_off", unit = 1, spell = S.FROST_NOVA })
+    SIM:Apply({ type = "friendly_debuff_off", unit = 1, spell = S.COUNTERSPELL })
+    SIM:Apply({ type = "friendly_debuff_off", unit = 1, spell = S.BLIND })
+    H.assertNil(f.debuffs.rooted)
+    H.assertNil(f.debuffs.silenced)
+    H.assertNil(f.debuffs.disoriented)
+end)
+
+H.it(g, "Apply observation events mutate state observations", function()
+    resetState()
+    SIM:Run("rmp", { printEvents = false })
+    SIM:Apply({ type = "observation", key = "windfuryActive", value = false })
+    H.assertFalse(Core.state.observations.windfuryActive)
+end)
+
+H.it(g, "_evaluate reports nil when engine dependencies are missing", function()
+    resetState()
+    local saved = H.ns.StrategyEngine
+    H.ns.StrategyEngine = nil
+    local lines = {}
+    local origPrint = _G.print
+    _G.print = function(s) table.insert(lines, tostring(s)) end
+    local rec = SIM:_evaluate("missing engine")
+    _G.print = origPrint
+    H.ns.StrategyEngine = saved
+    H.assertNil(rec)
+    local saw = false
+    for _, line in ipairs(lines) do
+        if line:find("engine is not loaded", 1, true) then saw = true end
+    end
+    H.assertTrue(saw, "missing engine message not printed")
+end)
+
 H.it(g, "Stop cancels future scheduled callbacks (generation check)", function()
     resetState()
     -- Install a fake C_Timer so Run() schedules; then Stop and verify pending

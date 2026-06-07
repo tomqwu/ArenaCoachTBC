@@ -1,5 +1,8 @@
 luacov.stats.out
 luacov.report.out
+.release/
+.packager/
+ArenaCoachTBC/.release/
 tools/node_modules/
 _design/preview-*.png
 .worktrees/
