@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.38] - 2026-06-07
+
+### Changed
+- **Live alerts now explicitly address the player.** When the engine has a `unit="player"` action, the board and DBM-style alert render it as `YOU: <action>` so the center text is unmistakably about what the player should do next.
+- **The lower action strip is now a personal next-move surface.** The visible header changed from generic assignments to "Your next move"; the player's row is simpler and louder, while teammate rows are dimmer supporting context.
+- **Strategy remains in the top strip.** The top line continues to carry bracket, aggression, and the current plan so tactical context is available without competing with the player's action.
+
+### Tests
+- Updated UI regression coverage for explicit `YOU:` self-action alerts and the personal next-move strip.
+- Local validation: 700/700 tests passing, locale parity green at 168 keys per locale, package-shape gate green, standalone StrategyEngine smoke green, and clean luacov total coverage is 99.08%.
+
 ## [2.8.37] - 2026-06-07
 
 ### Changed

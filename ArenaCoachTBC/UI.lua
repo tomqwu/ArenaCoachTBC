@@ -15,7 +15,7 @@ local UI = ns.UI
 UI.frame = nil
 UI.alertFrame = nil
 
-local ADDON_VERSION = "2.8.37"
+local ADDON_VERSION = "2.8.38"
 local STALE_FADE_START = 7.0
 local STALE_FADE_SECONDS = 5.0
 local ACTION_BAR_SECONDS = 10.0
@@ -834,7 +834,7 @@ function UI:CreateFrame()
         end
         f.assignHeader:SetJustifyH("LEFT")
         f.assignHeader:SetWidth(m.contentW - 20)
-        f.assignHeader:SetText(consoleHeader("UI_ACTIONS_HEADER", "Y O U R · A C T I O N S", "03"))
+        f.assignHeader:SetText(consoleHeader("UI_ACTIONS_HEADER", "Y O U · N E X T", "03"))
         improveTextContrast(f.assignHeader, 0.95, 1, -1)
 
         f.assignText = assignPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -1278,22 +1278,22 @@ local function assignmentCardText(action, index)
     local role = action.class or action.role or action.unit or ""
     local text = action.text or (action.actionKey and L(action.actionKey)) or action.actionKey or "?"
     local target = action.targetName or action.targetClass
-    local targetLine = target and target ~= ""
-        and ("|cffff6464" .. target .. "|r")
-        or "|cff7a715dREADY|r"
+    local targetLine = target and target ~= "" and (" |cff8f7b49->|r |cffff6464" .. target .. "|r") or ""
     if isSelfAction(action) then
-        return string.format("|cffffd24a%s|r |cff8f7b49P·%02d|r |cff5bc4d8%s|r  |cffffffff%s|r |cff8f7b49->|r %s",
-            L("UI_SELF_TAG"), index, role ~= "" and string.upper(role) or "ROLE", text, targetLine)
+        local roleTag = role ~= "" and (" |cff5bc4d8· " .. string.upper(role) .. "|r") or ""
+        return string.format("|cffffd24a%s:|r |cffffffff%s|r%s%s",
+            L("UI_SELF_TAG"), text, targetLine, roleTag)
     end
-    return string.format("|cff8f7b49P·%02d|r |cffffffff%s|r |cff5bc4d8%s|r  |cffddd2ad%s|r |cff8f7b49->|r %s",
-        index, who, role ~= "" and string.upper(role) or "ROLE", text, targetLine)
+    local roleTag = role ~= "" and (" |cff5bc4d8" .. string.upper(role) .. "|r") or ""
+    return string.format("|cff8f7b49P·%02d|r |cffb9b09a%s|r%s  |cff8f7b49%s|r%s",
+        index, who, roleTag, text, targetLine)
 end
 
 local function formatPlayerActions(actions, scaffold)
     if not actions or #actions == 0 then
         return scaffold and waitingAssignmentText() or ""
     end
-    local lines = { consoleHeader("UI_ACTIONS_HEADER", "R O L E · A S S I G N M E N T", "03") }
+    local lines = { consoleHeader("UI_ACTIONS_HEADER", "Y O U · N E X T", "03") }
     actions = displayActions(actions)
     local verbose = (ArenaCoachTBCDB and ArenaCoachTBCDB.frame
                      and ArenaCoachTBCDB.frame.verbose) or false
@@ -1309,10 +1309,11 @@ local function formatPlayerActions(actions, scaffold)
             text = text .. "  |cff8f7b49->|r  |cffff6464" .. target .. "|r"
         end
         if isSelfAction(a) then
-            table.insert(lines, string.format("|cffffd24a%s|r |cff8f7b49P·%02d|r |cffffffff%s:|r |cff5bc4d8%s|r  |cffffffff%s|r",
-                L("UI_SELF_TAG"), i, who, role ~= "" and string.upper(role) or "", text))
+            local roleTag = role ~= "" and ("  |cff5bc4d8· " .. string.upper(role) .. "|r") or ""
+            table.insert(lines, string.format("|cffffd24a%s:|r |cffffffff%s|r%s",
+                L("UI_SELF_TAG"), text, roleTag))
         else
-            table.insert(lines, string.format("|cff8f7b49P·%02d|r |cffffffff%s:|r |cff5bc4d8%s|r  %s",
+            table.insert(lines, string.format("|cff8f7b49P·%02d|r |cffb9b09a%s:|r |cff5bc4d8%s|r  |cff8f7b49%s|r",
                 i, who, role ~= "" and string.upper(role) or "", text))
         end
     end
@@ -1789,8 +1790,10 @@ end
 local function personalActionText(recommendation)
     local action = selfActionFrom(recommendation)
     local text = actionPlainText(action)
-    if text and text ~= "" then return text, action end
-    return nil, nil
+    if text and text ~= "" then
+        return string.format("%s: %s", L("UI_SELF_TAG"), text), action, text
+    end
+    return nil, nil, nil
 end
 
 local function primaryAlertText(recommendation, mode, target, showTarget)
@@ -2012,7 +2015,7 @@ function UI:Apply(recommendation)
                 or ""
     local showTarget = (mode == "OPEN" or mode == "KILL" or mode == "SWAP")
     local globalActionText, mainCalloutKey = primaryAlertText(recommendation, mode, target, showTarget)
-    local selfActionText = personalActionText(recommendation)
+    local selfActionText, _, selfActionRawText = personalActionText(recommendation)
     local mainActionText = selfActionText or globalActionText
     local suppressedCalloutKey = mainCalloutKey
     local strategyText = strategyTopText(recommendation, mode, target, showTarget)
@@ -2087,7 +2090,9 @@ function UI:Apply(recommendation)
     if recommendation.reasonKey then
         table.insert(subParts, L(recommendation.reasonKey))
     end
-    if selfActionText and globalActionText and globalActionText ~= selfActionText then
+    if selfActionText and globalActionText
+       and globalActionText ~= selfActionText
+       and globalActionText ~= selfActionRawText then
         table.insert(subParts, globalActionText)
     end
 

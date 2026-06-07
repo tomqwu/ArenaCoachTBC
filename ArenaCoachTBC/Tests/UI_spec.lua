@@ -121,9 +121,9 @@ H.it(g, "CreateFrame builds prototype-A module set", function()
         "waiting focus strip should show structural labels")
     H.assertTrue((f.railText._text or ""):find("Profile", 1, true) ~= nil,
         "waiting strategy rail should reserve profile context")
-    H.assertTrue((f.assignText._text or ""):find("Assignments", 1, true) ~= nil,
-        "waiting assignment panel should show structural labels")
-    H.assertTrue((f.assignHeader._text or ""):find("Y O U R", 1, true) ~= nil,
+    H.assertTrue((f.assignText._text or ""):find("Your next move", 1, true) ~= nil,
+        "waiting assignment panel should show the personal action header")
+    H.assertTrue((f.assignHeader._text or ""):find("Y O U", 1, true) ~= nil,
         "bottom assignment strip should prioritize the player's action")
 end)
 
@@ -410,9 +410,8 @@ H.it(g, "Apply renders DBM-style player action assignments", function()
         },
     })
     local txt = UI.frame and UI.frame.assignText and UI.frame.assignText._text or ""
-    H.assertTrue(txt:find("Assignments", 1, true) ~= nil, "assignment header missing: " .. txt)
-    H.assertTrue(txt:find("YOU", 1, true) ~= nil, "self action marker missing: " .. txt)
-    H.assertTrue(txt:find("Warrior:", 1, true) ~= nil, "player assignment missing: " .. txt)
+    H.assertTrue(txt:find("Your next move", 1, true) ~= nil, "personal action header missing: " .. txt)
+    H.assertTrue(txt:find("YOU:", 1, true) ~= nil, "self action marker missing: " .. txt)
     H.assertTrue(txt:find("Shaman:", 1, true) ~= nil, "party assignment missing: " .. txt)
     H.assertTrue(txt:find("Holyman", 1, true) ~= nil, "assignment target missing: " .. txt)
     H.assertEq(UI.frame._accAssignSlots, 2)
@@ -423,7 +422,7 @@ H.it(g, "Apply renders DBM-style player action assignments", function()
         "self action plate should be visually stronger than team slots")
     H.assertTrue((UI.frame.assignPanel.assignCard2._color and UI.frame.assignPanel.assignCard2._color[4] or 1) <= 0.45,
         "team assignment plates should remain secondary")
-    H.assertTrue((UI.frame.assignSlotTexts[1]._text or ""):find("YOU", 1, true) ~= nil,
+    H.assertTrue((UI.frame.assignSlotTexts[1]._text or ""):find("YOU:", 1, true) ~= nil,
         "first slot should carry the self marker")
     H.assertTrue((UI.frame.assignSlotTexts[1]._text or ""):find("MS / Hamstring", 1, true) ~= nil,
         "first slot should foreground the player's action")
@@ -446,7 +445,7 @@ H.it(g, "Apply promotes and highlights the player action even if actions are uno
         },
     })
     H.assertEq(UI.frame._accSelfAssignmentIndex, 1)
-    H.assertTrue((UI.frame.assignSlotTexts[1]._text or ""):find("YOU", 1, true) ~= nil,
+    H.assertTrue((UI.frame.assignSlotTexts[1]._text or ""):find("YOU:", 1, true) ~= nil,
         "player card should be promoted to the first readable slot")
     H.assertTrue((UI.frame.assignSlotTexts[1]._text or ""):find("Pain Supp", 1, true) ~= nil,
         "player card should foreground the action to take")
@@ -485,8 +484,12 @@ H.it(g, "Apply makes the player's own action the main alert and a slow DBM-style
             { unit = "player", name = "Totemkin", class = "SHAMAN", actionKey = "ACTION_SHAMAN_TREMOR_REFRESH" },
         },
     })
+    H.assertTrue((UI.frame.bigText._text or ""):find("YOU:", 1, true) ~= nil,
+        "board main line should make the action explicitly personal")
     H.assertTrue((UI.frame.bigText._text or ""):find("Refresh Tremor", 1, true) ~= nil,
         "board main line should foreground the player's own action")
+    H.assertTrue((UI.alertFrame.main._text or ""):find("YOU:", 1, true) ~= nil,
+        "DBM alert should make the action explicitly personal")
     H.assertTrue((UI.alertFrame.main._text or ""):find("Refresh Tremor", 1, true) ~= nil,
         "DBM alert should foreground the player's own action")
     H.assertTrue((UI.alertFrame.sub._text or ""):find("Tremor down", 1, true) ~= nil,
@@ -576,8 +579,8 @@ H.it(g, "Apply force-show keeps prototype-A scaffold visible without live data",
         "force-show focus scaffold should include placeholders")
     H.assertTrue((UI.frame.railText._text or ""):find("Profile", 1, true) ~= nil,
         "force-show strategy scaffold should include profile placeholder")
-    H.assertTrue((UI.frame.assignText._text or ""):find("Assignments", 1, true) ~= nil,
-        "force-show assignments scaffold should include header")
+    H.assertTrue((UI.frame.assignText._text or ""):find("Your next move", 1, true) ~= nil,
+        "force-show assignments scaffold should include the personal action header")
     H.ns.Core.state.pvpContext = nil
     H.ns.Core.state.combatPhase = nil
 end)
@@ -850,8 +853,8 @@ H.it(g, "pre-gates OPEN plan does not fade just because the room is quiet", func
         "pre-gates opener should render in the integrated focus panel")
     H.assertTrue((UI.frame.railText._text or ""):find("Strategy", 1, true) ~= nil,
         "pre-gates opener should keep the integrated strategy scaffold visible")
-    H.assertTrue((UI.frame.assignText._text or ""):find("Assignments", 1, true) ~= nil,
-        "pre-gates opener should keep integrated assignments scaffold visible")
+    H.assertTrue((UI.frame.assignText._text or ""):find("Your next move", 1, true) ~= nil,
+        "pre-gates opener should keep the personal action scaffold visible")
     H.assertEq(UI.frame._accAlpha, 1)
     H.ns.Core.state.pvpContext = nil
     H.ns.Core.state.combatPhase = nil
