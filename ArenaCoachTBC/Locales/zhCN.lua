@@ -84,6 +84,7 @@ ns.locales.zhCN = {
     CALL_CYCLONE_OFF     = "飓风副治疗",
     CALL_EARTHSHOCK_HEAL = "下一个治疗法术地震打断",
     CALL_TREMOR_FEAR     = "战栗图腾防恐惧",
+    CALL_TREMOR_DOWN     = "战栗图腾已断 - 萨满补图腾",
     CALL_GROUND_POLY     = "接地图腾防变羊",
     CALL_GROUND_DC       = "接地图腾防死亡缠绕",
     CALL_DISP_POLY       = "驱散变形",
@@ -140,6 +141,7 @@ ns.locales.zhCN = {
     ACTION_SHAMAN_PURGE     = "净化 / 地震打断",
     ACTION_SHAMAN_BLOODLUST = "嗜血 / 净化",
     ACTION_SHAMAN_DEFEND    = "接地 / 战栗保护",
+    ACTION_SHAMAN_TREMOR_REFRESH = "补战栗图腾",
     ACTION_PALADIN_HOJ      = "制裁击杀目标",
     ACTION_PALADIN_DEFEND   = "保护 / 自由",
     ACTION_PRIEST_OFFENSE   = "驱散 / 法力燃烧",
@@ -171,7 +173,7 @@ ns.locales.zhCN = {
 
     -- M9 #65: profile-driven callouts
     CALL_FAKE_KICK_2          = "对方踢第一次治疗，假打第二个",
-    CALL_SAVE_TREMOR_HOJ      = "对方习惯换人解恐惧 - 留陷阱图腾对审判",
+    CALL_SAVE_TREMOR_HOJ      = "对方习惯解恐惧 - 留战栗图腾对制裁",
     CALL_BURST_BLOCK_INCOMING = "对方可能冰块 - 暂停爆发",
     BURST_NOW                 = "立即爆发",
     CALL_OUTNUMBERED_DISENGAGE = "敌众我寡 - 脱离或集火残血",

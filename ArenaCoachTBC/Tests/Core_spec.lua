@@ -918,6 +918,7 @@ H.it(g, "aura observations detect live burst, CC, and dispel signals", function(
     H.setUnit("arena1", { class = "PRIEST", guid = "guid-pr", hp = 100, hpMax = 100 })
     H.setAuras("player", "HELPFUL", {
         { name = "Windfury Totem", spellID = H.ns.Spells.WINDFURY_TOTEM },
+        { name = "Tremor Totem", spellID = H.ns.Spells.TREMOR_TOTEM },
         { name = "Blessing of Freedom", spellID = H.ns.Spells.BLESSING_FREEDOM },
         { name = "Bloodlust", spellID = H.ns.Spells.BLOODLUST },
     })
@@ -944,11 +945,13 @@ H.it(g, "aura observations detect live burst, CC, and dispel signals", function(
     Core:Evaluate()
     H.assertEq(Core.state.observations.msActiveOn, "guid-pr")
     H.assertTrue(Core.state.observations.windfuryActive)
+    H.assertTrue(Core.state.observations.tremorActive)
     H.assertTrue(Core.state.observations.bloodlustActive)
     H.assertTrue(Core.state.observations.enemyBloodlustActive)
     H.assertTrue(Core.state.observations.multipleBurstsDetected)
     H.assertTrue(Core.state.observations.priestCanDispel)
     H.assertTrue(Core.state.friendlies.player.buffs.freedom)
+    H.assertTrue(Core.state.friendlies.player.buffs.tremor)
     H.assertTrue(Core.state.friendlies.player.debuffs.stunned)
     H.assertTrue(Core.state.friendlies.player.debuffs.feared)
     H.assertTrue(Core.state.friendlies.player.debuffs.sheeped)
@@ -973,6 +976,8 @@ H.it(g, "aura observations fall back to UnitBuff and UnitDebuff", function()
     _G.UnitBuff = function(unit, i)
         if unit == "player" and i == 1 then
             return "Windfury Totem", nil, nil, nil, nil, nil, nil, nil, nil, H.ns.Spells.WINDFURY_TOTEM
+        elseif unit == "player" and i == 2 then
+            return "Tremor Totem", nil, nil, nil, nil, nil, nil, nil, nil, H.ns.Spells.TREMOR_TOTEM
         end
     end
     _G.UnitDebuff = function(unit, i)
@@ -982,6 +987,7 @@ H.it(g, "aura observations fall back to UnitBuff and UnitDebuff", function()
     end
     Core:RefreshAuraObservations()
     H.assertTrue(Core.state.observations.windfuryActive)
+    H.assertTrue(Core.state.observations.tremorActive)
     H.assertEq(Core.state.observations.msActiveOn, "guid-pr")
     _G.UnitAura, _G.UnitBuff, _G.UnitDebuff = savedAura, savedBuff, savedDebuff
 end)

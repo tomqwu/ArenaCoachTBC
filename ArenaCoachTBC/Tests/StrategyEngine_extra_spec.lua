@@ -181,6 +181,49 @@ H.it(g, "Evaluate publishes DBM-style player actions for each living friendly", 
     H.assertEq(findAction(rec.playerActions, "party2").target, rec.primaryTarget)
 end)
 
+H.it(g, "Tremor down under fear threat alerts first and assigns shaman to refresh", function()
+    local state = SE:BuildTestState({"ROGUE","MAGE","PRIEST"})
+    state.combatPhase = "ACTIVE"
+    state.pvpContext = "arena"
+    state.observations = { tremorActive = false, windfuryActive = true, hojReady = true }
+    state.friendlies.party1.name = "Totemkin"
+
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.callouts[1], "CALL_TREMOR_DOWN")
+    local shaman = findAction(rec.playerActions, "party1")
+    H.assertEq(shaman.actionKey, "ACTION_SHAMAN_TREMOR_REFRESH")
+    H.assertEq(shaman.priority, "URGENT")
+    H.assertNil(shaman.target, "refreshing Tremor is a self/ground action, not a target action")
+end)
+
+H.it(g, "Tremor refresh advice clears when the aura is active", function()
+    local state = SE:BuildTestState({"ROGUE","MAGE","PRIEST"})
+    state.combatPhase = "ACTIVE"
+    state.pvpContext = "arena"
+    state.observations = { tremorActive = true, windfuryActive = true, hojReady = true }
+
+    local rec = SE:Evaluate(state)
+    for _, callout in ipairs(rec.callouts or {}) do
+        H.assertNotEq(callout, "CALL_TREMOR_DOWN")
+    end
+    H.assertNotEq(findAction(rec.playerActions, "party1").actionKey, "ACTION_SHAMAN_TREMOR_REFRESH")
+end)
+
+H.it(g, "Tremor down does not wake targetless RESET states", function()
+    local state = SE:BuildTestState({"ROGUE","MAGE","PRIEST"})
+    state.combatPhase = "ACTIVE"
+    state.pvpContext = "arena"
+    state.observations = { tremorActive = false, windfuryActive = true, hojReady = true }
+    for _, e in pairs(state.enemies) do e.alive = false end
+
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.mode, "RESET")
+    for _, callout in ipairs(rec.callouts or {}) do
+        H.assertNotEq(callout, "CALL_TREMOR_DOWN")
+    end
+    H.assertNotEq(findAction(rec.playerActions, "party1").actionKey, "ACTION_SHAMAN_TREMOR_REFRESH")
+end)
+
 H.it(g, "Player actions use the off-target healer for druid CC assignments", function()
     local state = SE:BuildTestState({"WARRIOR","MAGE","PRIEST"})
     state.combatPhase = "ACTIVE"

@@ -666,6 +666,42 @@ local function isOutnumbered(state)
     return nFriendly > 0 and nEnemy >= 4 and (nEnemy - nFriendly) >= 2
 end
 
+local FEAR_THREAT_CLASSES = {
+    PRIEST  = true,
+    WARLOCK = true,
+    WARRIOR = true,
+}
+
+local TREMOR_RELEVANT_CALLOUTS = {
+    CALL_TREMOR_FEAR           = true,
+    CALL_SAVE_TREMOR_HOJ       = true,
+    CALL_PATTERN_FEAR_INTO_POLY = true,
+}
+
+local function hasLivingFriendlyShaman(state)
+    for _, f in pairs((state and state.friendlies) or {}) do
+        if f.alive ~= false and f.class == "SHAMAN" then return true end
+    end
+    return false
+end
+
+local function hasFearThreat(state, callouts)
+    for _, key in ipairs(callouts or {}) do
+        if TREMOR_RELEVANT_CALLOUTS[key] then return true end
+    end
+    for _, e in pairs((state and state.enemies) or {}) do
+        if isAlive(e) and FEAR_THREAT_CLASSES[e.class] then return true end
+    end
+    return false
+end
+
+local function shouldRefreshTremor(state, callouts)
+    local obs = (state and state.observations) or {}
+    if obs.tremorActive ~= false then return false end
+    if not hasLivingFriendlyShaman(state) then return false end
+    return hasFearThreat(state, callouts)
+end
+
 -- ============================================================
 -- Build callouts (locale keys) from comp + current state
 -- ============================================================
@@ -712,6 +748,11 @@ local function buildCallouts(state, comp, primaryTarget, mode)
     local function push(key)
         if key and not seen[key] and drAllowsCallout(key, primaryTarget, state) then
             table.insert(out, key); seen[key] = true
+        end
+    end
+    local function prepend(key)
+        if key and not seen[key] and drAllowsCallout(key, primaryTarget, state) then
+            table.insert(out, 1, key); seen[key] = true
         end
     end
 
@@ -796,6 +837,10 @@ local function buildCallouts(state, comp, primaryTarget, mode)
         end
     end
 
+    if mode ~= "RESET" and shouldRefreshTremor(state, out) then
+        prepend("CALL_TREMOR_DOWN")
+    end
+
     return out
 end
 
@@ -828,7 +873,7 @@ local function addPlayerAction(out, f, actionKey, target, targetType, priority)
     })
 end
 
-local function buildPlayerActions(state, mode, primaryTarget, secondTarget, burstAllowed)
+local function buildPlayerActions(state, mode, primaryTarget, secondTarget, burstAllowed, tremorRefresh)
     local actions = {}
     local killTarget = primaryTarget
     local offTarget = offTargetForAction(state, primaryTarget, secondTarget)
@@ -846,13 +891,23 @@ local function buildPlayerActions(state, mode, primaryTarget, secondTarget, burs
         elseif mode == "DEFEND" then
             target = defensiveTarget
             targetType = "friendly"
-            if class == "PRIEST" then key = "ACTION_PRIEST_DEFEND"
+            if tremorRefresh and class == "SHAMAN" then
+                key = "ACTION_SHAMAN_TREMOR_REFRESH"
+                target = nil
+                targetType = nil
+                priority = "URGENT"
+            elseif class == "PRIEST" then key = "ACTION_PRIEST_DEFEND"
             elseif class == "PALADIN" then key = "ACTION_PALADIN_DEFEND"
             elseif class == "DRUID" then key = "ACTION_DRUID_DEFEND"
             elseif class == "SHAMAN" then key = "ACTION_SHAMAN_DEFEND"
             else key = "ACTION_DPS_PEEL" end
         elseif mode == "OPEN" then
-            if class == "ROGUE" then
+            if tremorRefresh and class == "SHAMAN" then
+                key = "ACTION_SHAMAN_TREMOR_REFRESH"
+                target = nil
+                targetType = nil
+                priority = "URGENT"
+            elseif class == "ROGUE" then
                 key = "ACTION_ROGUE_OPEN"; target = offTarget or killTarget
             elseif class == "MAGE" then
                 key = "ACTION_MAGE_CC"; target = offTarget or secondTarget or killTarget
@@ -868,7 +923,12 @@ local function buildPlayerActions(state, mode, primaryTarget, secondTarget, burs
                 key = "ACTION_OPEN_SETUP"
             end
         else
-            if burstAllowed and class == "SHAMAN" then
+            if tremorRefresh and class == "SHAMAN" then
+                key = "ACTION_SHAMAN_TREMOR_REFRESH"
+                target = nil
+                targetType = nil
+                priority = "URGENT"
+            elseif burstAllowed and class == "SHAMAN" then
                 key = "ACTION_SHAMAN_BLOODLUST"
             elseif class == "WARRIOR" then
                 key = "ACTION_WARRIOR_KILL"
@@ -1165,7 +1225,8 @@ function SE:Evaluate(state)
     elseif mode == "RESET" then priority = "LOW"
     else priority = "HIGH" end
 
-    local playerActions = buildPlayerActions(state, mode, topTarget, secondTarget, burstOK)
+    local tremorRefresh = (mode ~= "RESET") and shouldRefreshTremor(state, callouts) or false
+    local playerActions = buildPlayerActions(state, mode, topTarget, secondTarget, burstOK, tremorRefresh)
 
     return {
         mode            = mode,

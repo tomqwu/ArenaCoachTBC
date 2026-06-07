@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.33] - 2026-06-07
+
+### Added
+- **Tremor-down shaman alert.** When live aura scanning can see that Tremor Totem is missing while a fear threat is present, the compact HUD promotes `Tremor down - shaman refresh` to the top callout, plays the existing arena-gated warning cue, and gives the shaman an urgent `Refresh Tremor Totem` player action.
+
+### Fixed
+- **Tremor advice now clears from real state instead of lingering as generic comp text.** Once the Tremor aura is detected again, the refresh callout and shaman assignment drop out on the next evaluation, letting the normal purge/grounding/kill advice return.
+
+### Tests
+- Added StrategyEngine coverage for Tremor-down alert promotion and automatic clearing when Tremor is active.
+- Added Core aura-scan coverage for Tremor Totem through both `UnitAura` and `UnitBuff` paths.
+- Local validation: 693/693 tests passing, locale parity green at 157 keys per locale, package-shape gate green, and luacov total coverage is 99.46%.
+
 ## [2.8.32] - 2026-06-07
 
 ### Changed

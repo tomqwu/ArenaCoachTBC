@@ -28,6 +28,7 @@ local Sounds = ns.Sounds
 Sounds.byCallout = {
     CALL_HOJ_KILL              = 8959,   -- Hammer-of-Justice landed → push damage
     CALL_TREMOR_FEAR           = 8454,   -- Tremor cleansing fear → safe to commit
+    CALL_TREMOR_DOWN           = 8458,   -- Shaman needs to refresh Tremor under fear threat
     CALL_PURGE                 = 8454,
     CALL_BURST_BLOCK_INCOMING  = 8458,   -- Hold burst — enemy defensive in
     CALL_FAKE_KICK_2           = 1517,

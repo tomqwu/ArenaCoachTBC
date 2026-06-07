@@ -15,7 +15,7 @@ local UI = ns.UI
 UI.frame = nil
 UI.alertFrame = nil
 
-local ADDON_VERSION = "2.8.32"
+local ADDON_VERSION = "2.8.33"
 local STALE_FADE_START = 2.5
 local STALE_FADE_SECONDS = 1.5
 local ALERT_WIDTH = 460
@@ -1144,6 +1144,7 @@ end
 UI.calloutIcons = {
     CALL_HOJ_KILL              = 10308,   -- Hammer of Justice
     CALL_TREMOR_FEAR           = 8143,    -- Tremor Totem
+    CALL_TREMOR_DOWN           = 8143,    -- Tremor Totem
     CALL_SAVE_TREMOR_HOJ       = 8143,    -- Tremor Totem
     CALL_GROUND_POLY           = 8177,    -- Grounding Totem
     CALL_PURGE                 = 370,     -- Purge

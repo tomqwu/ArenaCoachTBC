@@ -134,6 +134,8 @@ Pre-v2.1.6 this module referenced `Sound/Voice/*.ogg` paths that were never bund
 
 ### UI.lua (DBM-style alert default + optional board, v2.8.32)
 
+v2.8.33 adds a Tremor-specific real-state alert. `Core:RefreshAuraObservations()` publishes `observations.tremorActive` from friendly Tremor Totem auras. If that value is explicitly `false`, the team has a living shaman, and the current enemy/callout context contains a fear threat, `StrategyEngine:Evaluate()` prepends `CALL_TREMOR_DOWN` and gives the shaman `ACTION_SHAMAN_TREMOR_REFRESH` with urgent priority. When Tremor is visible again, the warning and shaman assignment clear on the next recommendation instead of lingering as generic comp advice.
+
 v2.8.32 changes the live default to a compact DBM-style center alert plus the existing arena-gated SoundKit cues. The alert is movable, low-background, and transient: `!! KILL !! Holyman`, `!! SWAP !! Mage`, or `!! DEFEND !!` appears with the top actionable callout on a subline, then fades through the same stale-recommendation timer as the board. This avoids keeping a large fixed box over party frames, arena frames, action bars, DBM bars, WeakAuras, or chat during real combat.
 
 The larger Obsidian board remains available for review and tuning through `/acc hud board`; `/acc hud both` shows both surfaces. The board follows the agreed prototype-A layout as one compact texture-backed instrument. It defaults to 540x212, clamps no smaller than 500x196, and keeps the left status stack, center action panel, bottom player-info/assignment strip, and right cue rail together when dragged or resized.

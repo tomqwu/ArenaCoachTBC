@@ -668,6 +668,7 @@ function Core:RefreshAuraObservations()
     local ownCaps = ns.OwnComps and ns.OwnComps:Infer(self.state.friendlies or {}) or {}
     obs.msActiveOn = nil
     obs.windfuryActive = false
+    obs.tremorActive = false
     obs.bloodlustActive = false
     obs.bloodlustReady = ownCaps.hasBloodlust == true
     obs.hojReady = ownCaps.hasHoJ == true
@@ -683,6 +684,10 @@ function Core:RefreshAuraObservations()
             eachAura(f.unit, "HELPFUL", function(spellID, name)
                 if spellNameMatches(spellID, name, S.BLESSING_FREEDOM) then f.buffs.freedom = true end
                 if spellNameMatches(spellID, name, S.WINDFURY_TOTEM) then obs.windfuryActive = true end
+                if spellNameMatches(spellID, name, S.TREMOR_TOTEM) then
+                    f.buffs.tremor = true
+                    obs.tremorActive = true
+                end
                 if spellNameMatches(spellID, name, S.BLOODLUST) or spellNameMatches(spellID, name, S.HEROISM) then
                     obs.bloodlustActive = true
                 end
