@@ -181,6 +181,30 @@ H.it(g, "Evaluate publishes DBM-style player actions for each living friendly", 
     H.assertEq(findAction(rec.playerActions, "party2").target, rec.primaryTarget)
 end)
 
+H.it(g, "Shaman player gets urgent targetless Bloodlust action when burst gate opens", function()
+    local state = SE:BuildTestState({"PRIEST","MAGE"})
+    state.combatPhase = "ACTIVE"
+    state.pvpContext = "arena"
+    state.friendlies.player.class = "SHAMAN"
+    state.friendlies.player.spec = "ENHANCEMENT"
+    state.friendlies.player.name = "You"
+    state.friendlies.party1.class = "WARRIOR"
+    state.friendlies.party1.spec = "ARMS"
+    state.friendlies.party1.name = "Warrior"
+
+    local priest = findEnemyByClass(state, "PRIEST")
+    priest.healthPct = 20
+    priest.hasTrinket = false
+    priest.importantBuffs = {}
+
+    local rec = SE:Evaluate(state)
+    H.assertTrue(rec.burstAllowed, "test setup should open the burst gate")
+    local player = findAction(rec.playerActions, "player")
+    H.assertEq(player.actionKey, "ACTION_SHAMAN_BLOODLUST")
+    H.assertEq(player.priority, "URGENT")
+    H.assertNil(player.target, "Bloodlust is a self/party action, not an enemy-targeted action")
+end)
+
 H.it(g, "Tremor down under fear threat alerts first and assigns shaman to refresh", function()
     local state = SE:BuildTestState({"ROGUE","MAGE","PRIEST"})
     state.combatPhase = "ACTIVE"

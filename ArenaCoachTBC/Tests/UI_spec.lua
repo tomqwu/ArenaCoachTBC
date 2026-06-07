@@ -513,6 +513,46 @@ H.it(g, "Apply makes the player's own action the main alert and a slow DBM-style
     H.ns.Core.state.bracket = nil
 end)
 
+H.it(g, "Apply makes shaman lust a personal YOU alert instead of generic burst text", function()
+    _G.ArenaCoachTBCDB = {
+        enabled = true, locked = false, language = "auto",
+        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0, displayMode = "both" },
+        alerts = { sound = false, screenFlash = false, edgeGlow = false, nameplate = false },
+        strategy = {}, debug = false,
+    }
+    H.ns.Core = H.ns.Core or {}
+    H.ns.Core.state = H.ns.Core.state or {}
+    H.ns.Core.state.pvpContext = "arena"
+    UI.frame = nil
+    UI.alertFrame = nil
+    UI.assignFrame = nil
+    UI.unitFrame = nil
+    UI.railFrame = nil
+    UI:CreateFrame()
+    UI:Apply({
+        mode = "KILL",
+        primaryTargetName = "Holyman",
+        callouts = { "BURST_NOW" },
+        burstAllowed = true,
+        priority = "HIGH",
+        playerActions = {
+            { unit = "player", name = "You", class = "SHAMAN", actionKey = "ACTION_SHAMAN_BLOODLUST", priority = "URGENT" },
+            { unit = "party1", name = "Warrior", class = "WARRIOR", actionKey = "ACTION_WARRIOR_KILL", targetName = "Holyman" },
+        },
+    })
+    H.assertEq(UI.frame.bigText._text, "YOU: Bloodlust now")
+    H.assertEq(UI.alertFrame.main._text, "YOU: Bloodlust now")
+    H.assertTrue((UI.frame.subText._text or ""):find("BURST NOW", 1, true) ~= nil,
+        "generic burst cue should remain supporting context on the review board")
+    H.assertTrue((UI.frame.assignSlotTexts[1]._text or ""):find("YOU:", 1, true) ~= nil,
+        "first action bar should carry the personal marker")
+    H.assertTrue((UI.frame.assignSlotTexts[1]._text or ""):find("Bloodlust now", 1, true) ~= nil,
+        "first action bar should carry the personal lust instruction")
+    H.assertNil(UI.frame._accActionBars[1].action.target,
+        "lust action bar should not carry an enemy target")
+    H.ns.Core.state.pvpContext = nil
+end)
+
 H.it(g, "Apply renders left focus strip and right cue rail", function()
     H.ns.Core = H.ns.Core or {}
     H.ns.Core.state = H.ns.Core.state or {}

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.39] - 2026-06-07
+
+### Changed
+- **Shaman Bloodlust is now a personal burst action.** When the burst gate opens and the player is the shaman, the live board and DBM-style alert show `YOU: Bloodlust now` instead of leaving the moment as a generic `BURST NOW` cue.
+- **Bloodlust is treated as a self/party action.** Shaman lust advice no longer inherits the kill target; the kill plan stays in the strategy/context line while the shaman action stays clean and targetless.
+- **Shaman burst priority is urgent.** The player-action stack now marks the Bloodlust row as urgent during a live burst window.
+
+### Tests
+- Added StrategyEngine coverage for player-shaman burst windows producing an urgent targetless `ACTION_SHAMAN_BLOODLUST`.
+- Added UI coverage for `YOU: Bloodlust now` taking the center alert while the generic burst cue remains supporting context.
+- Local validation: 702/702 tests passing, locale parity green at 168 keys per locale, package-shape gate green, standalone StrategyEngine smoke green, and clean luacov total coverage is 99.10%.
+
 ## [2.8.38] - 2026-06-07
 
 ### Changed

@@ -937,6 +937,9 @@ local function buildPlayerActions(state, mode, primaryTarget, secondTarget, burs
                 priority = "URGENT"
             elseif burstAllowed and class == "SHAMAN" then
                 key = "ACTION_SHAMAN_BLOODLUST"
+                target = nil
+                targetType = nil
+                priority = "URGENT"
             elseif class == "WARRIOR" then
                 key = "ACTION_WARRIOR_KILL"
             elseif class == "ROGUE" then
