@@ -45,12 +45,26 @@ H.it(g, "Infer detects WAR/ENH/RET/RDRU/DISC capabilities", function()
     H.assertTrue(caps.hasGroup)
 end)
 
-H.it(g, "Infer without spec unions all specs of that class", function()
+H.it(g, "Infer without spec unions non-healer capabilities of that class", function()
     local fr = makeFriendlies({ { class = "WARRIOR" } })
     local caps = OC:Infer(fr)
     -- Union: ARMS adds MS even though spec unknown
     H.assertTrue(caps.hasMortalStrike)
     H.assertTrue(caps.hasMeleeDamage)
+end)
+
+H.it(g, "Infer does not promote unknown hybrid shaman or paladin to main healer", function()
+    local caps = OC:Infer(makeFriendlies({ { class = "SHAMAN" }, { class = "PALADIN" } }))
+    H.assertTrue(caps.hasBloodlust, "class-wide shaman tools still count")
+    H.assertTrue(caps.hasHoJ, "class-wide paladin tools still count")
+    H.assertFalse(caps.hasMainHealer, "unknown hybrid specs are not dedicated healers")
+
+    caps = OC:Infer(makeFriendlies({ { class = "SHAMAN", specGuess = "ENHANCEMENT" } }))
+    H.assertTrue(caps.hasWindfury, "friendly specGuess should grant Enhancement tools")
+    H.assertFalse(caps.hasMainHealer, "Enhancement specGuess should not grant main-healer capability")
+
+    caps = OC:Infer(makeFriendlies({ { class = "SHAMAN", spec = "RESTORATION" } }))
+    H.assertTrue(caps.hasMainHealer, "known Restoration shaman is a main healer")
 end)
 
 H.it(g, "Infer handles unknown class gracefully", function()

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.41] - 2026-06-08
+
+### Fixed
+- **Enhancement shamans no longer look like healers by class fallback.** Friendly support detection now treats explicit healer roles/specs as healers, but unknown hybrid classes no longer become healer targets just because the class can heal.
+- **Friendly spec inference now consumes real combat-log hints.** Friendly casts such as Shamanistic Rage now mark that player as Enhancement, so team capability and defensive targeting stop using stale unknown-hybrid assumptions.
+- **Hybrid own-comp capability inference is less inflated.** Unknown shaman/paladin still grant class-wide tools like Bloodlust, Grounding, Tremor, and HoJ, but they no longer grant main-healer capability without Restoration/Holy evidence.
+
+### Tests
+- Added Core regressions for Sweetshammy-style Enhancement shaman damage not setting healer-train pressure, friendly Shamanistic Rage inferring Enhancement, and known Restoration shaman still counting as a healer.
+- Added StrategyEngine and OwnComps regressions for known healer specs vs unknown/Enhancement hybrids.
+- Local validation: 709/709 tests passing, locale parity green at 168 keys per locale, package-shape gate green, standalone StrategyEngine smoke green, and clean luacov total coverage is 99.11%.
+
 ## [2.8.40] - 2026-06-07
 
 ### Fixed

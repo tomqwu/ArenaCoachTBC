@@ -1343,20 +1343,45 @@ H.it(g, "World mode: solo non-healer player low HP still DEFENDs", function()
     H.assertEq(player.targetType, "friendly")
 end)
 
-H.it(g, "Support-capable Paladin/Shaman friendlies count for low-healer DEFEND", function()
-    local state = SE:BuildTestState({"WARRIOR","MAGE","PRIEST"})
+H.it(g, "Known healer Paladin/Shaman specs count for low-healer DEFEND", function()
+    local state = SE:BuildTestState({"WARRIOR"})
     state.combatPhase = "ACTIVE"
     state.friendlies = {
         player = { unit = "player", class = "WARRIOR", spec = "ARMS", alive = true, healthPct = 100 },
-        party1 = { unit = "party1", class = "PALADIN", alive = true, healthPct = 25 },
+        party1 = { unit = "party1", class = "PALADIN", spec = "HOLY", alive = true, healthPct = 25 },
         party2 = { unit = "party2", class = "ROGUE", alive = true, healthPct = 100 },
     }
     local rec = SE:Evaluate(state)
-    H.assertEq(rec.mode, "DEFEND", "low healer-capable paladin should trigger DEFEND")
+    H.assertEq(rec.mode, "DEFEND", "low holy paladin should trigger DEFEND")
+
+    state.friendlies.party1.spec = nil
+    rec = SE:Evaluate(state)
+    H.assertNotEq(rec.mode, "DEFEND", "unknown paladin should not be treated as the healer")
 
     state.friendlies.party1.class = "SHAMAN"
+    state.friendlies.party1.spec = "RESTORATION"
     rec = SE:Evaluate(state)
-    H.assertEq(rec.mode, "DEFEND", "low healer-capable shaman should trigger DEFEND")
+    H.assertEq(rec.mode, "DEFEND", "low resto shaman should trigger DEFEND")
+
+    state.friendlies.party1.spec = "ENHANCEMENT"
+    rec = SE:Evaluate(state)
+    H.assertNotEq(rec.mode, "DEFEND", "low enhancement shaman should not trigger healer DEFEND")
+end)
+
+H.it(g, "DEFEND actions do not target an Enhancement shaman as healer", function()
+    local state = SE:BuildTestState({"ROGUE","MAGE"})
+    state.combatPhase = "ACTIVE"
+    state.observations = { healerUnderPressure = true }
+    state.friendlies = {
+        player = { unit = "player", class = "SHAMAN", spec = "ENHANCEMENT", alive = true, healthPct = 100 },
+        party1 = { unit = "party1", name = "Sweetshammy", class = "SHAMAN", spec = "ENHANCEMENT", alive = true, healthPct = 54 },
+    }
+
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.mode, "DEFEND")
+    local player = findAction(rec.playerActions, "player")
+    H.assertEq(player.actionKey, "ACTION_SHAMAN_DEFEND")
+    H.assertNil(player.targetName, "Enhancement shaman should not be selected as the defensive healer target")
 end)
 
 H.it(g, "BG mode: PRE phase also skips OPEN (same as world)", function()

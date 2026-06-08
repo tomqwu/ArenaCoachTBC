@@ -104,19 +104,29 @@ function OC:Infer(friendlies)
     for _, f in pairs(friendlies or {}) do
         if f and f.class then
             n = n + 1
-            local entry = self.classCaps[f.class]
+            local class = f.class:upper()
+            local entry = self.classCaps[class]
             if entry then
                 if entry.__any__ then
                     for k, _ in pairs(entry.__any__) do caps[k] = true end
                 end
-                if f.spec and entry[f.spec:upper()] then
-                    for k, _ in pairs(entry[f.spec:upper()]) do caps[k] = true end
+                local spec = f.spec or f.specGuess
+                spec = spec and spec:upper() or nil
+                if spec and entry[spec] then
+                    for k, _ in pairs(entry[spec]) do caps[k] = true end
                 end
-                if not f.spec then
-                    -- No spec info: union all specs (conservative for capabilities)
+                if not spec then
+                    -- No spec info: union possible non-healer specs, but do not
+                    -- promote hybrid classes into a main healer by possibility
+                    -- alone. Priest/druid default to healer elsewhere; shaman
+                    -- and paladin need observed resto/holy evidence.
                     for specName, specCaps in pairs(entry) do
                         if specName ~= "__any__" then
-                            for k, _ in pairs(specCaps) do caps[k] = true end
+                            for k, _ in pairs(specCaps) do
+                                if k ~= "hasMainHealer" or class == "PRIEST" or class == "DRUID" then
+                                    caps[k] = true
+                                end
+                            end
                         end
                     end
                 end

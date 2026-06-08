@@ -167,20 +167,18 @@ end
 
 local function classCanHeal(class)
     local Classes = ns.Classes
-    if not Classes or not Classes.Info then return false end
-    local info = Classes:Info(class)
-    for _, role in ipairs(info.possibleRoles or {}) do
-        if role == "HEALER" then return true end
-    end
-    return false
+    if not Classes or not Classes.DefaultRole then return false end
+    return Classes:DefaultRole(class) == "HEALER"
 end
 
 local function isFriendlySupport(f)
     if not f or not f.class then return false end
-    if f.roleGuess == "HEALER" or f.role == "HEALER" then return true end
+    local role = f.roleGuess or f.role
+    if role then return role == "HEALER" end
     local Classes = ns.Classes
     if Classes then
-        if f.spec and Classes.IsHealer then return Classes:IsHealer(f.class, f.spec) end
+        local spec = f.spec or f.specGuess
+        if spec and Classes.IsHealer then return Classes:IsHealer(f.class, spec) end
         return classCanHeal(f.class)
     end
     return false

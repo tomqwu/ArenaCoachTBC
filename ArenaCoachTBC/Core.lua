@@ -627,14 +627,13 @@ end
 
 local function friendlyIsHealer(f)
     if not f then return false end
-    if f.roleGuess == "HEALER" or f.role == "HEALER" then return true end
+    local role = f.roleGuess or f.role
+    if role then return role == "HEALER" end
     if ns.Classes then
-        if f.spec and ns.Classes.IsHealer then return ns.Classes:IsHealer(f.class, f.spec) end
-        if ns.Classes.Info then
-            local info = ns.Classes:Info(f.class)
-            for _, role in ipairs(info.possibleRoles or {}) do
-                if role == "HEALER" then return true end
-            end
+        local spec = f.spec or f.specGuess
+        if spec and ns.Classes.IsHealer then return ns.Classes:IsHealer(f.class, spec) end
+        if ns.Classes.DefaultRole then
+            return ns.Classes:DefaultRole(f.class) == "HEALER"
         end
     end
     return false
@@ -911,10 +910,20 @@ local function onCLEU(_event, ...)
         or subEvent == "SPELL_AURA_APPLIED"
         or subEvent == "SPELL_AURA_REFRESH"
     ) then
+        local applied = false
         for _, e in pairs(Core.state.enemies or {}) do
             if e.guid == sourceGUID then
                 ns.SpellSpecHints:Apply(e, spellID)
+                applied = true
                 break
+            end
+        end
+        if not applied then
+            for _, f in pairs(Core.state.friendlies or {}) do
+                if f.guid == sourceGUID then
+                    ns.SpellSpecHints:Apply(f, spellID)
+                    break
+                end
             end
         end
     end

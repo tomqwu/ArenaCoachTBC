@@ -871,6 +871,67 @@ H.it(g, "train detection ignores damage on non-healer friendlies", function()
     H.assertEq(#Core._friendlyDamageTs, 0)
 end)
 
+H.it(g, "train detection ignores damage on unknown or Enhancement shaman friendlies", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    H.setUnit("player", { class = "WARRIOR", guid = "guid-me", hp = 100, hpMax = 100 })
+    H.setUnit("party1", { class = "SHAMAN", guid = "guid-sweet", name = "Sweetshammy", hp = 100, hpMax = 100 })
+    Core:RefreshFriendlies()
+    Core._friendlyDamageTs = {}
+
+    H._gameTime = 120
+    for i = 1, 3 do
+        H.fireCLEU(120 + i, "SPELL_DAMAGE", false, "enemy-src", "Source",
+                   nil, nil, "guid-sweet", "Sweetshammy", nil, nil, 30330, "Mortal Strike", nil, 1000)
+        EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
+    end
+    H.assertEq(#Core._friendlyDamageTs, 0, "unknown shaman should not be treated as the healer")
+
+    Core.state.friendlies.party1.specGuess = "ENHANCEMENT"
+    Core.state.friendlies.party1.roleGuess = "MELEE"
+    for i = 1, 3 do
+        H.fireCLEU(130 + i, "SPELL_DAMAGE", false, "enemy-src", "Source",
+                   nil, nil, "guid-sweet", "Sweetshammy", nil, nil, 30330, "Mortal Strike", nil, 1000)
+        EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
+    end
+    H.assertEq(#Core._friendlyDamageTs, 0, "Enhancement shaman should not trigger healerUnderPressure")
+end)
+
+H.it(g, "friendly Shamanistic Rage infers Enhancement shaman", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    H.setUnit("player", { class = "WARRIOR", guid = "guid-me", hp = 100, hpMax = 100 })
+    H.setUnit("party1", { class = "SHAMAN", guid = "guid-sweet-rage", name = "Sweetshammy", hp = 100, hpMax = 100 })
+    Core:RefreshFriendlies()
+    H.assertNil(Core.state.friendlies.party1.specGuess)
+
+    H.fireCLEU(140, "SPELL_CAST_SUCCESS", false, "guid-sweet-rage", "Sweetshammy",
+               nil, nil, "guid-sweet-rage", "Sweetshammy", nil, nil,
+               H.ns.Spells.SHAMANISTIC_RAGE, "Shamanistic Rage")
+    EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
+
+    H.assertEq(Core.state.friendlies.party1.specGuess, "ENHANCEMENT")
+    H.assertEq(Core.state.friendlies.party1.roleGuess, "MELEE")
+end)
+
+H.it(g, "train detection counts known Restoration shaman as healer", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    H.setUnit("player", { class = "WARRIOR", guid = "guid-me", hp = 100, hpMax = 100 })
+    H.setUnit("party1", { class = "SHAMAN", guid = "guid-resto", name = "Resto", hp = 100, hpMax = 100 })
+    Core:RefreshFriendlies()
+    Core.state.friendlies.party1.specGuess = "RESTORATION"
+    Core.state.friendlies.party1.roleGuess = "HEALER"
+    Core._friendlyDamageTs = {}
+
+    for i = 1, 3 do
+        H.fireCLEU(150 + i, "SPELL_DAMAGE", false, "enemy-src", "Source",
+                   nil, nil, "guid-resto", "Resto", nil, nil, 30330, "Mortal Strike", nil, 1000)
+        EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
+    end
+    H.assertEq(#Core._friendlyDamageTs, 3)
+end)
+
 H.it(g, "train detection forces DEFEND when threshold exceeded", function()
     rebootForEvents()
     _G.ArenaCoachTBCDB = nil; Core:InitDB()
