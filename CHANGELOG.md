@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.42] - 2026-06-08
+
 ### Fixed
 - **Roster-gated callouts now use one central requirements gate.** Static comp notes and mode-driven advice are filtered through capability/context checks before they can reach the HUD, covering Tremor, Grounding, Purge, friendly dispels, Freedom, HoJ, BoP, Pain Suppression, Mana Burn, Earth Shock, and Cyclone.
 - **TBC shaman capability inference no longer grants friendly magic dispel.** Enhancement and other non-Restoration shamans still provide Bloodlust, Windfury, Tremor, Grounding, Purge, Earth Shock, interrupt, and off-heal capability, but they no longer satisfy `hasDispelMagic`.
