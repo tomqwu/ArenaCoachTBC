@@ -196,6 +196,53 @@ H.it(g, "Evaluate publishes recommendation", function()
     H.assertNotNil(rec)
 end)
 
+H.it(g, "CLEU train detection requires repeated damage on the same healer", function()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    _G.ArenaCoachTBCDB.enabled = true
+    _G.ArenaCoachTBCDB.strategy.peelTriggerWindow = 5
+    _G.ArenaCoachTBCDB.strategy.peelTriggerDamage = 3
+    H._gameTime = 1000
+    Core.state.combatPhase = "ACTIVE"
+    Core.state.pvpContext = "arena"
+    Core.state.observations = {}
+    Core._friendlyDamageTs = {}
+    Core._friendlyDamageEvents = {}
+    H._lastCLEU = nil
+
+    H.setUnit("player", { class = "WARRIOR", guid = "guid-player", name = "You", hp = 100, hpMax = 100 })
+    H.setUnit("party1", { class = "DRUID", guid = "guid-leaves", name = "Leaves", hp = 90, hpMax = 100 })
+    H.setUnit("party2", { class = "PRIEST", guid = "guid-totemkin", name = "Totemkin", hp = 90, hpMax = 100 })
+    H.setUnit("party3", nil)
+    H.setUnit("party4", nil)
+    H.setUnit("arena1", { class = "ROGUE", guid = "guid-rogue", name = "Enemy Rogue", hp = 100, hpMax = 100 })
+    for i = 2, 5 do H.setUnit("arena" .. i, nil) end
+    Core:RefreshFriendlies()
+    Core:RefreshArenaEnemies()
+    Core.state.friendlies.party1.role = "HEALER"
+    Core.state.friendlies.party2.role = "HEALER"
+
+    local function fireDamage(ts, destGuid, destName)
+        H.fireCLEU(ts, "SPELL_DAMAGE", false, "guid-rogue", "Enemy Rogue", 0, 0,
+            destGuid, destName, 0, 0, 1752, "Sinister Strike")
+        EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
+    end
+
+    fireDamage(1000, "guid-leaves", "Leaves")
+    fireDamage(1001, "guid-leaves", "Leaves")
+    fireDamage(1002, "guid-totemkin", "Totemkin")
+    Core:Evaluate()
+    H.assertFalse(Core.state.observations.healerUnderPressure,
+        "split healer damage should not look like a train")
+    H.assertNil(Core.state.observations.healerPressure)
+
+    fireDamage(1003, "guid-leaves", "Leaves")
+    Core:Evaluate()
+    H.assertTrue(Core.state.observations.healerUnderPressure)
+    H.assertEq(Core.state.observations.healerPressure.guid, "guid-leaves")
+    H.assertEq(Core.state.observations.healerPressure.unit, "party1")
+    H.assertEq(Core.state.observations.healerPressure.events, 3)
+end)
+
 H.it(g, "Evaluate is a no-op when disabled", function()
     _G.ArenaCoachTBCDB = nil; Core:InitDB()
     _G.ArenaCoachTBCDB.enabled = false
@@ -483,6 +530,9 @@ end)
 -- below so handlers are guaranteed to be registered.
 local function rebootForEvents()
     H.ns.EventBus:_Reset()  -- start from a known empty state
+    Core._friendlyDamageTs = {}
+    Core._friendlyDamageEvents = {}
+    H._lastCLEU = nil
     Core:Boot()             -- re-register all of Core's handlers
 end
 
@@ -493,6 +543,7 @@ local function clearArenaApis()
     _G.GetBattlefieldStatus = nil
     _G.GetPersonalRatedInfo = nil
     Core._friendlyDamageTs = {}
+    Core._friendlyDamageEvents = {}
 end
 
 local function setupRealisticArena3v3()
@@ -503,6 +554,7 @@ local function setupRealisticArena3v3()
     Core.state.friendlies = {}
     Core.state.observations = {}
     Core._friendlyDamageTs = {}
+    Core._friendlyDamageEvents = {}
     H.ns.WeakAuraBridge._last = nil
     H.ns.WeakAuraBridge._state = nil
     if H.ns.UI then H.ns.UI._flash = nil; H.ns.UI:CreateFrame() end
@@ -562,6 +614,9 @@ H.it(g, "v2.7.2: PLAYER_ENTERING_WORLD resets per-match state", function()
     Core.state.enemyClassList = { "MAGE" }
     Core.state.observations = { healerUnderPressure = true }
     Core._friendlyDamageTs = { 101, 102, 103 }
+    Core._friendlyDamageEvents = {
+        { ts = 101, guid = "guid-old", unit = "party1", name = "Old Healer" },
+    }
     Core.state.lastPrimaryGUID = "ghost1"
     Core.state.combatPhase = "POST"
     EB:Dispatch("PLAYER_ENTERING_WORLD")
@@ -573,6 +628,8 @@ H.it(g, "v2.7.2: PLAYER_ENTERING_WORLD resets per-match state", function()
     H.assertFalse(Core.state.observations.healerUnderPressure,
         "PEW must clear stale healer-train pressure before pre-gates evaluation")
     H.assertEq(#Core._friendlyDamageTs, 0, "PEW must clear stale healer damage samples")
+    H.assertEq(#Core._friendlyDamageEvents, 0,
+        "PEW must clear stale target-specific healer damage samples")
 end)
 
 H.it(g, "EventBus GROUP_ROSTER_UPDATE handler runs", function()
@@ -849,6 +906,7 @@ H.it(g, "train detection accumulates damage on friendly healers", function()
     H.setUnit("player", { class = "PRIEST", guid = "guid-me", hp = 100, hpMax = 100 })
     Core:RefreshFriendlies()
     Core._friendlyDamageTs = {}
+    Core._friendlyDamageEvents = {}
     -- Three damage events on a healer in quick succession
     H._gameTime = 100
     for i = 1, 3 do
@@ -865,6 +923,7 @@ H.it(g, "train detection ignores damage on non-healer friendlies", function()
     H.setUnit("player", { class = "WARRIOR", guid = "guid-war", hp = 100, hpMax = 100 })
     Core:RefreshFriendlies()
     Core._friendlyDamageTs = {}
+    Core._friendlyDamageEvents = {}
     H.fireCLEU(100, "SPELL_DAMAGE", false, "enemy-src", "Source",
                nil, nil, "guid-war", "Me", nil, nil, 30330, "Mortal Strike", nil, 1000)
     EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
@@ -878,6 +937,7 @@ H.it(g, "train detection ignores damage on unknown or Enhancement shaman friendl
     H.setUnit("party1", { class = "SHAMAN", guid = "guid-sweet", name = "Sweetshammy", hp = 100, hpMax = 100 })
     Core:RefreshFriendlies()
     Core._friendlyDamageTs = {}
+    Core._friendlyDamageEvents = {}
 
     H._gameTime = 120
     for i = 1, 3 do
@@ -923,6 +983,7 @@ H.it(g, "train detection counts known Restoration shaman as healer", function()
     Core.state.friendlies.party1.specGuess = "RESTORATION"
     Core.state.friendlies.party1.roleGuess = "HEALER"
     Core._friendlyDamageTs = {}
+    Core._friendlyDamageEvents = {}
 
     for i = 1, 3 do
         H.fireCLEU(150 + i, "SPELL_DAMAGE", false, "enemy-src", "Source",
@@ -941,11 +1002,17 @@ H.it(g, "train detection forces DEFEND when threshold exceeded", function()
     -- enemies in Core.state; rebootForEvents only resets the event
     -- bus, not the shared state table.
     Core.state.enemies = {}
-    H.setUnit("player", { class = "WARRIOR", guid = "guid-me", hp = 100, hpMax = 100 })
+    H.setUnit("player", { class = "PRIEST", guid = "guid-me", hp = 100, hpMax = 100 })
     Core:RefreshFriendlies()
     H._gameTime = 200
     -- Inject 4 damage events directly (above default threshold of 3)
     Core._friendlyDamageTs = { 200, 200, 200, 200 }
+    Core._friendlyDamageEvents = {
+        { ts = 200, guid = "guid-me", unit = "player", name = "Me", class = "PRIEST" },
+        { ts = 200, guid = "guid-me", unit = "player", name = "Me", class = "PRIEST" },
+        { ts = 200, guid = "guid-me", unit = "player", name = "Me", class = "PRIEST" },
+        { ts = 200, guid = "guid-me", unit = "player", name = "Me", class = "PRIEST" },
+    }
     local rec = Core:Evaluate()
     H.assertEq(rec.mode, "DEFEND")
 end)
@@ -957,9 +1024,15 @@ H.it(g, "train detection prunes events outside window", function()
     Core:RefreshFriendlies()
     -- Old events from 100s ago, current time 200s; window default = 5s
     Core._friendlyDamageTs = { 100, 101, 102, 103, 104 }
+    Core._friendlyDamageEvents = {
+        { ts = 100, guid = "guid-me", unit = "player", name = "Me" },
+        { ts = 101, guid = "guid-me", unit = "player", name = "Me" },
+        { ts = 102, guid = "guid-me", unit = "player", name = "Me" },
+    }
     H._gameTime = 200
     Core:Evaluate()
     H.assertEq(#Core._friendlyDamageTs, 0, "old events should be pruned")
+    H.assertEq(#Core._friendlyDamageEvents, 0, "old target evidence should be pruned")
 end)
 
 H.it(g, "train detection ignores damage on non-friendly destGUIDs", function()
@@ -969,6 +1042,7 @@ H.it(g, "train detection ignores damage on non-friendly destGUIDs", function()
     H.setUnit("player", { class = "WARRIOR", guid = "guid-me", hp = 100, hpMax = 100 })
     Core:RefreshFriendlies()
     Core._friendlyDamageTs = {}
+    Core._friendlyDamageEvents = {}
     H._gameTime = 300
     H.fireCLEU(300, "SPELL_DAMAGE", false, "enemy-src", "Source",
                nil, nil, "guid-stranger", "Stranger", nil, nil, 30330, "MS", nil, 1000)
@@ -1562,6 +1636,7 @@ H.it(g, "CLEU treats Classic landed swing and damage shield events as pressure",
         Core.state.enemies = {}
         Core._friendlyGUIDs = { ["guid-player"] = { class = "DRUID", alive = true } }
         Core._friendlyDamageTs = {}
+        Core._friendlyDamageEvents = {}
         _G.UnitExists = function() return false end
         H._gameTime = 1000
 

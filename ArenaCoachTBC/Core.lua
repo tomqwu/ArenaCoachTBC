@@ -229,12 +229,49 @@ Core.state = {
 -- forces DEFEND. Configurable via db.strategy.peelTriggerWindow / peelTriggerDamage.
 Core._friendlyGUIDs    = {}  -- guid -> friendly model
 Core._friendlyDamageTs = {}  -- list of timestamps
+Core._friendlyDamageEvents = {}  -- { ts, guid, unit, name, class }
 
 local function pruneFriendlyDamage(now, window)
     local cutoff = (now or 0) - (window or 5)
     while #Core._friendlyDamageTs > 0 and Core._friendlyDamageTs[1] < cutoff do
         table.remove(Core._friendlyDamageTs, 1)
     end
+    while #Core._friendlyDamageEvents > 0
+       and (Core._friendlyDamageEvents[1].ts or 0) < cutoff do
+        table.remove(Core._friendlyDamageEvents, 1)
+    end
+end
+
+local function currentHealerPressure(threshold, window)
+    local counts, latest, models = {}, {}, {}
+    for _, ev in ipairs(Core._friendlyDamageEvents or {}) do
+        local guid = ev.guid
+        if guid then
+            counts[guid] = (counts[guid] or 0) + 1
+            latest[guid] = ev.ts or latest[guid] or 0
+            models[guid] = Core._friendlyGUIDs[guid] or ev
+        end
+    end
+
+    local bestGuid, bestCount, bestLatest = nil, 0, -1
+    for guid, count in pairs(counts) do
+        local last = latest[guid] or 0
+        if count > bestCount or (count == bestCount and last > bestLatest) then
+            bestGuid, bestCount, bestLatest = guid, count, last
+        end
+    end
+
+    if not bestGuid or bestCount < (threshold or 3) then return nil end
+    local model = models[bestGuid] or {}
+    return {
+        guid       = bestGuid,
+        unit       = model.unit,
+        name       = model.name,
+        class      = model.class,
+        events     = bestCount,
+        window     = window or 5,
+        lastSeenAt = bestLatest,
+    }
 end
 
 -- Read the current arena bracket from the WoW battlefield API.
@@ -757,7 +794,9 @@ function Core:Evaluate()
     local threshold = strat.peelTriggerDamage or 3
     pruneFriendlyDamage(now, window)
     self.state.observations = self.state.observations or {}
-    self.state.observations.healerUnderPressure = (#Core._friendlyDamageTs >= threshold)
+    local pressure = currentHealerPressure(threshold, window)
+    self.state.observations.healerUnderPressure = pressure ~= nil
+    self.state.observations.healerPressure = pressure
 
     -- M13 #v2.1: route enemy discovery based on PvP context.
     -- DetectPvPContext caches result on state.pvpContext. Refresh
@@ -869,9 +908,20 @@ local function onCLEU(_event, ...)
     local friendlyDamageShouldEvaluate = false
     if subEvent and damagedFriendly and friendlyIsHealer(damagedFriendly)
        and isDamageSubEvent(subEvent) then
-        table.insert(Core._friendlyDamageTs, ts or 0)
+        local at = ts or ((type(GetTime) == "function") and GetTime()) or 0
+        table.insert(Core._friendlyDamageTs, at)
+        table.insert(Core._friendlyDamageEvents, {
+            ts    = at,
+            guid  = destGUID,
+            unit  = damagedFriendly.unit,
+            name  = damagedFriendly.name or destName,
+            class = damagedFriendly.class,
+        })
         local strat = (_G.ArenaCoachTBCDB and _G.ArenaCoachTBCDB.strategy) or {}
-        friendlyDamageShouldEvaluate = #Core._friendlyDamageTs >= (strat.peelTriggerDamage or 3)
+        local window = strat.peelTriggerWindow or 5
+        local threshold = strat.peelTriggerDamage or 3
+        pruneFriendlyDamage(at, window)
+        friendlyDamageShouldEvaluate = currentHealerPressure(threshold, window) ~= nil
     end
 
     -- M13 #v2.1: BG / world PvP context — when a hostile player hits
@@ -1809,6 +1859,7 @@ local function onPlayerEnteringWorld()
     Core.state.lastPrimaryGUID = nil
     Core.state.combatPhase     = "PRE"
     Core._friendlyDamageTs     = {}
+    Core._friendlyDamageEvents = {}
 
     Core:InitDB()
     Core:RefreshFriendlies()

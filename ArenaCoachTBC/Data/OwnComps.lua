@@ -23,7 +23,7 @@ OC.capabilities = {
     "hasFreedom",           -- Paladin
     "hasBoP",               -- Paladin
     "hasHoJ",               -- Paladin
-    "hasDispelMagic",       -- Priest / Shaman (Cleanse Spirit)
+    "hasDispelMagic",       -- Priest friendly/offensive magic dispel
     "hasMassDispel",        -- Priest (TBC)
     "hasPainSuppression",   -- Disc Priest
     "hasManaBurn",          -- Priest
@@ -35,6 +35,7 @@ OC.capabilities = {
     "hasPurge",             -- Shaman
     "hasGrounding",         -- Shaman
     "hasTremor",            -- Shaman
+    "hasEarthShock",        -- Shaman interrupt
     "hasInterrupt",         -- Rogue Kick, Warrior Pummel, Mage CS, Shaman Earth Shock
     "hasOffhealer",         -- Paladin / Druid / Priest / Shaman off-heal
     "hasMainHealer",        -- dedicated resto/disc/holy
@@ -56,7 +57,7 @@ OC.classCaps = {
         PROT    = {},
     },
     SHAMAN = {
-        __any__       = { hasBloodlust = true, hasGrounding = true, hasTremor = true, hasPurge = true, hasInterrupt = true, hasDispelMagic = true, hasOffhealer = true },
+        __any__       = { hasBloodlust = true, hasGrounding = true, hasTremor = true, hasPurge = true, hasEarthShock = true, hasInterrupt = true, hasOffhealer = true },
         ENHANCEMENT   = { hasWindfury = true, hasMeleeDamage = true },
         ELEMENTAL     = { hasRangedDamage = true, hasMagicDamage = true },
         RESTORATION   = { hasMainHealer = true },
