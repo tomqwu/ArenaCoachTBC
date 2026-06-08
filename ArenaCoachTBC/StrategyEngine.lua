@@ -258,6 +258,22 @@ local function lowestDefensiveFriendly(state)
     return lowest
 end
 
+local function observedPressureFriendly(state)
+    local friendlies = state and state.friendlies or nil
+    local obs = state and state.observations or nil
+    local pressure = obs and obs.healerPressure or nil
+    if not friendlies or not pressure then return nil end
+
+    for _, f in pairs(friendlies) do
+        if f.alive ~= false and isFriendlySupport(f) then
+            if pressure.guid and f.guid == pressure.guid then return f end
+            if pressure.unit and f.unit == pressure.unit then return f end
+            if pressure.name and f.name == pressure.name then return f end
+        end
+    end
+    return nil
+end
+
 -- Roughly: any friendly DPS rooted/snared without freedom/cleanse coverage?
 local function meleeLockedDown(state)
     local friendlies = state.friendlies or {}
@@ -998,7 +1014,7 @@ local function buildPlayerActions(state, mode, primaryTarget, secondTarget, burs
     local actions = {}
     local killTarget = primaryTarget
     local offTarget = offTargetForAction(state, primaryTarget, secondTarget)
-    local defensiveTarget = lowestDefensiveFriendly(state)
+    local defensiveTarget = observedPressureFriendly(state) or lowestDefensiveFriendly(state)
 
     for _, f in ipairs(friendlyActionList(state.friendlies)) do
         local class = f.class

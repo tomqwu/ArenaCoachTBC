@@ -10,14 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **Roster-gated callouts now use one central requirements gate.** Static comp notes and mode-driven advice are filtered through capability/context checks before they can reach the HUD, covering Tremor, Grounding, Purge, friendly dispels, Freedom, HoJ, BoP, Pain Suppression, Mana Burn, Earth Shock, and Cyclone.
 - **TBC shaman capability inference no longer grants friendly magic dispel.** Enhancement and other non-Restoration shamans still provide Bloodlust, Windfury, Tremor, Grounding, Purge, Earth Shock, interrupt, and off-heal capability, but they no longer satisfy `hasDispelMagic`.
+- **Healer-train detection is now target-specific.** Split damage across multiple healers no longer fakes a trained healer state, and DEFEND player actions prefer the friendly who actually crossed the combat-log pressure threshold instead of guessing from lowest HP.
 
 ### Added
 - **Rejected callout diagnostics.** `StrategyEngine:Evaluate` now returns `rejectedCallouts` with stable reason codes such as `missing_hasPurge`, `missing_hasBoP`, and `missing_hasPainSuppression` so tests and traces can explain why an impossible warning was suppressed.
+- **Structured healer pressure evidence.** `Core:Evaluate` now publishes `observations.healerPressure` with the trained friendly's GUID/unit/name/class/event count/window when real CLEU damage evidence supports the warning.
 
 ### Tests
 - Added OwnComps coverage for TBC shaman capability truth.
 - Added StrategyEngine arena regressions for no-shaman RMP advice and no-paladin/no-priest defensive cooldown advice.
-- Local validation: 712/712 tests passing, locale parity green at 168 keys per locale, package-shape gate green, standalone StrategyEngine smoke green, and clean luacov total coverage is 99.20%.
+- Added Core and StrategyEngine regressions for target-specific healer pressure: split healer damage does not trigger DEFEND, and defensive actions target the combat-log pressure victim over an idle lower-HP healer.
+- Local validation: 714/714 tests passing, locale parity green at 168 keys per locale, package-shape gate green, standalone StrategyEngine smoke green, and clean luacov total coverage is 99.38%.
 
 ## [2.8.41] - 2026-06-08
 

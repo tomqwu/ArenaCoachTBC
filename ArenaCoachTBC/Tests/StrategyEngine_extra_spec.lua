@@ -195,6 +195,33 @@ H.it(g, "Evaluate publishes DBM-style player actions for each living friendly", 
     H.assertEq(findAction(rec.playerActions, "party2").target, rec.primaryTarget)
 end)
 
+H.it(g, "DEFEND player actions prefer the combat-log pressure target over lowest healer HP", function()
+    local state = SE:BuildTestState({"ROGUE","MAGE","PRIEST"})
+    state.combatPhase = "ACTIVE"
+    state.pvpContext = "arena"
+    state.friendlies.party3.name = "Leaves"
+    state.friendlies.party3.healthPct = 18
+    state.friendlies.party4.name = "Totemkin"
+    state.friendlies.party4.healthPct = 86
+    state.observations = {
+        healerUnderPressure = true,
+        healerPressure = {
+            guid = state.friendlies.party4.guid,
+            unit = "party4",
+            name = "Totemkin",
+            events = 3,
+            window = 5,
+        },
+    }
+
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.mode, "DEFEND")
+    local player = findAction(rec.playerActions, "player")
+    H.assertEq(player.target, state.friendlies.party4.guid,
+        "defensive advice should target the trained healer, not the lower idle healer")
+    H.assertEq(player.targetName, "Totemkin")
+end)
+
 H.it(g, "Shaman player gets urgent targetless Bloodlust action when burst gate opens", function()
     local state = SE:BuildTestState({"PRIEST","MAGE"})
     state.combatPhase = "ACTIVE"
