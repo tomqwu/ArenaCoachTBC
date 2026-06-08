@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Roster-gated callouts now use one central requirements gate.** Static comp notes and mode-driven advice are filtered through capability/context checks before they can reach the HUD, covering Tremor, Grounding, Purge, friendly dispels, Freedom, HoJ, BoP, Pain Suppression, Mana Burn, Earth Shock, and Cyclone.
+- **TBC shaman capability inference no longer grants friendly magic dispel.** Enhancement and other non-Restoration shamans still provide Bloodlust, Windfury, Tremor, Grounding, Purge, Earth Shock, interrupt, and off-heal capability, but they no longer satisfy `hasDispelMagic`.
+
+### Added
+- **Rejected callout diagnostics.** `StrategyEngine:Evaluate` now returns `rejectedCallouts` with stable reason codes such as `missing_hasPurge`, `missing_hasBoP`, and `missing_hasPainSuppression` so tests and traces can explain why an impossible warning was suppressed.
+
+### Tests
+- Added OwnComps coverage for TBC shaman capability truth.
+- Added StrategyEngine arena regressions for no-shaman RMP advice and no-paladin/no-priest defensive cooldown advice.
+- Local validation: 712/712 tests passing, locale parity green at 168 keys per locale, package-shape gate green, standalone StrategyEngine smoke green, and clean luacov total coverage is 99.20%.
+
 ## [2.8.41] - 2026-06-08
 
 ### Fixed

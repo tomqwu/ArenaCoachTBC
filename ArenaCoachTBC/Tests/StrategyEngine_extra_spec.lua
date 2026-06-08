@@ -27,6 +27,20 @@ local function findAction(actions, unit)
     end
 end
 
+local function hasCallout(rec, key)
+    for _, c in ipairs((rec and rec.callouts) or {}) do
+        if c == key then return true end
+    end
+    return false
+end
+
+local function hasRejectedCallout(rec, key, reason)
+    for _, r in ipairs((rec and rec.rejectedCallouts) or {}) do
+        if r.key == key and (not reason or r.reason == reason) then return true end
+    end
+    return false
+end
+
 -- v2.7.1: in an arena 2v4 (3 friendlies dead, 1 enemy dead from a 5v5),
 -- the engine used to recommend DEFEND because "healer being trained"
 -- fires when 4 enemies attack 2 players — but defensives can't save a
@@ -254,6 +268,51 @@ H.it(g, "Tremor-specific advice is suppressed when our team has no shaman", func
     for _, action in ipairs(rec.playerActions or {}) do
         H.assertNotEq(action.actionKey, "ACTION_SHAMAN_TREMOR_REFRESH")
     end
+end)
+
+H.it(g, "capability gate: no shaman roster suppresses shaman-only RMP advice", function()
+    local S = H.ns.Spells
+    local state = SE:BuildTestState({"ROGUE","MAGE","PRIEST"})
+    state.combatPhase = "ACTIVE"
+    state.pvpContext = "arena"
+    state.friendlies = {
+        player = { unit = "player", class = "WARRIOR", spec = "ARMS", alive = true, healthPct = 100 },
+        party1 = { unit = "party1", class = "ROGUE", alive = true, healthPct = 100 },
+        party2 = { unit = "party2", class = "PALADIN", spec = "RETRIBUTION", alive = true, healthPct = 100 },
+        party3 = { unit = "party3", class = "DRUID", spec = "RESTORATION", alive = true, healthPct = 100 },
+        party4 = { unit = "party4", class = "PRIEST", spec = "DISCIPLINE", alive = true, healthPct = 100 },
+    }
+    local priest = findEnemyByClass(state, "PRIEST")
+    priest.importantBuffs[S.ICY_VEINS] = true
+
+    local rec = SE:Evaluate(state)
+    H.assertFalse(hasCallout(rec, "CALL_TREMOR_FEAR"), "no shaman means no Tremor advice")
+    H.assertFalse(hasCallout(rec, "CALL_GROUND_POLY"), "no shaman means no Grounding advice")
+    H.assertFalse(hasCallout(rec, "CALL_PURGE"), "no shaman means no Purge advice even with a purgeable target")
+    H.assertFalse(hasCallout(rec, "CALL_EARTHSHOCK_HEAL"), "no shaman means no Earth Shock advice")
+    H.assertTrue(hasRejectedCallout(rec, "CALL_PURGE", "missing_hasPurge"),
+        "rejected callouts should explain missing shaman Purge")
+end)
+
+H.it(g, "capability gate: no paladin/priest roster suppresses paladin and priest cooldown advice", function()
+    local state = SE:BuildTestState({"ROGUE","MAGE","WARLOCK"})
+    state.combatPhase = "ACTIVE"
+    state.pvpContext = "arena"
+    state.observations = { healerUnderPressure = true, tremorActive = true, windfuryActive = true }
+    state.friendlies = {
+        player = { unit = "player", class = "WARRIOR", spec = "ARMS", alive = true, healthPct = 100 },
+        party1 = { unit = "party1", class = "SHAMAN", spec = "ENHANCEMENT", alive = true, healthPct = 100 },
+        party2 = { unit = "party2", class = "ROGUE", alive = true, healthPct = 100 },
+        party3 = { unit = "party3", class = "DRUID", spec = "RESTORATION", alive = true, healthPct = 100 },
+    }
+
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.mode, "DEFEND")
+    H.assertFalse(hasCallout(rec, "CALL_BOP_READY"), "no paladin means no BoP advice")
+    H.assertFalse(hasCallout(rec, "CALL_PAIN_SUP_READY"), "no Disc priest means no Pain Suppression advice")
+    H.assertFalse(hasCallout(rec, "CALL_HOJ_KILL"), "no paladin means no HoJ advice")
+    H.assertTrue(hasRejectedCallout(rec, "CALL_BOP_READY", "missing_hasBoP"))
+    H.assertTrue(hasRejectedCallout(rec, "CALL_PAIN_SUP_READY", "missing_hasPainSuppression"))
 end)
 
 H.it(g, "Tremor down does not wake targetless RESET states", function()

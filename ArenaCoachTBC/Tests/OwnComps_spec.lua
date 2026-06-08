@@ -67,6 +67,20 @@ H.it(g, "Infer does not promote unknown hybrid shaman or paladin to main healer"
     H.assertTrue(caps.hasMainHealer, "known Restoration shaman is a main healer")
 end)
 
+H.it(g, "TBC shaman tools do not include friendly magic dispel", function()
+    local caps = OC:Infer(makeFriendlies({ { class = "SHAMAN", spec = "ENHANCEMENT" } }))
+    H.assertTrue(caps.hasBloodlust, "Enhancement shaman should provide Bloodlust")
+    H.assertTrue(caps.hasWindfury, "Enhancement shaman should provide Windfury")
+    H.assertTrue(caps.hasGrounding, "Shaman should provide Grounding Totem")
+    H.assertTrue(caps.hasTremor, "Shaman should provide Tremor Totem")
+    H.assertTrue(caps.hasPurge, "Shaman should provide offensive Purge")
+    H.assertTrue(caps.hasEarthShock, "Shaman should provide Earth Shock interrupt")
+    H.assertFalse(caps.hasDispelMagic, "TBC shaman should not be treated as a friendly magic dispeller")
+
+    caps = OC:Infer(makeFriendlies({ { class = "PRIEST", spec = "DISCIPLINE" } }))
+    H.assertTrue(caps.hasDispelMagic, "Priest remains the friendly/offensive magic dispel provider")
+end)
+
 H.it(g, "Infer handles unknown class gracefully", function()
     local fr = makeFriendlies({ { class = "FAKE_CLASS" } })
     local caps = OC:Infer(fr)

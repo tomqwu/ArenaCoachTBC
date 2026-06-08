@@ -688,25 +688,37 @@ local FEAR_THREAT_CALLOUTS = {
     CALL_PATTERN_FEAR_INTO_POLY = true,
 }
 
-local TREMOR_CAPABILITY_CALLOUTS = {
-    CALL_TREMOR_DOWN           = true,
-    CALL_TREMOR_FEAR           = true,
-    CALL_SAVE_TREMOR_HOJ       = true,
-}
+local function ownCapsFor(state)
+    local caps = state and (state._ownCaps or state.ownCapabilities)
+    if caps then return caps end
+    if ns.OwnComps and ns.OwnComps.Infer then
+        return ns.OwnComps:Infer((state and state.friendlies) or {})
+    end
+    return {}
+end
+
+local function hasEnemyClass(state, class)
+    for _, e in pairs((state and state.enemies) or {}) do
+        if isAlive(e) and classToken(e) == class then return true end
+    end
+    return false
+end
+
+local function hasEnemyRole(state, role)
+    for _, e in pairs((state and state.enemies) or {}) do
+        if isAlive(e) and roleOf(e) == role then return true end
+    end
+    return false
+end
 
 local function hasTremorSupport(state)
-    local caps = state and state.ownCapabilities
+    local caps = ownCapsFor(state)
     if caps and caps.hasTremor == true then return true end
 
     for _, f in pairs((state and state.friendlies) or {}) do
         if f.alive ~= false and classToken(f) == "SHAMAN" then return true end
     end
     return false
-end
-
-local function tremorCalloutAllowed(state, key)
-    if not TREMOR_CAPABILITY_CALLOUTS[key] then return true end
-    return hasTremorSupport(state)
 end
 
 local function hasFearThreat(state, callouts)
@@ -724,6 +736,71 @@ local function shouldRefreshTremor(state, callouts)
     if obs.tremorActive ~= false then return false end
     if not hasTremorSupport(state) then return false end
     return hasFearThreat(state, callouts)
+end
+
+-- Central callout requirements. Static comp notes may suggest responses, but
+-- nothing player-facing is emitted unless the current roster/context can do it.
+local CALLOUT_REQUIREMENTS = {
+    CALL_TREMOR_DOWN     = { cap = "hasTremor", requireFearThreat = true },
+    CALL_TREMOR_FEAR     = { cap = "hasTremor", requireFearThreat = true },
+    CALL_SAVE_TREMOR_HOJ = { cap = "hasTremor" },
+
+    CALL_GROUND_POLY = { cap = "hasGrounding", enemyClass = "MAGE" },
+    CALL_GROUND_DC   = { cap = "hasGrounding", enemyClass = "WARLOCK" },
+
+    CALL_PURGE = { cap = "hasPurge", requirePurgeable = true },
+
+    CALL_DISP_POLY  = { anyCaps = { "hasDispelMagic", "hasCleanse" }, enemyClass = "MAGE" },
+    CALL_DISP_FROST = { anyCaps = { "hasDispelMagic", "hasCleanse" }, enemyClass = "MAGE" },
+
+    CALL_FREEDOM_WAR = { cap = "hasFreedom" },
+    CALL_FREEDOM_ENH = { cap = "hasFreedom" },
+
+    CALL_HOJ_KILL        = { cap = "hasHoJ" },
+    CALL_BOP_READY       = { cap = "hasBoP" },
+    CALL_PAIN_SUP_READY  = { cap = "hasPainSuppression" },
+    CALL_MANA_BURN_PLAN  = { cap = "hasManaBurn" },
+    CALL_EARTHSHOCK_HEAL = { cap = "hasEarthShock", enemyRole = "HEALER" },
+    CALL_CYCLONE_OFF     = { cap = "hasCyclone" },
+}
+
+local function hasAnyCap(caps, names)
+    for _, name in ipairs(names or {}) do
+        if caps[name] == true then return true end
+    end
+    return false
+end
+
+local function rejectCallout(state, key, reason)
+    if not state then return end
+    state._rejectedCallouts = state._rejectedCallouts or {}
+    table.insert(state._rejectedCallouts, { key = key, reason = reason })
+end
+
+local function calloutRequirementsAllow(state, key, primaryTarget, currentCallouts)
+    local rule = CALLOUT_REQUIREMENTS[key]
+    if not rule then return true end
+
+    local caps = ownCapsFor(state)
+    if rule.cap and caps[rule.cap] ~= true then
+        return false, "missing_" .. rule.cap
+    end
+    if rule.anyCaps and not hasAnyCap(caps, rule.anyCaps) then
+        return false, "missing_any_cap"
+    end
+    if rule.enemyClass and not hasEnemyClass(state, rule.enemyClass) then
+        return false, "missing_enemy_" .. rule.enemyClass
+    end
+    if rule.enemyRole and not hasEnemyRole(state, rule.enemyRole) then
+        return false, "missing_enemy_role_" .. rule.enemyRole
+    end
+    if rule.requireFearThreat and not hasFearThreat(state, currentCallouts) then
+        return false, "missing_fear_threat"
+    end
+    if rule.requirePurgeable and not (primaryTarget and hasPurgeableBuff(primaryTarget)) then
+        return false, "missing_purgeable_target"
+    end
+    return true
 end
 
 -- ============================================================
@@ -769,21 +846,34 @@ end
 local function buildCallouts(state, comp, primaryTarget, mode)
     local out = {}
     local seen = {}
+    state._rejectedCallouts = {}
     local function push(key)
-        if key and not seen[key] and tremorCalloutAllowed(state, key)
-           and drAllowsCallout(key, primaryTarget, state) then
-            table.insert(out, key); seen[key] = true
-            return true
+        if not key or seen[key] then return false end
+        local ok, reason = calloutRequirementsAllow(state, key, primaryTarget, out)
+        if not ok then
+            rejectCallout(state, key, reason)
+            return false
         end
-        return false
+        if not drAllowsCallout(key, primaryTarget, state) then
+            rejectCallout(state, key, "dr_immune")
+            return false
+        end
+        table.insert(out, key); seen[key] = true
+        return true
     end
     local function prepend(key)
-        if key and not seen[key] and tremorCalloutAllowed(state, key)
-           and drAllowsCallout(key, primaryTarget, state) then
-            table.insert(out, 1, key); seen[key] = true
-            return true
+        if not key or seen[key] then return false end
+        local ok, reason = calloutRequirementsAllow(state, key, primaryTarget, out)
+        if not ok then
+            rejectCallout(state, key, reason)
+            return false
         end
-        return false
+        if not drAllowsCallout(key, primaryTarget, state) then
+            rejectCallout(state, key, "dr_immune")
+            return false
+        end
+        table.insert(out, 1, key); seen[key] = true
+        return true
     end
 
     if comp and comp.callouts then
@@ -1274,6 +1364,7 @@ function SE:Evaluate(state)
         reason          = reason,
         reasonKey       = reasonKey,  -- v2.1.3: locale key, when applicable
         callouts        = callouts,
+        rejectedCallouts = state._rejectedCallouts,
         priority        = priority,
         comp            = comp and comp.id or nil,
         compLabel       = comp and comp.label or nil,

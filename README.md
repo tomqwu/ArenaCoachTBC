@@ -31,7 +31,7 @@ Earlier versions documented a specific comp (WAR/ENH/RET/RDRU/DISC melee cleave)
 | `JUNGLE` | Hunter + Feral + healer | Trap + scatter setup callouts |
 | `DOUBLE_HEALER` | 2+ healers | Mana drain plan |
 
-The 100+ enemy comp catalog in `Data/Strategies.lua` carries `ownVariants` so the same enemy team gets different advice depending on your archetype. There's no hardcoded "if class is X" anywhere in the engine — everything goes through capability inference. **Run any comp; the engine adapts.**
+The 100+ enemy comp catalog in `Data/Strategies.lua` carries `ownVariants` so the same enemy team gets different advice depending on your archetype. Live callouts also pass a capability/context gate before reaching the HUD: shaman-only notes require a shaman, paladin cooldown notes require a paladin, priest cooldown notes require priest evidence, and TBC shaman tools stay separate from friendly magic dispel. **Run any comp; the engine adapts without inventing abilities your roster does not have.**
 
 ---
 
