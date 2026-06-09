@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Central requirements now own every StrategyEngine callout insertion.** Pattern/catalog hints, `BURST_NOW`, outnumbered warnings, BG defend/flag cues, low-mana pushes, peel cues, fake-kick advice, and Ice Block profile warnings now all pass through the same roster/context/target gate before reaching the HUD.
+- **Owned player actions are capability-gated before assignment.** Shaman and paladin actions such as Purge, Tremor refresh, Bloodlust, and HoJ are rejected with diagnostics when the inferred team capability says the action is impossible.
+- **Profile-driven Ice Block advice now requires an enemy mage.** High `iceBlockBelow30` profiles no longer emit mage cooldown advice into non-mage matchups.
+
+### Tests
+- Added StrategyEngine regressions that pattern/catalog callouts cannot bypass context gates, direct post-builder callout inserts stay banned, owned actions report `rejectedActions`, and Ice Block profile advice is emitted only into mage matchups.
+- Local validation: 723/723 tests passing, locale parity green at 168 keys per locale, package-shape gate green, standalone StrategyEngine smoke green, and clean luacov total coverage is 99.09%.
+
 ## [2.8.42] - 2026-06-08
 
 ### Fixed

@@ -727,6 +727,52 @@ local function hasEnemyRole(state, role)
     return false
 end
 
+local function hasEnemyClasses(state, classes)
+    for _, class in ipairs(classes or {}) do
+        if not hasEnemyClass(state, class) then return false end
+    end
+    return true
+end
+
+local function hasFriendlyClass(state, class)
+    for _, f in pairs((state and state.friendlies) or {}) do
+        if f.alive ~= false and classToken(f) == class then return true end
+    end
+    return false
+end
+
+local INTERRUPT_THREAT_CLASSES = {
+    ROGUE   = true,
+    WARRIOR = true,
+    MAGE    = true,
+    SHAMAN  = true,
+    HUNTER  = true,
+    WARLOCK = true,
+}
+
+local function hasEnemyInterruptThreat(state)
+    for _, e in pairs((state and state.enemies) or {}) do
+        if isAlive(e) and INTERRUPT_THREAT_CLASSES[classToken(e)] then return true end
+    end
+    return false
+end
+
+local function targetIsLowManaHealer(target, threshold)
+    return target and isHealer(target)
+       and type(target.manaPct) == "number"
+       and target.manaPct < (threshold or 35)
+end
+
+local function targetIsLowFlagCarrier(target)
+    if not (target and target.importantBuffs and (target.healthPct or 100) < 50) then
+        return false
+    end
+    for buffId, _ in pairs(target.importantBuffs) do
+        if SE.BG_FLAG_AURAS[buffId] then return true end
+    end
+    return false
+end
+
 local function hasTremorSupport(state)
     local caps = ownCapsFor(state)
     if caps and caps.hasTremor == true then return true end
@@ -757,15 +803,32 @@ end
 -- Central callout requirements. Static comp notes may suggest responses, but
 -- nothing player-facing is emitted unless the current roster/context can do it.
 local CALLOUT_REQUIREMENTS = {
+    CALL_AVOID_OVERCHASE = {},
+
     CALL_TREMOR_DOWN     = { cap = "hasTremor", requireFearThreat = true },
     CALL_TREMOR_FEAR     = { cap = "hasTremor", requireFearThreat = true },
     CALL_SAVE_TREMOR_HOJ = { cap = "hasTremor" },
+    CALL_PATTERN_FEAR_INTO_POLY = {
+        anyCaps = { "hasTremor", "hasDispelMagic", "hasCleanse" },
+        enemyClass = "MAGE",
+        requireFearThreat = true,
+    },
+    CALL_PATTERN_RMP_CHEAP_BLIND = { enemyClass = "ROGUE" },
+    CALL_PATTERN_SHATTER_NOVA_SHEEP = { enemyClass = "MAGE" },
+    CALL_PATTERN_HUNTER_TRAP_SCATTER = {
+        cap = "hasMassDispel",
+        enemyClass = "HUNTER",
+    },
+    CALL_PATTERN_HOJ_INTO_INTERCEPT = {
+        enemyClasses = { "PALADIN", "WARRIOR" },
+    },
 
     CALL_GROUND_POLY = { cap = "hasGrounding", enemyClass = "MAGE" },
     CALL_GROUND_DC   = { cap = "hasGrounding", enemyClass = "WARLOCK" },
 
     CALL_PURGE = { cap = "hasPurge", requirePurgeable = true },
 
+    CALL_CLEANSE_ROOTS = { anyCaps = { "hasCleanse", "hasDispelMagic", "hasFreedom" } },
     CALL_DISP_POLY  = { anyCaps = { "hasDispelMagic", "hasCleanse" }, enemyClass = "MAGE" },
     CALL_DISP_FROST = { anyCaps = { "hasDispelMagic", "hasCleanse" }, enemyClass = "MAGE" },
 
@@ -778,6 +841,17 @@ local CALLOUT_REQUIREMENTS = {
     CALL_MANA_BURN_PLAN  = { cap = "hasManaBurn" },
     CALL_EARTHSHOCK_HEAL = { cap = "hasEarthShock", enemyRole = "HEALER" },
     CALL_CYCLONE_OFF     = { cap = "hasCyclone" },
+
+    CALL_PEEL_PRIEST = { friendlyClass = "PRIEST" },
+    CALL_PEEL_DRUID  = { friendlyClass = "DRUID" },
+    CALL_LOW_MANA_PUSH = { enemyRole = "HEALER", requireLowManaTarget = true },
+    CALL_FAKE_KICK_2 = { requireEnemyInterrupt = true },
+    CALL_BURST_BLOCK_INCOMING = { enemyClass = "MAGE" },
+
+    CALL_FLAG_CARRIER_LOW = { pvpContext = "bg", requireFlagCarrierLow = true },
+    CALL_BG_DEFEND = { pvpContext = "bg", requireMode = "DEFEND" },
+    CALL_OUTNUMBERED_DISENGAGE = { requireOutnumbered = true },
+    BURST_NOW = { requireMode = "KILL", requirePrimaryTarget = true, requireBurstAllowed = true },
 }
 
 local function hasAnyCap(caps, names)
@@ -793,9 +867,10 @@ local function rejectCallout(state, key, reason)
     table.insert(state._rejectedCallouts, { key = key, reason = reason })
 end
 
-local function calloutRequirementsAllow(state, key, primaryTarget, currentCallouts)
+local function calloutRequirementsAllow(state, key, primaryTarget, currentCallouts, context)
     local rule = CALLOUT_REQUIREMENTS[key]
     if not rule then return true end
+    context = context or {}
 
     local caps = ownCapsFor(state)
     if rule.cap and caps[rule.cap] ~= true then
@@ -807,14 +882,44 @@ local function calloutRequirementsAllow(state, key, primaryTarget, currentCallou
     if rule.enemyClass and not hasEnemyClass(state, rule.enemyClass) then
         return false, "missing_enemy_" .. rule.enemyClass
     end
+    if rule.enemyClasses and not hasEnemyClasses(state, rule.enemyClasses) then
+        return false, "missing_required_enemy_class"
+    end
     if rule.enemyRole and not hasEnemyRole(state, rule.enemyRole) then
         return false, "missing_enemy_role_" .. rule.enemyRole
+    end
+    if rule.friendlyClass and not hasFriendlyClass(state, rule.friendlyClass) then
+        return false, "missing_friendly_" .. rule.friendlyClass
+    end
+    if rule.pvpContext and ((state and state.pvpContext) ~= rule.pvpContext) then
+        return false, "wrong_pvp_context"
+    end
+    if rule.requireMode and context.mode ~= rule.requireMode then
+        return false, "wrong_mode"
+    end
+    if rule.requirePrimaryTarget and not primaryTarget then
+        return false, "missing_primary_target"
     end
     if rule.requireFearThreat and not hasFearThreat(state, currentCallouts) then
         return false, "missing_fear_threat"
     end
     if rule.requirePurgeable and not (primaryTarget and hasPurgeableBuff(primaryTarget)) then
         return false, "missing_purgeable_target"
+    end
+    if rule.requireLowManaTarget and not targetIsLowManaHealer(primaryTarget, context.lowManaThreshold) then
+        return false, "missing_low_mana_target"
+    end
+    if rule.requireEnemyInterrupt and not hasEnemyInterruptThreat(state) then
+        return false, "missing_enemy_interrupt"
+    end
+    if rule.requireFlagCarrierLow and not targetIsLowFlagCarrier(primaryTarget) then
+        return false, "missing_low_flag_carrier"
+    end
+    if rule.requireOutnumbered and not isOutnumbered(state) then
+        return false, "missing_outnumbered"
+    end
+    if rule.requireBurstAllowed and context.burstAllowed ~= true then
+        return false, "burst_gate_blocked"
     end
     return true
 end
@@ -859,37 +964,92 @@ local function drAllowsCallout(key, primaryTarget, state)
     return mult > 0
 end
 
+local function addCallout(state, out, seen, key, primaryTarget, context, front)
+    if not key or seen[key] then return false end
+    local ok, reason = calloutRequirementsAllow(state, key, primaryTarget, out, context)
+    if not ok then
+        rejectCallout(state, key, reason)
+        return false
+    end
+    if not drAllowsCallout(key, primaryTarget, state) then
+        rejectCallout(state, key, "dr_immune")
+        return false
+    end
+    if front then table.insert(out, 1, key) else table.insert(out, key) end
+    seen[key] = true
+    return true
+end
+
+local function calloutSeenMap(callouts)
+    local seen = {}
+    for _, key in ipairs(callouts or {}) do
+        if key then seen[key] = true end
+    end
+    return seen
+end
+
+local ACTION_REQUIREMENTS = {
+    ACTION_SHAMAN_TREMOR_REFRESH = {
+        ownerClass = "SHAMAN",
+        cap = "hasTremor",
+        requireTremorRefresh = true,
+    },
+    ACTION_SHAMAN_BLOODLUST = {
+        ownerClass = "SHAMAN",
+        cap = "hasBloodlust",
+        requireBurstAllowed = true,
+    },
+    ACTION_SHAMAN_PURGE = {
+        ownerClass = "SHAMAN",
+        cap = "hasPurge",
+    },
+    ACTION_PALADIN_HOJ = {
+        ownerClass = "PALADIN",
+        cap = "hasHoJ",
+    },
+}
+
+local function rejectAction(state, unit, key, reason)
+    if not state then return end
+    state._rejectedActions = state._rejectedActions or {}
+    table.insert(state._rejectedActions, {
+        unit = unit,
+        key = key,
+        reason = reason,
+    })
+end
+
+local function actionRequirementsAllow(state, friendly, key, context)
+    local rule = ACTION_REQUIREMENTS[key]
+    if not rule then return true end
+    context = context or {}
+
+    if rule.ownerClass and classToken(friendly) ~= rule.ownerClass then
+        return false, "wrong_owner_class"
+    end
+    local caps = ownCapsFor(state)
+    if rule.cap and caps[rule.cap] ~= true then
+        return false, "missing_" .. rule.cap
+    end
+    if rule.requireBurstAllowed and context.burstAllowed ~= true then
+        return false, "burst_gate_blocked"
+    end
+    if rule.requireTremorRefresh and context.tremorRefresh ~= true then
+        return false, "tremor_not_needed"
+    end
+    return true
+end
+
 local function buildCallouts(state, comp, primaryTarget, mode)
     local out = {}
     local seen = {}
     state._rejectedCallouts = {}
+    local context = { mode = mode }
     local function push(key)
-        if not key or seen[key] then return false end
-        local ok, reason = calloutRequirementsAllow(state, key, primaryTarget, out)
-        if not ok then
-            rejectCallout(state, key, reason)
-            return false
-        end
-        if not drAllowsCallout(key, primaryTarget, state) then
-            rejectCallout(state, key, "dr_immune")
-            return false
-        end
-        table.insert(out, key); seen[key] = true
-        return true
+        return addCallout(state, out, seen, key, primaryTarget, context, false)
     end
     local function prepend(key)
-        if not key or seen[key] then return false end
-        local ok, reason = calloutRequirementsAllow(state, key, primaryTarget, out)
-        if not ok then
-            rejectCallout(state, key, reason)
-            return false
-        end
-        if not drAllowsCallout(key, primaryTarget, state) then
-            rejectCallout(state, key, "dr_immune")
-            return false
-        end
-        table.insert(out, 1, key); seen[key] = true
-        return true
+        return addCallout(state, out, seen, key, primaryTarget, context, true)
     end
 
     if comp and comp.callouts then
@@ -917,7 +1077,10 @@ local function buildCallouts(state, comp, primaryTarget, mode)
             local agg = state.aggression or cfg.aggression
             if agg == "greedy" then manaT = 30
             elseif agg == "safe" then manaT = 20 end
-            if primaryTarget.manaPct < manaT then push("CALL_LOW_MANA_PUSH") end
+            if primaryTarget.manaPct < manaT then
+                addCallout(state, out, seen, "CALL_LOW_MANA_PUSH", primaryTarget,
+                    { mode = mode, lowManaThreshold = manaT }, false)
+            end
         end
     elseif mode == "OPEN" then
         if cfg.preferHealerOpen then push("CALL_HOJ_KILL") end
@@ -928,14 +1091,7 @@ local function buildCallouts(state, comp, primaryTarget, mode)
     -- callouts when the pvp context is "bg". Flag carrier under 50% HP
     -- (active aura 23333 or 23335) gets a dedicated "push" cue.
     if state.pvpContext == "bg" then
-        local flagAtRisk = false
-        if primaryTarget and primaryTarget.importantBuffs
-           and (primaryTarget.healthPct or 100) < 50 then
-            for buffId, _ in pairs(primaryTarget.importantBuffs) do
-                if SE.BG_FLAG_AURAS[buffId] then flagAtRisk = true; break end
-            end
-        end
-        if flagAtRisk then push("CALL_FLAG_CARRIER_LOW") end
+        if targetIsLowFlagCarrier(primaryTarget) then push("CALL_FLAG_CARRIER_LOW") end
         if mode == "DEFEND" then push("CALL_BG_DEFEND") end
     end
 
@@ -991,8 +1147,13 @@ local function offTargetForAction(state, primaryTarget, secondTarget)
     return secondTarget
 end
 
-local function addPlayerAction(out, f, actionKey, target, targetType, priority)
+local function addPlayerAction(out, f, actionKey, target, targetType, priority, state, context)
     if not f or f.alive == false or not actionKey then return end
+    local ok, reason = actionRequirementsAllow(state, f, actionKey, context)
+    if not ok then
+        rejectAction(state, f.unit, actionKey, reason)
+        return
+    end
     table.insert(out, {
         unit        = f.unit,
         guid        = f.guid,
@@ -1015,6 +1176,12 @@ local function buildPlayerActions(state, mode, primaryTarget, secondTarget, burs
     local killTarget = primaryTarget
     local offTarget = offTargetForAction(state, primaryTarget, secondTarget)
     local defensiveTarget = observedPressureFriendly(state) or lowestDefensiveFriendly(state)
+    state._rejectedActions = {}
+    local actionContext = {
+        mode = mode,
+        burstAllowed = burstAllowed == true,
+        tremorRefresh = tremorRefresh == true,
+    }
 
     for _, f in ipairs(friendlyActionList(state.friendlies)) do
         local class = f.class
@@ -1094,7 +1261,7 @@ local function buildPlayerActions(state, mode, primaryTarget, secondTarget, burs
             end
         end
 
-        addPlayerAction(actions, f, key, target, targetType, priority)
+        addPlayerAction(actions, f, key, target, targetType, priority, state, actionContext)
     end
 
     return actions
@@ -1316,8 +1483,10 @@ function SE:Evaluate(state)
     local burstDecision = (mode == "KILL") and self:BurstDecision(state, topTarget, pickedChain) or nil
     local burstOK = burstDecision and burstDecision.allowed == true or false
     local burstBlockedBy = (burstDecision and not burstDecision.allowed) and burstDecision.blockedBy or nil
+    local calloutSeen = calloutSeenMap(callouts)
     if mode == "KILL" and burstOK then
-        table.insert(callouts, "BURST_NOW")
+        addCallout(state, callouts, calloutSeen, "BURST_NOW", topTarget,
+            { mode = mode, burstAllowed = burstOK }, false)
     end
 
     -- v2.7.1: outnumbered callout. shouldDefend() returns false in the
@@ -1326,7 +1495,8 @@ function SE:Evaluate(state)
     -- target". Prepend the OUTNUMBERED callout so it's the top entry
     -- and gets the prominent icon + text slot in the HUD.
     if isOutnumbered(state) then
-        table.insert(callouts, 1, "CALL_OUTNUMBERED_DISENGAGE")
+        addCallout(state, callouts, calloutSeen, "CALL_OUTNUMBERED_DISENGAGE", topTarget,
+            { mode = mode }, true)
     end
 
     -- v2.1.6: surface target HP fraction + kill probability in the
@@ -1381,6 +1551,7 @@ function SE:Evaluate(state)
         reasonKey       = reasonKey,  -- v2.1.3: locale key, when applicable
         callouts        = callouts,
         rejectedCallouts = state._rejectedCallouts,
+        rejectedActions = state._rejectedActions,
         priority        = priority,
         comp            = comp and comp.id or nil,
         compLabel       = comp and comp.label or nil,
