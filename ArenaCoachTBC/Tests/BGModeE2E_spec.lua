@@ -149,7 +149,7 @@ H.it(g, "BG e2e: arena callouts (HoJ kill) do NOT fire spuriously in BG", functi
         H.assertTrue(c ~= "CALL_HOJ_KILL" or rec.mode == "KILL",
             "CALL_HOJ_KILL is mode-driven; should still appear when KILL fires")
     end
-    -- Verify comp-driven callouts (which come from comp.callouts) don't fire
-    -- with no comp. comp is nil → no comp callouts pushed.
+    -- Verify comp-driven response hints don't fire with no comp.
+    -- comp is nil -> no comp response hints are pushed.
     H.assertNil(rec.comp)
 end)

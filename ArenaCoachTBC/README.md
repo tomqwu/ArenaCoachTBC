@@ -100,14 +100,25 @@ Each entry may carry an `ownVariants` table so the same enemy comp gives differe
 
 ```lua
 { id = "RMP",
-  openTarget = "PRIEST",
+  targetPlan = { open = "PRIEST", swap = "MAGE" },
+  enemyThreats = {
+      MAGE = "Polymorph + burst",
+      ROGUE = "Cheap Shot opener / Blind",
+      PRIEST = "Fear chain",
+  },
+  responseHints = { "CALL_TREMOR_FEAR", "CALL_GROUND_POLY" },
+  profileDefaults = { trinketsFear = 0.65, kicksFirstHeal = 0.60 },
   ownVariants = {
-      MELEE_CLEAVE = { openTarget = "PRIEST", swapTarget = "MAGE" },
-      DRAIN        = { openTarget = nil,     note = "drain mage mana" },
-      JUNGLE       = { openTarget = "MAGE",  note = "scatter+fear chain" },
+      MELEE_CLEAVE = { targetPlan = { open = "PRIEST", swap = "MAGE" } },
+      DRAIN        = { targetPlan = { swap = "PRIEST" }, note = "drain mage mana" },
+      JUNGLE       = { targetPlan = { open = "MAGE" }, note = "scatter+fear chain" },
   },
 }
 ```
+
+`responseHints` are not displayed directly. The engine treats them as candidates and runs every hint through the central roster/context/target requirements gate before it reaches `rec.callouts` or `rec.signals`.
+
+`responseHints` 不会直接显示。引擎只把它们当候选项，并在进入 `rec.callouts` 或 `rec.signals` 前通过统一的队伍能力、上下文、目标条件门禁。
 
 Entries can also carry an optional `specs = { CLASS = "SPEC" }` map. A spec-keyed comp matches only when every required spec is explicitly observed via spec inference (`enemy.specGuess`). Unknown or mismatched specs disqualify the spec-keyed entry; the engine falls through to the class-only sibling. This lets the catalog separate `RMP_DISC_3V3` (kill-the-disc-priest plan) from `SMR_3V3` (shadow-priest, no-healer pressure) once the priest's spec has been observed.
 

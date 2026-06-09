@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Strategy catalog split enemy facts from executable responses.** Built-in comp entries now expose `enemyThreats`, `targetPlan`, `responseHints`, and `profileDefaults`; response hints remain candidates and must pass the central roster/context/target requirements gate before reaching `rec.callouts` or typed signals.
+- **Target-plan scoring reads the structured catalog shape.** The engine now scores comp open/swap/kill preferences through `targetPlan` while preserving legacy fallback for local custom comps.
+
+### Tests
+- Added catalog lint coverage so built-in comps cannot carry raw executable `callouts`, every response hint has a central requirement rule, dynamic comps still normalize to a stable `targetPlan`, and comp profile defaults feed profile callouts only through the existing gate.
+
 ## [2.8.50] - 2026-06-09
 
 ### Added
