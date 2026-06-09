@@ -1271,6 +1271,196 @@ local function buildPlayerActions(state, mode, primaryTarget, secondTarget, burs
 end
 
 -- ============================================================
+-- Typed signal contract
+-- ============================================================
+local SIGNAL_DURATIONS = {
+    strategy = {
+        DEFEND = 6,
+        KILL   = 8,
+        OPEN   = 8,
+        RESET  = 2,
+        SWAP   = 8,
+    },
+    callout = 6,
+    player_action = 10,
+}
+
+local function signalNow(state)
+    local raw = state and (state.now or state.time or state.timestamp)
+    return tonumber(raw) or 0
+end
+
+local function copyCapsFromRule(rule)
+    local out = {}
+    if not rule then return out end
+    if rule.cap then table.insert(out, rule.cap) end
+    for _, cap in ipairs(rule.anyCaps or {}) do table.insert(out, cap) end
+    return out
+end
+
+local function friendlyByUnit(state, unit)
+    if not unit then return nil end
+    for _, f in pairs((state and state.friendlies) or {}) do
+        if f.unit == unit then return f end
+    end
+    return nil
+end
+
+local function playerFriendly(state)
+    return friendlyByUnit(state, "player") or ((state and state.friendlies) and state.friendlies.player) or { unit = "player" }
+end
+
+local function firstActionForUnit(actions, unit)
+    for _, action in ipairs(actions or {}) do
+        if action.unit == unit then return action end
+    end
+end
+
+local function applyOwnerFromFriendly(signal, f)
+    if not f then return end
+    signal.ownerUnit  = f.unit
+    signal.ownerGuid  = f.guid
+    signal.ownerName  = f.name
+    signal.ownerClass = f.class
+    signal.ownerRole  = friendlyRole(f)
+end
+
+local function applyTargetFromUnit(signal, target, targetType)
+    if not target then return end
+    signal.targetGuid  = target.guid
+    signal.targetUnit  = target.unit
+    signal.targetName  = target.name
+    signal.targetClass = target.class
+    signal.targetType  = targetType or "enemy"
+end
+
+local function applyTargetFromAction(signal, action)
+    if not action then return end
+    signal.targetGuid  = action.targetGuid or action.target
+    signal.targetUnit  = action.targetUnit
+    signal.targetName  = action.targetName
+    signal.targetClass = action.targetClass
+    signal.targetType  = action.targetType
+end
+
+local function finishSignal(signals, signal, now, duration)
+    duration = duration or 6
+    signal.duration = duration
+    signal.expiresAt = now + duration
+    signal.changed = true
+    table.insert(signals, signal)
+end
+
+local function buildSignals(state, rec, topTarget, secondTarget)
+    local now = signalNow(state)
+    local signals = {}
+    local mode = rec.mode or "RESET"
+    local strategyDuration = (SIGNAL_DURATIONS.strategy and SIGNAL_DURATIONS.strategy[mode])
+        or SIGNAL_DURATIONS.strategy.KILL
+    local owner = playerFriendly(state)
+    local personalAction = firstActionForUnit(rec.playerActions, "player")
+
+    local strategySignal = {
+        id = "strategy:" .. mode,
+        kind = "strategy",
+        priority = rec.priority,
+        displayStyle = (mode == "RESET") and "fade" or "alert",
+        reasonKey = rec.reasonKey,
+        reason = rec.reason,
+        confidence = rec.confidence,
+        sourceEvidence = {
+            mode = mode,
+            pvpContext = state and state.pvpContext or nil,
+            combatPhase = state and state.combatPhase or nil,
+            comp = rec.comp,
+            compConfidence = rec.compConfidence,
+            topScore = rec._topScore,
+            secondScore = rec._secondScore,
+            burstBlockedBy = rec.burstBlockedBy,
+        },
+    }
+    applyOwnerFromFriendly(strategySignal, owner)
+    if mode == "DEFEND" and personalAction and personalAction.target then
+        applyTargetFromAction(strategySignal, personalAction)
+    elseif mode ~= "RESET" then
+        applyTargetFromUnit(strategySignal, topTarget, "enemy")
+    end
+    finishSignal(signals, strategySignal, now, strategyDuration)
+
+    for _, key in ipairs(rec.callouts or {}) do
+        local rule = CALLOUT_REQUIREMENTS[key]
+        local signal = {
+            id = "callout:" .. tostring(key),
+            kind = "callout",
+            ownerUnit = "team",
+            reasonKey = key,
+            priority = rec.priority,
+            displayStyle = (key == "BURST_NOW" or key == "CALL_OUTNUMBERED_DISENGAGE") and "alert" or "text",
+            requiredCaps = copyCapsFromRule(rule),
+            confidence = rec.confidence,
+            sourceEvidence = {
+                mode = mode,
+                comp = rec.comp,
+                pvpContext = state and state.pvpContext or nil,
+            },
+        }
+        applyTargetFromUnit(signal, topTarget, "enemy")
+        finishSignal(signals, signal, now, SIGNAL_DURATIONS.callout)
+    end
+
+    for _, action in ipairs(rec.playerActions or {}) do
+        local ownerFriendly = friendlyByUnit(state, action.unit) or action
+        local rule = ACTION_REQUIREMENTS[action.actionKey]
+        local signal = {
+            id = "player_action:" .. tostring(action.unit or "-") .. ":" .. tostring(action.actionKey),
+            kind = "player_action",
+            reasonKey = action.actionKey,
+            priority = action.priority,
+            displayStyle = "bar",
+            requiredCaps = copyCapsFromRule(rule),
+            confidence = rec.confidence,
+            sourceEvidence = {
+                mode = mode,
+                actionKey = action.actionKey,
+                burstAllowed = rec.burstAllowed,
+                burstBlockedBy = rec.burstBlockedBy,
+            },
+        }
+        applyOwnerFromFriendly(signal, ownerFriendly)
+        applyTargetFromAction(signal, action)
+        finishSignal(signals, signal, now, SIGNAL_DURATIONS.player_action)
+    end
+
+    return signals
+end
+
+function SE:CalloutsFromSignals(signals)
+    local out = {}
+    for _, signal in ipairs(signals or {}) do
+        if signal.kind == "callout" and signal.reasonKey then
+            table.insert(out, signal.reasonKey)
+        end
+    end
+    return out
+end
+
+function SE:IsSignalExpired(signal, now)
+    if not (signal and signal.expiresAt) then return false end
+    now = tonumber(now) or 0
+    return now >= signal.expiresAt
+end
+
+function SE:ActiveSignals(signals, now)
+    local out = {}
+    for _, signal in ipairs(signals or {}) do
+        if not self:IsSignalExpired(signal, now) then
+            table.insert(out, signal)
+        end
+    end
+    return out
+end
+
+-- ============================================================
 -- Pick mode based on phase, comp, and target situation
 -- ============================================================
 local function decideMode(state, topTarget, secondTarget, comp)
@@ -1541,7 +1731,7 @@ function SE:Evaluate(state)
     local tremorRefresh = (mode ~= "RESET") and shouldRefreshTremor(state, callouts) or false
     local playerActions = buildPlayerActions(state, mode, topTarget, secondTarget, burstOK, tremorRefresh)
 
-    return {
+    local recommendation = {
         mode            = mode,
         primaryTarget   = topTarget and topTarget.guid or nil,
         primaryTargetName = topTarget and topTarget.name or nil,
@@ -1577,6 +1767,8 @@ function SE:Evaluate(state)
         _topScore       = topTarget and topTarget._score or 0,
         _secondScore    = secondTarget and secondTarget._score or 0,
     }
+    recommendation.signals = buildSignals(state, recommendation, topTarget, secondTarget)
+    return recommendation
 end
 
 -- Convenience: turn the spec's English ownComp string into a friendly group

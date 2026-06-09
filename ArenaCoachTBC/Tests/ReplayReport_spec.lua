@@ -60,6 +60,11 @@ H.it(g, "formats deterministic redacted rows with rejected reasons", function()
                 { unit = "party1", actionKey = "ACTION_PARTY", targetName = "Bob" },
                 { unit = "player", actionKey = "ACTION_SELF", targetName = "Bob" },
             },
+            signals = {
+                { kind = "strategy", id = "strategy:KILL", ownerUnit = "player", targetName = "Bob", expiresAt = 10 },
+                { kind = "callout", id = "callout:A_FIRST", ownerUnit = "team", targetName = "Bob", expiresAt = 8 },
+                { kind = "player_action", id = "player_action:player:ACTION_SELF", ownerUnit = "player", targetName = "Bob", expiresAt = 12 },
+            },
         },
     }
 
@@ -69,6 +74,8 @@ H.it(g, "formats deterministic redacted rows with rejected reasons", function()
     H.assertTrue(report:find("A_FIRST,Z_LAST", 1, true) ~= nil, report)
     H.assertTrue(report:find("callouts=A_REJECT:missing_a,Z_REJECT:missing_z", 1, true) ~= nil, report)
     H.assertTrue(report:find("actions=party1:ACTION_Z:missing_z,player:ACTION_A:missing_a", 1, true) ~= nil, report)
+    H.assertTrue(report:find("callout:callout:A_FIRST@team->P02~8.0", 1, true) ~= nil, report)
+    H.assertTrue(report:find("player_action:player_action:player:ACTION_SELF@player->P02~12.0", 1, true) ~= nil, report)
     H.assertTrue(report:find("Alice", 1, true) == nil, report)
     H.assertTrue(report:find("Player%-Alice") == nil, report)
 end)

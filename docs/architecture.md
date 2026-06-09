@@ -194,6 +194,8 @@ v2.8.37 changes the live HUD hierarchy: top strip = strategy summary (bracket, a
 
 Unreleased strategy work completes that contract across the remaining emitters. Pattern/catalog callouts, post-builder `BURST_NOW`, outnumbered warnings, BG defend/flag-carrier cues, opponent-profile Ice Block advice, low-mana pushes, peel notes, and owned player actions all pass through explicit requirements before they can reach `rec.callouts` or `rec.playerActions`. Rejected action diagnostics live in `rec.rejectedActions`, mirroring `rec.rejectedCallouts`, so tests and trace/debug tooling can explain whether advice was emitted, suppressed by missing capability, blocked by PvP context, or denied by a target-specific requirement.
 
+Typed signals are the forward-compatible recommendation contract. `rec.signals` contains `strategy`, `callout`, and `player_action` records with stable ids, owner/target metadata, `requiredCaps`, `sourceEvidence`, `duration`, `expiresAt`, `priority`, and `displayStyle`. Legacy `rec.callouts` and `rec.playerActions` remain for compatibility, but UI, WeakAuraBridge, replay reports, and future DBM-style bars can consume typed records directly and filter stale advice with `expiresAt`.
+
 `/acc off` and `/acc on` (aliases `/acc disable` / `/acc enable`) toggle `db.enabled`. When off, `Core:Evaluate` short-circuits at the top — no event handlers, no engine work, all visual layers hidden. Persists across `/reload`. The default `/acc test` path runs the simulator with `state.simulatorActive` and `pvpContext="arena"` so the engine scorer can be exercised outside a queue. Its timed `C_Timer.After` callbacks use a simulator-owned tick that calls `StrategyEngine:Evaluate`, sets `_forceShow`, applies the HUD, and publishes the WeakAura payload; this keeps the out-of-arena replay visible even though the normal live context gate would hide non-PvP UI. The visual-only `/acc test hud` demo bypasses both gates via a per-beat `recommendation._forceShow` flag so the walk-through paints the prototype-A modules outside arena.
 
 `UI:Apply` 检查 `Core.state.pvpContext`，当上下文为 `"none"` 或 `"world_idle"` 时隐藏所有视觉层。`/acc off` / `/acc on` 切换 `db.enabled`，全局开关。默认 `/acc test` 使用 `state.simulatorActive` 与 `pvpContext="arena"` 在不排队的情况下跑真实引擎/UI 链路；`/acc test hud` 视觉演示则通过 `_forceShow` 标志绕过这些门禁。
@@ -233,6 +235,26 @@ The engine's `Evaluate` returns roughly this / 引擎 `Evaluate` 返回大致结
     { unit = "player", class = "SHAMAN", actionKey = "ACTION_SHAMAN_TREMOR_REFRESH", priority = "URGENT" },
     ...
   },
+  signals            = {
+    {
+      id = "player_action:player:ACTION_SHAMAN_TREMOR_REFRESH",
+      kind = "player_action", -- strategy | callout | player_action
+      ownerUnit = "player",
+      ownerGuid = guid,
+      ownerClass = "SHAMAN",
+      targetGuid = friendlyGuid,
+      targetName = "Thatdruid",
+      requiredCaps = { "hasTremor" },
+      sourceEvidence = { mode = "DEFEND" },
+      confidence = 0..1,
+      duration = 10,
+      expiresAt = number,
+      priority = "URGENT",
+      displayStyle = "bar",
+      reasonKey = "ACTION_SHAMAN_TREMOR_REFRESH",
+    },
+    ...
+  },
 }
 ```
 
@@ -259,8 +281,8 @@ The engine's `Evaluate` returns roughly this / 引擎 `Evaluate` 返回大致结
   跟踪查看：`/acc trace dump` 显示每次评估的模式、阵容、提示、`profileContrib` 等。用于调试实时决策。
 - Counterfactual replay: `/acc whatif skip <i>` replays the current `/acc record` log with one event removed and reports divergence.
   反事实重放：`/acc whatif skip <i>` 重放当前 `/acc record` 日志并去掉第 i 个事件，报告差异。
-- Golden replay: `tools/replay.lua --golden <report> <SavedVariables.lua>` replays a recorded addon log headlessly and compares a redacted timeline containing event, mode, player action, target, callouts, rejected reasons, and action bars.
-  黄金重放：`tools/replay.lua --golden <report> <SavedVariables.lua>` 无头重放插件记录日志，并比较经过脱敏的时间线（事件、模式、个人动作、目标、提示、拒绝原因、动作条）。
+- Golden replay: `tools/replay.lua --golden <report> <SavedVariables.lua>` replays a recorded addon log headlessly and compares a redacted timeline containing event, mode, player action, target, callouts, rejected reasons, action bars, and typed signal owner/target/expiration.
+  黄金重放：`tools/replay.lua --golden <report> <SavedVariables.lua>` 无头重放插件记录日志，并比较经过脱敏的时间线（事件、模式、个人动作、目标、提示、拒绝原因、动作条、结构化信号的归属/目标/过期时间）。
 - Benchmark: `Tests/Benchmark_spec.lua` runs 21 canonical scenarios and prints `[BENCHMARK]` agreement per scenario. Soft 50% floor; current baseline 81%.
   基准：`Tests/Benchmark_spec.lua` 跑 21 个标准场景，按场景打印 `[BENCHMARK]` 一致率。软 50% 下限；当前基线 81%。
 - Calibration: `Tests/Calibration_spec.lua` runs 100 deterministic synthetic states and prints per-decile predicted-vs-truth gap. Max per-bin error 0.10 today (budget 0.20).

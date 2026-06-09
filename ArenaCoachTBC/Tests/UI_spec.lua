@@ -432,6 +432,47 @@ H.it(g, "Apply renders DBM-style player action assignments", function()
     H.assertTrue(UI.frame:IsShown(), "integrated assignment board should show when assignments exist")
 end)
 
+H.it(g, "Apply renders typed player action signals without legacy action rows", function()
+    UI:CreateFrame()
+    UI:Apply({
+        mode = "KILL",
+        primaryTargetName = "Holyman",
+        callouts = {},
+        priority = "HIGH",
+        _forceShow = true,
+        signals = {
+            {
+                kind = "player_action",
+                id = "player_action:player:ACTION_WARRIOR_KILL",
+                ownerUnit = "player",
+                ownerGuid = "friendly-warrior",
+                ownerName = "Warrior",
+                ownerClass = "WARRIOR",
+                ownerRole = "MELEE",
+                reasonKey = "ACTION_WARRIOR_KILL",
+                targetGuid = "enemy-priest",
+                targetName = "Holyman",
+                targetClass = "PRIEST",
+                targetType = "enemy",
+                priority = "HIGH",
+                expiresAt = 100000,
+            },
+        },
+    })
+    local txt = UI.frame and UI.frame.assignText and UI.frame.assignText._text or ""
+    H.assertTrue(txt:find("Your next move", 1, true) ~= nil, "personal action header missing: " .. txt)
+    H.assertTrue(txt:find("YOU:", 1, true) ~= nil, "self action marker missing: " .. txt)
+    H.assertTrue(txt:find("Holyman", 1, true) ~= nil, "signal target missing: " .. txt)
+    H.assertTrue((UI.frame.bigText._text or ""):find("YOU:", 1, true) ~= nil,
+        "typed personal signal should drive the main DBM-style line")
+    H.assertTrue((UI.frame.bigText._text or ""):find("MS / Hamstring", 1, true) ~= nil,
+        "typed personal signal should resolve localized action text")
+    H.assertEq(UI.frame._accAssignSlots, 1)
+    H.assertEq(UI.frame._accSelfAssignmentIndex, 1)
+    H.assertTrue(UI.frame.assignSlotTexts[1]._accIsSelf, "typed player signal should highlight the self slot")
+    H.assertEq(UI.frame._accActionBars[1].expiresAt, 100000)
+end)
+
 H.it(g, "Apply promotes and highlights the player action even if actions are unordered", function()
     UI:CreateFrame()
     UI:Apply({

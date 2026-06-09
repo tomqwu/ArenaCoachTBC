@@ -29,7 +29,7 @@ Reference tokens such as `@arena2` or `@party2` resolve to that unit's GUID insi
 lua5.1 tools/replay.lua --update-golden ArenaCoachTBC/Tests/Fixtures/<name>.golden.txt <path/to/ArenaCoachTBC.lua>
 ```
 
-4. Review the report. It should be redacted and should explain event, target, personal action, callouts, rejected reasons, and action bars.
+4. Review the report. It should be redacted and should explain event, target, personal action, callouts, rejected reasons, action bars, and typed signal owner/target/expiration.
 5. Commit the SavedVariables fixture only if it is sanitized and small enough for the repo. Otherwise reduce it to an acceptance snapshot.
 6. Lock it with:
 
