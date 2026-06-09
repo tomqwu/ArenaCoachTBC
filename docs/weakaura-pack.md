@@ -32,11 +32,16 @@ The public bridge API (also in `ArenaCoachTBC/WeakAuraBridge.lua`) / 公开桥�
 | `_G.ArenaCoachTBC.GetSignalsByKind("player_action")` | typed records filtered by kind |
 | `_G.ArenaCoachTBC.GetActiveSignals(now)` | non-expired typed records |
 | `_G.ArenaCoachTBC.GetPersonalSignal(now)` | current player-owned action signal, or player-owned strategy signal |
+| `_G.ArenaCoachTBC.GetSignalBars(now)` | active bar-style typed records with duration/expiration |
+| `_G.ArenaCoachTBC.GetRejectedCallouts()` | rejected callout diagnostics |
+| `_G.ArenaCoachTBC.GetRejectedActions()` | rejected player-action diagnostics |
+| `_G.ArenaCoachTBC.GetBlockedSummary()` | compact rejected/burst blocker summary |
 | `_G.ArenaCoachTBC.GetEnemyComp()` | comp id, e.g. `"RMP_3V3"` |
 | `_G.ArenaCoachTBC.GetOwnComp()` | archetype, e.g. `"MELEE_CLEAVE"` |
 | `_G.ArenaCoachTBC.GetBracket()` | `2` / `3` / `5` |
 | `_G.ArenaCoachTBC.GetCombatPhase()` | `"PRE"` / `"ACTIVE"` / `"POST"` |
 | `_G.ArenaCoachTBC.IsBurstAllowed()` | bool |
+| `_G.ArenaCoachTBC.GetBridgeSchemaVersion()` | typed bridge schema version |
 | `_G.ArenaCoachTBC.GetVersion()` | semver string |
 
 Typed signals are the preferred source for custom bars/icons because they include `ownerUnit`, `targetGuid`, `targetName`, `requiredCaps`, `sourceEvidence`, `duration`, `expiresAt`, `priority`, `displayStyle`, and `reasonKey` without parsing localized text.

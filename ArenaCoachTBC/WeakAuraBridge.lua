@@ -16,6 +16,7 @@ WAB._last  = nil    -- last recommendation
 WAB._state = nil    -- last state snapshot (shallow ref)
 
 local API = {}
+local BRIDGE_SCHEMA_VERSION = 2
 
 -- ----- Recommendation -----
 function API.GetRecommendation() return WAB._last end
@@ -92,6 +93,40 @@ function API.GetPersonalSignal(now)
         end
     end
     return nil
+end
+
+function API.GetSignalBars(now)
+    local out = {}
+    for _, signal in ipairs(API.GetActiveSignals(now)) do
+        if signal.displayStyle == "bar" or signal.kind == "player_action" then
+            table.insert(out, signal)
+        end
+    end
+    return out
+end
+
+function API.GetRejectedCallouts()
+    return WAB._last and WAB._last.rejectedCallouts or {}
+end
+
+function API.GetRejectedActions()
+    return WAB._last and WAB._last.rejectedActions or {}
+end
+
+function API.GetBlockedSummary()
+    local rec = WAB._last
+    local rejectedCallouts = rec and rec.rejectedCallouts or {}
+    local rejectedActions = rec and rec.rejectedActions or {}
+    local burstBlockedBy = rec and (rec.burstBlockedBy or (rec.burstDecision and rec.burstDecision.blockedBy)) or nil
+    local rejectedCount = #rejectedCallouts + #rejectedActions
+    if burstBlockedBy then rejectedCount = rejectedCount + 1 end
+    return {
+        rejectedCallouts = rejectedCallouts,
+        rejectedActions = rejectedActions,
+        burstBlockedBy = burstBlockedBy,
+        burstDecision = rec and rec.burstDecision or nil,
+        rejectedCount = rejectedCount,
+    }
 end
 
 function API.IsBurstAllowed()    return WAB._last and WAB._last.burstAllowed or false end
@@ -202,11 +237,14 @@ function API.GetTendencyMean(tendency)
 end
 
 -- ----- Debug / version -----
+function API.GetBridgeSchemaVersion() return BRIDGE_SCHEMA_VERSION end
+
 function API.GetDebugState()
     return {
         last       = WAB._last,
         state      = WAB._state,
         version    = "2.8.51",
+        bridgeSchemaVersion = BRIDGE_SCHEMA_VERSION,
         addon      = ADDON_NAME,
     }
 end

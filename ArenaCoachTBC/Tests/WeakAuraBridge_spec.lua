@@ -45,6 +45,13 @@ local sampleRec = {
     },
     burstAllowed = true,
     burstBlockedBy = nil,
+    burstDecision = { allowed = true, blockedBy = nil, gates = { kill_prob = { ok = true } } },
+    rejectedCallouts = {
+        { key = "CALL_BOP_READY", reason = "missing_hasBoP" },
+    },
+    rejectedActions = {
+        { unit = "party1", key = "ACTION_SHAMAN_PURGE", reason = "missing_hasPurge" },
+    },
 }
 
 local sampleState = {
@@ -108,6 +115,31 @@ H.it(g, "typed signal getters expose structured state without text parsing", fun
     H.assertEq(API.GetPersonalSignal(100).reasonKey, "ACTION_WARRIOR_KILL")
     H.assertEq(#API.GetActiveSignals(107), 2)
     H.assertEq(#API.GetActiveSignals(111), 0)
+    local bars = API.GetSignalBars(100)
+    H.assertEq(#bars, 1)
+    H.assertEq(bars[1].duration, 10)
+    H.assertEq(bars[1].expiresAt, 110)
+    H.assertEq(bars[1].targetName, "Holyman")
+end)
+
+H.it(g, "blocked summary exposes rejected and burst diagnostics for custom WeakAuras", function()
+    WAB:Publish(sampleRec, sampleState)
+    H.assertEq(API.GetRejectedCallouts()[1].reason, "missing_hasBoP")
+    H.assertEq(API.GetRejectedActions()[1].key, "ACTION_SHAMAN_PURGE")
+    local summary = API.GetBlockedSummary()
+    H.assertEq(summary.rejectedCount, 2)
+    H.assertNil(summary.burstBlockedBy)
+    H.assertTrue(summary.burstDecision.allowed)
+
+    local blocked = {}
+    for k, v in pairs(sampleRec) do blocked[k] = v end
+    blocked.burstAllowed = false
+    blocked.burstBlockedBy = "target_immune"
+    blocked.burstDecision = { allowed = false, blockedBy = "target_immune" }
+    WAB:Publish(blocked, sampleState)
+    local blockedSummary = API.GetBlockedSummary()
+    H.assertEq(blockedSummary.rejectedCount, 3)
+    H.assertEq(blockedSummary.burstBlockedBy, "target_immune")
 end)
 
 H.it(g, "comp identification getters", function()
@@ -270,6 +302,10 @@ H.it(g, "no-state safety: getters return empty/nil when nothing published", func
     H.assertEq(#API.GetSignals(), 0)
     H.assertEq(#API.GetSignalsByKind("callout"), 0)
     H.assertEq(#API.GetActiveSignals(100), 0)
+    H.assertEq(#API.GetSignalBars(100), 0)
+    H.assertEq(#API.GetRejectedCallouts(), 0)
+    H.assertEq(#API.GetRejectedActions(), 0)
+    H.assertEq(API.GetBlockedSummary().rejectedCount, 0)
     H.assertNil(API.GetPersonalSignal(100))
     H.assertNil(API.GetPlayerAction())
     H.assertNil(API.GetActionForUnit("party1"))
@@ -294,8 +330,10 @@ H.it(g, "GetDebugState / GetVersion", function()
     WAB:Publish(sampleRec, sampleState)
     local d = API.GetDebugState()
     H.assertEq(d.version, "2.8.51")
+    H.assertEq(d.bridgeSchemaVersion, 2)
     H.assertEq(d.addon, "ArenaCoachTBC")
     H.assertEq(API.GetVersion(), "2.8.51")
+    H.assertEq(API.GetBridgeSchemaVersion(), 2)
 end)
 
 H.it(g, "Publish handles missing WeakAuras global gracefully", function()

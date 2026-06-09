@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **WeakAura typed-state bridge helpers.** Added `GetSignalBars(now)`, `GetRejectedCallouts()`, `GetRejectedActions()`, `GetBlockedSummary()`, and `GetBridgeSchemaVersion()` so custom WeakAuras can build bars/icons/text and debug blocked advice without parsing localized strings.
+
+### Tests
+- Extended WeakAuraBridge specs for active bar signals, owner/target metadata, rejected/blocked summaries, no-state safety, and schema-version reporting.
+
 ## [2.8.51] - 2026-06-09
 
 ### Changed

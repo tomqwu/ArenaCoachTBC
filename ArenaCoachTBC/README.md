@@ -208,6 +208,10 @@ The addon publishes its current recommendation and full state through the global
 | `GetSignalsByKind("player_action")` | filtered typed signals / 按类型过滤的结构化信号 |
 | `GetActiveSignals(now)` | non-expired typed signals / 尚未过期的结构化信号 |
 | `GetPersonalSignal(now)` | current player-owned action or strategy signal / 当前玩家自己的动作或策略信号 |
+| `GetSignalBars(now)` | active bar-style typed signals / 当前条形进度信号 |
+| `GetRejectedCallouts()` | rejected callout diagnostics / 被拒绝的提示诊断 |
+| `GetRejectedActions()` | rejected player-action diagnostics / 被拒绝的玩家动作诊断 |
+| `GetBlockedSummary()` | compact rejected/burst blocker summary / 被拒绝项和爆发阻塞摘要 |
 | `IsBurstAllowed()` | true / false |
 | `GetBurstBlocker()` | "no_ms" / "target_immune" / nil |
 | `GetEnemyComp()` | "RMP" / "WLD" / ... |
@@ -222,6 +226,7 @@ The addon publishes its current recommendation and full state through the global
 | `GetFriendlies()` | full friendlies map / 完整己方表 |
 | `GetEnemyByGUID(guid)` | one enemy / 单个敌方 |
 | `GetCombatPhase()` | "PRE" / "ACTIVE" / "POST" |
+| `GetBridgeSchemaVersion()` | typed bridge schema version / 结构化桥接 API 版本 |
 | `GetVersion()` | "2.8.51" |
 
 Typed signals have this stable shape. `kind="strategy"` describes the current plan, `kind="callout"` mirrors executable callout keys, and `kind="player_action"` owns the DBM-style instruction for one friendly player.
