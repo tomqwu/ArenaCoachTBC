@@ -259,6 +259,8 @@ The engine's `Evaluate` returns roughly this / 引擎 `Evaluate` 返回大致结
   跟踪查看：`/acc trace dump` 显示每次评估的模式、阵容、提示、`profileContrib` 等。用于调试实时决策。
 - Counterfactual replay: `/acc whatif skip <i>` replays the current `/acc record` log with one event removed and reports divergence.
   反事实重放：`/acc whatif skip <i>` 重放当前 `/acc record` 日志并去掉第 i 个事件，报告差异。
+- Golden replay: `tools/replay.lua --golden <report> <SavedVariables.lua>` replays a recorded addon log headlessly and compares a redacted timeline containing event, mode, player action, target, callouts, rejected reasons, and action bars.
+  黄金重放：`tools/replay.lua --golden <report> <SavedVariables.lua>` 无头重放插件记录日志，并比较经过脱敏的时间线（事件、模式、个人动作、目标、提示、拒绝原因、动作条）。
 - Benchmark: `Tests/Benchmark_spec.lua` runs 21 canonical scenarios and prints `[BENCHMARK]` agreement per scenario. Soft 50% floor; current baseline 81%.
   基准：`Tests/Benchmark_spec.lua` 跑 21 个标准场景，按场景打印 `[BENCHMARK]` 一致率。软 50% 下限；当前基线 81%。
 - Calibration: `Tests/Calibration_spec.lua` runs 100 deterministic synthetic states and prints per-decile predicted-vs-truth gap. Max per-bin error 0.10 today (budget 0.20).
