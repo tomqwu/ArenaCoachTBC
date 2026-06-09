@@ -95,7 +95,7 @@ local function buildHeader()
     return string.format("- **Addon**: ArenaCoachTBC %s\n- **Client**: %s", addonVer, client)
 end
 
-function ER:Format(maxErrors)
+function ER:Format(maxErrors, trace)
     maxErrors = maxErrors or 5
     local entries = self:Recent(maxErrors)
     local lines = {
@@ -116,6 +116,27 @@ function ER:Format(maxErrors)
                 table.insert(lines, string.format("   context: %s", tostring(e.context)))
             end
         end
+    end
+    if trace then
+        local function clean(value)
+            if value == nil or value == "" then return "-" end
+            return self:Sanitize(tostring(value))
+        end
+        table.insert(lines, "")
+        table.insert(lines, "### Last strategy trace (sanitised)")
+        table.insert(lines, "")
+        table.insert(lines, string.format("- mode=%s comp=%s compConfidence=%s bracket=%s phase=%s",
+            clean(trace.mode), clean(trace.comp), clean(trace.compConfidence),
+            clean(trace.bracket), clean(trace.combatPhase)))
+        table.insert(lines, string.format("- target=%s/%s reason=%s",
+            clean(trace.primaryClass), clean(trace.primaryName), clean(trace.reason)))
+        table.insert(lines, string.format("- playerActions=%s", clean(trace.playerActions)))
+        table.insert(lines, string.format("- emittedCallouts=%s", clean(trace.emittedCallouts or trace.callouts)))
+        table.insert(lines, string.format("- rejectedCallouts=%s", clean(trace.rejectedCallouts)))
+        table.insert(lines, string.format("- rejectedActions=%s", clean(trace.rejectedActions)))
+        table.insert(lines, string.format("- ownCaps=%s", clean(trace.ownCaps)))
+        table.insert(lines, string.format("- pressure=%s", clean(trace.pressureEvidence)))
+        table.insert(lines, string.format("- profile=%s", clean(trace.profileContrib)))
     end
     return table.concat(lines, "\n")
 end

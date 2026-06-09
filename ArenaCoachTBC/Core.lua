@@ -102,12 +102,59 @@ end
 
 local TRACE_DEFAULT_CAP = 200
 
+local function joinLimited(values, limit)
+    limit = limit or 6
+    if not values or #values == 0 then return "" end
+    local out = {}
+    local n = math.min(#values, limit)
+    for i = 1, n do out[i] = tostring(values[i]) end
+    if #values > limit then table.insert(out, "+" .. tostring(#values - limit)) end
+    return table.concat(out, ",")
+end
+
+local function trueCapSummary(caps)
+    local out = {}
+    for key, value in pairs(caps or {}) do
+        if value == true then table.insert(out, key) end
+    end
+    table.sort(out)
+    return joinLimited(out, 10)
+end
+
+local function rejectedCalloutSummary(list)
+    local out = {}
+    for _, item in ipairs(list or {}) do
+        table.insert(out, tostring(item.key or "?") .. ":" .. tostring(item.reason or "?"))
+    end
+    return joinLimited(out, 8)
+end
+
+local function rejectedActionSummary(list)
+    local out = {}
+    for _, item in ipairs(list or {}) do
+        table.insert(out, tostring(item.unit or "?") .. ":" .. tostring(item.key or "?")
+            .. ":" .. tostring(item.reason or "?"))
+    end
+    return joinLimited(out, 8)
+end
+
+local function playerActionSummary(list)
+    local out = {}
+    for _, action in ipairs(list or {}) do
+        local target = action.targetName or action.targetUnit or action.target or "-"
+        table.insert(out, tostring(action.unit or action.name or "?") .. ":"
+            .. tostring(action.actionKey or "?") .. "->" .. tostring(target))
+    end
+    return joinLimited(out, 6)
+end
+
 local function appendTrace(rec, state)
     local db = _G.ArenaCoachTBCDB
     if not (db and db.trace and db.trace.enabled and rec) then return end
     db.trace.log = db.trace.log or {}
     local cap = db.trace.maxLines or TRACE_DEFAULT_CAP
     local pressure = state and state.observations and state.observations.healerPressure or nil
+    local ownCaps = ns.OwnComps and ns.OwnComps.Infer and ns.OwnComps:Infer(state and state.friendlies or {}) or {}
     local snapshot = {
         ts             = (type(GetTime) == "function") and GetTime() or os.time(),
         mode           = rec.mode,
@@ -122,6 +169,14 @@ local function appendTrace(rec, state)
         bracket        = state and state.bracket,
         combatPhase    = state and state.combatPhase,
         callouts       = rec.callouts and table.concat(rec.callouts, ",") or "",
+        emittedCallouts = rec.callouts and table.concat(rec.callouts, ",") or "",
+        rejectedCallouts = rejectedCalloutSummary(rec.rejectedCallouts),
+        rejectedActions = rejectedActionSummary(rec.rejectedActions),
+        rejectedCalloutCount = #(rec.rejectedCallouts or {}),
+        rejectedActionCount = #(rec.rejectedActions or {}),
+        playerActions  = playerActionSummary(rec.playerActions),
+        ownCaps        = trueCapSummary(ownCaps),
+        compConfidence = rec.compConfidence,
         profileContrib = rec.profileContrib or "",
     }
     if pressure then
@@ -130,6 +185,12 @@ local function appendTrace(rec, state)
         snapshot.pressureEvents = pressure.damageEvents or pressure.events
         snapshot.pressureExpiry = pressure.expiresAt
         snapshot.pressureSources = #(pressure.sourceEnemyGuids or {})
+        snapshot.pressureEvidence = string.format("%s/%s/%s/src%s/exp%s",
+            tostring(snapshot.pressureTarget or "-"),
+            tostring(snapshot.pressureType or "-"),
+            tostring(snapshot.pressureEvents or "-"),
+            tostring(snapshot.pressureSources or "-"),
+            tostring(snapshot.pressureExpiry or "-"))
     end
     table.insert(db.trace.log, snapshot)
     while #db.trace.log > cap do table.remove(db.trace.log, 1) end
@@ -1479,7 +1540,9 @@ end
 function Core:RunBugReport()
     local ER = ns.ErrorReporter
     if not ER then chatPrint("ErrorReporter module not loaded"); return end
-    local payload = ER:Format(5)
+    local db = _G.ArenaCoachTBCDB or {}
+    local trace = db.trace and db.trace.log and db.trace.log[#db.trace.log] or nil
+    local payload = ER:Format(5, trace)
     chatPrint(Core.L("BUGREPORT_HEADER") or "Bug report payload:")
     for line in payload:gmatch("[^\n]+") do chatPrint(line) end
 end
@@ -1539,12 +1602,19 @@ function Core:HandleTrace(rest)
         local last = log[#log]
         if not last then chatPrint("trace log is empty"); return end
         chatPrint(string.format(
-            "trace[%d]: mode=%s target=%s reason=%s comp=%s bracket=%s pressure=%s/%s/%s callouts=[%s]",
+            "trace[%d]: mode=%s target=%s action=%s reason=%s comp=%s conf=%s bracket=%s pressure=%s rejects=%s/%s caps=[%s] callouts=[%s]",
             #log, tostring(last.mode), tostring(last.primaryClass),
-            tostring(last.reason), tostring(last.comp),
-            tostring(last.bracket), tostring(last.pressureTarget or "-"),
-            tostring(last.pressureType or "-"), tostring(last.pressureEvents or "-"),
+            tostring(last.playerActions or "-"), tostring(last.reason),
+            tostring(last.comp), tostring(last.compConfidence or "-"),
+            tostring(last.bracket), tostring(last.pressureEvidence or "-"),
+            tostring(last.rejectedCalloutCount or 0), tostring(last.rejectedActionCount or 0),
+            tostring(last.ownCaps or "-"),
             tostring(last.callouts)))
+        if (last.rejectedCallouts and last.rejectedCallouts ~= "")
+           or (last.rejectedActions and last.rejectedActions ~= "") then
+            chatPrint("trace rejects: callouts=[" .. tostring(last.rejectedCallouts or "")
+                .. "] actions=[" .. tostring(last.rejectedActions or "") .. "]")
+        end
     else
         chatPrint("usage: /acc trace on|off|status|dump|clear")
     end

@@ -1204,6 +1204,34 @@ H.it(g, "trace snapshots include pressure evidence for DEFEND decisions", functi
     H.assertEq(last.pressureSources, 1)
 end)
 
+H.it(g, "trace snapshots include rejected reasons, capabilities, and player actions", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    _G.ArenaCoachTBCDB.trace.enabled = true
+    _G.ArenaCoachTBCDB.trace.log = {}
+    Core.state.combatPhase = "ACTIVE"
+    Core.state.pvpContext = "arena"
+    H.setUnit("player", { class = "WARRIOR", guid = "guid-war", name = "You", hp = 100, hpMax = 100 })
+    H.setUnit("party1", { class = "DRUID", guid = "guid-druid", name = "Leaves", hp = 100, hpMax = 100 })
+    H.setUnit("arena1", { class = "ROGUE", guid = "guid-rogue", name = "Sneakstab", hp = 100, hpMax = 100 })
+    H.setUnit("arena2", { class = "MAGE", guid = "guid-mage", name = "Frostbiter", hp = 100, hpMax = 100 })
+    H.setUnit("arena3", { class = "PRIEST", guid = "guid-priest", name = "Holyman", hp = 100, hpMax = 100 })
+    for i = 4, 5 do H.setUnit("arena" .. i, nil) end
+    Core:RefreshFriendlies()
+    Core:RefreshArenaEnemies()
+    Core.state.friendlies.party1.roleGuess = "HEALER"
+
+    Core:Evaluate()
+    local last = _G.ArenaCoachTBCDB.trace.log[#_G.ArenaCoachTBCDB.trace.log]
+    H.assertTrue((last.playerActions or ""):find("player:ACTION_WARRIOR_KILL", 1, true) ~= nil,
+        "trace should include player action owner/action/target")
+    H.assertTrue((last.rejectedCallouts or ""):find("CALL_TREMOR_FEAR:missing_hasTremor", 1, true) ~= nil,
+        "trace should include rejected callout reason codes")
+    H.assertTrue((last.ownCaps or "") ~= "",
+        "trace should include a compact own-capability snapshot")
+    H.assertTrue((last.compConfidence or 0) >= 0)
+end)
+
 H.it(g, "trace records nothing when disabled", function()
     rebootForEvents()
     _G.ArenaCoachTBCDB = nil; Core:InitDB()
@@ -1238,15 +1266,26 @@ H.it(g, "/acc trace dump prints last entry summary", function()
     rebootForEvents()
     _G.ArenaCoachTBCDB = nil; Core:InitDB()
     _G.ArenaCoachTBCDB.trace.log = { { mode="KILL", primaryClass="MAGE", reason="r",
-                                       comp="RMP", bracket=3, callouts="A,B" } }
+                                       comp="RMP", compConfidence=1, bracket=3,
+                                       playerActions="player:ACTION_WARRIOR_KILL->Holyman",
+                                       rejectedCallouts="CALL_PURGE:missing_hasPurge",
+                                       rejectedActions="party1:ACTION_SHAMAN_TREMOR_REFRESH:missing_hasShaman",
+                                       rejectedCalloutCount=1, rejectedActionCount=1,
+                                       ownCaps="hasMainHealer", callouts="A,B" } }
     startCapture()
     SlashCmdList["ARENACOACH"]("trace dump")
     stopCapture()
-    local found = false
+    local found, foundRejects = false, false
     for _, ln in ipairs(captured) do
-        if ln:find("mode=KILL") and ln:find("comp=RMP") then found = true end
+        if ln:find("mode=KILL") and ln:find("comp=RMP") and ln:find("rejects=1/1") then
+            found = true
+        end
+        if ln:find("trace rejects") and ln:find("missing_hasPurge") then
+            foundRejects = true
+        end
     end
     H.assertTrue(found, "dump should show mode + comp; got: " .. table.concat(captured, "|"))
+    H.assertTrue(foundRejects, "dump should show rejected reasons; got: " .. table.concat(captured, "|"))
 end)
 
 H.it(g, "/acc trace status without args prints state", function()
@@ -1291,6 +1330,46 @@ H.it(g, "/acc bugreport prints sanitised payload", function()
     end
     H.assertTrue(sawHeader, "header missing")
     H.assertTrue(sawSanitised, "sanitised GUID missing")
+end)
+
+H.it(g, "/acc bugreport includes sanitised strategy trace diagnostics", function()
+    H.load("ErrorReporter.lua")
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    H.ns.ErrorReporter:SetKnownNames({ "Holyman", "Totemkin" })
+    _G.ArenaCoachTBCDB.trace.log = {
+        {
+            mode = "DEFEND",
+            comp = "RMP",
+            compConfidence = 1,
+            bracket = 3,
+            combatPhase = "ACTIVE",
+            primaryClass = "MAGE",
+            primaryName = "Holyman",
+            reason = "RMP into Totemkin",
+            playerActions = "player:ACTION_SHAMAN_PURGE->Holyman",
+            emittedCallouts = "CALL_GROUND_POLY",
+            rejectedCallouts = "CALL_PURGE:missing_hasPurge",
+            rejectedActions = "party1:ACTION_SHAMAN_TREMOR_REFRESH:missing_hasShaman",
+            ownCaps = "hasMainHealer",
+            pressureEvidence = "Player-12345-ABCDEF/train/3/src1/exp205",
+            profileContrib = "team Holyman-Totemkin",
+        },
+    }
+    startCapture()
+    SlashCmdList["ARENACOACH"]("bugreport")
+    stopCapture()
+    local sawTrace, sawRejected, sawSanitisedName, sawSanitisedGuid = false, false, false, false
+    for _, ln in ipairs(captured) do
+        if ln:find("Last strategy trace") then sawTrace = true end
+        if ln:find("CALL_PURGE:missing_hasPurge") then sawRejected = true end
+        if ln:find("player:ACTION_SHAMAN_PURGE->***", 1, true) then sawSanitisedName = true end
+        if ln:find("Player%-%*%*%*") then sawSanitisedGuid = true end
+    end
+    H.assertTrue(sawTrace, "strategy trace section missing")
+    H.assertTrue(sawRejected, "rejected reason missing")
+    H.assertTrue(sawSanitisedName, "known target name should be sanitised")
+    H.assertTrue(sawSanitisedGuid, "pressure GUID should be sanitised")
 end)
 
 H.it(g, "record captures CLEU events when enabled", function()
