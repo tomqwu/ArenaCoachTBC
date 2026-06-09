@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.44] - 2026-06-09
+
 ### Added
 - **Defensive pressure now carries target-specific evidence.** `observations.healerPressure` keeps the old compatibility fields and now also reports `targetGuid`, `targetUnit`, `targetName`, `targetRole`, `damageSamples`, `ccSamples`, `sourceEnemyGuids`, `startedAt`, `lastSeenAt`, `expiresAt`, `confidence`, and `pressureType`.
 - **Simulator pressure matches live combat-log pressure.** `/acc test` and built-in scenarios now feed the same target/source evidence used by real CLEU damage and healer CC.
