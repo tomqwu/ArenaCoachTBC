@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Release workflow YAML now parses correctly.** Quoted colon-bearing release gate step names so GitHub Actions creates jobs instead of rejecting the workflow file before execution.
+
+### Tests
+- Extended `tools/check_release_gate.lua` to fail if a release gate step name containing `:` is left unquoted.
+
 ## [2.8.48] - 2026-06-09
 
 ### Added

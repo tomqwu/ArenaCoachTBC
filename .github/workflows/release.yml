@@ -48,7 +48,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
           echo "Resolved tag=$tag kind=$kind prerelease=$prerelease"
 
-      - name: Release gate: locale, package, release notes, and golden replay
+      - name: "Release gate: locale, package, release notes, and golden replay"
         run: |
           set -euo pipefail
           lua5.1 tools/check_locales.lua
@@ -56,7 +56,7 @@ jobs:
           lua5.1 tools/check_release_gate.lua
           lua5.1 tools/replay.lua --golden ArenaCoachTBC/Tests/Fixtures/replay_tiny.golden.txt ArenaCoachTBC/Tests/Fixtures/replay_tiny.lua
 
-      - name: Release gate: tests and coverage
+      - name: "Release gate: tests and coverage"
         run: |
           set -euo pipefail
           rm -f luacov.stats.out luacov.report.out

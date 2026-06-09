@@ -78,12 +78,12 @@ end
 local workflow = readFile(root .. "/.github/workflows/release.yml") or ""
 requireText(workflow, "tags: ['v*']", "stable tag trigger")
 requireText(workflow, "Install release gate dependencies", "release dependency install step")
-requireText(workflow, "Release gate: locale, package, release notes, and golden replay", "release metadata/golden gate step")
+requireText(workflow, '- name: "Release gate: locale, package, release notes, and golden replay"', "quoted release metadata/golden gate step")
 requireText(workflow, "lua5.1 tools/check_locales.lua", "locale gate command")
 requireText(workflow, "lua5.1 tools/check_package_shape.lua", "package shape gate command")
 requireText(workflow, "lua5.1 tools/check_release_gate.lua", "release gate command")
 requireText(workflow, "lua5.1 tools/replay.lua --golden", "golden replay command")
-requireText(workflow, "Release gate: tests and coverage", "release test/coverage step")
+requireText(workflow, '- name: "Release gate: tests and coverage"', "quoted release test/coverage step")
 requireText(workflow, "lua5.1 -lluacov ArenaCoachTBC/Tests/run_all.lua", "coverage test command")
 requireText(workflow, "lua5.1 ArenaCoachTBC/Tests/StrategyEngine_spec.lua", "standalone strategy smoke command")
 requireText(workflow, "Coverage below 99%", "coverage failure guard")
@@ -93,6 +93,10 @@ requireText(workflow, "BigWigs upload to CurseForge/Wago", "publish evidence tex
 requireText(workflow, "Validate GitHub release zip shape", "zip shape gate")
 requireText(workflow, "Run BigWigs packager (stable tag only - uploads to CurseForge / Wago)", "BigWigs publish step")
 requireText(workflow, "Publish GitHub Release", "GitHub release step")
+
+if workflow:find("- name: Release gate:", 1, true) then
+    fail("release workflow step names containing ':' must be quoted for YAML parsing")
+end
 
 local packagerPos = workflow:find("Run BigWigs packager", 1, true)
 if packagerPos then
