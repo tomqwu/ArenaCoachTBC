@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.49] - 2026-06-09
+
+### Added
+- **Release gate shipped in the corrected stable package.** Includes the v2.8.48 release-gate workflow, checklist, release-note validation evidence, and golden replay CI guard; the v2.8.48 tag failed before publishing because GitHub rejected the workflow YAML.
+
 ### Fixed
 - **Release workflow YAML now parses correctly.** Quoted colon-bearing release gate step names so GitHub Actions creates jobs instead of rejecting the workflow file before execution.
 
