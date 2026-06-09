@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.45] - 2026-06-09
+
 ### Added
 - **Strategy traces now explain emitted and rejected advice.** Trace snapshots include compact player action owner/target summaries, emitted callouts, rejected callouts/actions with reason codes, own-team capability summaries, comp confidence, pressure evidence, and profile contribution text.
 - **Bug reports include sanitized strategy diagnostics.** `/acc bugreport` now appends the latest strategy trace so screenshots can be paired with stable reason codes such as missing Tremor/Purge/BoP capability without leaking player names or raw GUIDs.
