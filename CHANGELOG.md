@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.46] - 2026-06-09
+
 ### Added
 - **Golden replay reports for recorded fights.** `tools/replay.lua` now emits a deterministic redacted timeline with event, mode, player action, target, callouts, rejected reason codes, and DBM-style action-bar summaries, and can fail CI against `--golden` fixtures.
 
