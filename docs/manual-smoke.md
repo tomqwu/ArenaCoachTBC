@@ -84,6 +84,7 @@ behaviour is what tests can't see.
 - [ ] Keep the matching `Logs/WoWCombatLog*.txt` file and `WTF/Account/<account>/SavedVariables/ArenaCoachTBC.lua`
 - [ ] Replay the addon recording with `lua5.1 tools/replay.lua <path/to/ArenaCoachTBC.lua>` and compare the redacted timeline with the screenshot or clip
 - [ ] For a committed fixture, run `lua5.1 tools/replay.lua --golden ArenaCoachTBC/Tests/Fixtures/<name>.golden.txt ArenaCoachTBC/Tests/Fixtures/<name>.lua`; use `--update-golden` only when the changed advice is intentional
+- [ ] Convert repeatable wrong-advice cases into `docs/arena-fixtures.md` acceptance snapshots or golden replays
 
 ## Integration
 

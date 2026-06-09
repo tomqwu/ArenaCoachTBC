@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Arena acceptance fixture pack.** Added curated arena/BG/world snapshots that assert exact personal actions, teammate actions, forbidden impossible advice, rejected reason codes, and fixture performance.
+
+### Tests
+- Added `ArenaAcceptance_spec.lua` covering War/Enh/RDruid vs RMP, no-shaman RMP, Enhancement Sweetshammy, 2v2 double-DPS, 2v2 healer/DPS, and BG/world PvP guard rails.
+
 ## [2.8.46] - 2026-06-09
 
 ### Added
