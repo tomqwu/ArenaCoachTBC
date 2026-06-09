@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.48] - 2026-06-09
+
 ### Added
 - **Release gate for strategy and publishing changes.** Stable release workflows now run locale, package-shape, release-note, golden replay, full Lua suite, and 99% coverage gates before packaging or publishing.
 - **Release checklist.** Added a repeatable checklist for tagging, verifying GitHub/CurseForge/Wago publication, and installing the exact release zip locally.
