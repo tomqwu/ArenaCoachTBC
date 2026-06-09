@@ -10,6 +10,7 @@ H.load("Data/Spells.lua")
 H.load("Data/Classes.lua")
 H.load("Data/OwnComps.lua")
 H.load("Data/Strategies.lua")
+H.load("Patterns.lua")
 H.load("StrategyEngine.lua")
 
 local SE = H.ns.StrategyEngine
@@ -39,6 +40,62 @@ local function hasRejectedCallout(rec, key, reason)
         if r.key == key and (not reason or r.reason == reason) then return true end
     end
     return false
+end
+
+local function hasRejectedAction(rec, key, reason)
+    for _, r in ipairs((rec and rec.rejectedActions) or {}) do
+        if r.key == key and (not reason or r.reason == reason) then return true end
+    end
+    return false
+end
+
+local function readAddonFile(rel)
+    local f = assert(io.open(H.ADDON_DIR .. "/" .. rel, "rb"))
+    local text = f:read("*a")
+    f:close()
+    return text
+end
+
+local function collectEmittedCalloutKeys()
+    local keys = {}
+    local function add(key)
+        if type(key) == "string" and key:match("^CALL_") then keys[key] = true end
+    end
+    local function addList(list)
+        for _, key in ipairs(list or {}) do add(key) end
+    end
+    local function addComp(comp)
+        if not comp then return end
+        addList(comp.callouts)
+        for _, variant in pairs(comp.ownVariants or {}) do
+            addList(variant.callouts)
+        end
+    end
+    local Strategies = H.ns.Strategies or {}
+    for _, comp in ipairs(Strategies.comps or {}) do addComp(comp) end
+    for _, comp in ipairs(Strategies.testComps or {}) do addComp(comp) end
+    local Patterns = H.ns.Patterns or {}
+    for _, def in ipairs(Patterns.defs or {}) do add(def.labelKey) end
+
+    -- These are inserted from StrategyEngine control flow rather than
+    -- the static strategy/pattern catalogs, so keep them in the same audit.
+    add("CALL_TREMOR_DOWN")
+    add("CALL_BG_DEFEND")
+    add("CALL_FLAG_CARRIER_LOW")
+    add("CALL_LOW_MANA_PUSH")
+    add("CALL_OUTNUMBERED_DISENGAGE")
+    keys.BURST_NOW = true
+    return keys
+end
+
+local function withPatternMatches(matches, fn)
+    local Patterns = H.ns.Patterns or {}
+    H.ns.Patterns = Patterns
+    local oldGetMatches = Patterns.GetMatches
+    Patterns.GetMatches = function() return matches end
+    local ok, err = pcall(fn)
+    Patterns.GetMatches = oldGetMatches
+    if not ok then error(err, 0) end
 end
 
 -- v2.7.1: in an arena 2v4 (3 friendlies dead, 1 enemy dead from a 5v5),
@@ -340,6 +397,153 @@ H.it(g, "capability gate: no paladin/priest roster suppresses paladin and priest
     H.assertFalse(hasCallout(rec, "CALL_HOJ_KILL"), "no paladin means no HoJ advice")
     H.assertTrue(hasRejectedCallout(rec, "CALL_BOP_READY", "missing_hasBoP"))
     H.assertTrue(hasRejectedCallout(rec, "CALL_PAIN_SUP_READY", "missing_hasPainSuppression"))
+end)
+
+H.it(g, "capability gate: pattern or catalog callouts cannot bypass context requirements", function()
+    withPatternMatches({
+            { labelKey = "BURST_NOW" },
+            { labelKey = "CALL_BG_DEFEND" },
+            { labelKey = "CALL_PEEL_PRIEST" },
+            { labelKey = "CALL_PATTERN_HUNTER_TRAP_SCATTER" },
+        }, function()
+            local state = SE:BuildTestState({"ROGUE","MAGE","PRIEST"})
+            state.combatPhase = "ACTIVE"
+            state.pvpContext = "arena"
+            state.friendlies.party4.class = "ROGUE"
+            state.friendlies.party4.spec = nil
+
+            local rec = SE:Evaluate(state)
+            H.assertFalse(hasCallout(rec, "BURST_NOW"), "pattern-injected burst must still need the burst gate")
+            H.assertFalse(hasCallout(rec, "CALL_BG_DEFEND"), "BG callout must not appear in arena")
+            H.assertFalse(hasCallout(rec, "CALL_PEEL_PRIEST"), "priest peel callout must require a friendly priest")
+            H.assertFalse(hasCallout(rec, "CALL_PATTERN_HUNTER_TRAP_SCATTER"),
+                "trap/scatter action text must require friendly Mass Dispel support")
+            H.assertTrue(hasRejectedCallout(rec, "BURST_NOW", "burst_gate_blocked"))
+            H.assertTrue(hasRejectedCallout(rec, "CALL_BG_DEFEND", "wrong_pvp_context"))
+            H.assertTrue(hasRejectedCallout(rec, "CALL_PEEL_PRIEST", "missing_friendly_PRIEST"))
+            H.assertTrue(hasRejectedCallout(rec, "CALL_PATTERN_HUNTER_TRAP_SCATTER", "missing_hasMassDispel"))
+        end)
+end)
+
+H.it(g, "capability gate: pattern callouts require their enemy setup", function()
+    withPatternMatches({ { labelKey = "CALL_PATTERN_HOJ_INTO_INTERCEPT" } }, function()
+        local missingWarrior = SE:BuildTestState({"PALADIN","PRIEST"})
+        missingWarrior.combatPhase = "ACTIVE"
+        missingWarrior.pvpContext = "arena"
+        local blocked = SE:Evaluate(missingWarrior)
+        H.assertFalse(hasCallout(blocked, "CALL_PATTERN_HOJ_INTO_INTERCEPT"))
+        H.assertTrue(hasRejectedCallout(blocked, "CALL_PATTERN_HOJ_INTO_INTERCEPT", "missing_required_enemy_class"))
+
+        local withWarrior = SE:BuildTestState({"PALADIN","WARRIOR","PRIEST"})
+        withWarrior.combatPhase = "ACTIVE"
+        withWarrior.pvpContext = "arena"
+        local allowed = SE:Evaluate(withWarrior)
+        H.assertTrue(hasCallout(allowed, "CALL_PATTERN_HOJ_INTO_INTERCEPT"))
+    end)
+end)
+
+H.it(g, "capability gate: injected callouts still require live threat and target facts", function()
+    withPatternMatches({ { labelKey = "CALL_PATTERN_FEAR_INTO_POLY" } }, function()
+            local state = SE:BuildTestState({"MAGE","DRUID"})
+            state.combatPhase = "ACTIVE"
+            state.pvpContext = "arena"
+            local rec = SE:Evaluate(state)
+            H.assertFalse(hasCallout(rec, "CALL_PATTERN_FEAR_INTO_POLY"))
+            H.assertTrue(hasRejectedCallout(rec, "CALL_PATTERN_FEAR_INTO_POLY", "missing_fear_threat"))
+        end)
+
+    withPatternMatches({
+            { labelKey = "CALL_FAKE_KICK_2" },
+            { labelKey = "CALL_LOW_MANA_PUSH" },
+            { labelKey = "CALL_OUTNUMBERED_DISENGAGE" },
+        }, function()
+            local state = SE:BuildTestState({"PRIEST","DRUID"})
+            state.combatPhase = "ACTIVE"
+            state.pvpContext = "arena"
+            local rec = SE:Evaluate(state)
+            H.assertFalse(hasCallout(rec, "CALL_FAKE_KICK_2"))
+            H.assertFalse(hasCallout(rec, "CALL_LOW_MANA_PUSH"))
+            H.assertFalse(hasCallout(rec, "CALL_OUTNUMBERED_DISENGAGE"))
+            H.assertTrue(hasRejectedCallout(rec, "CALL_FAKE_KICK_2", "missing_enemy_interrupt"))
+            H.assertTrue(hasRejectedCallout(rec, "CALL_LOW_MANA_PUSH", "missing_low_mana_target"))
+            H.assertTrue(hasRejectedCallout(rec, "CALL_OUTNUMBERED_DISENGAGE", "missing_outnumbered"))
+        end)
+end)
+
+H.it(g, "capability gate: BG callouts require matching mode and flag carrier state", function()
+    withPatternMatches({
+            { labelKey = "CALL_BG_DEFEND" },
+            { labelKey = "CALL_FLAG_CARRIER_LOW" },
+        }, function()
+            local state = SE:BuildTestState({"ROGUE","MAGE","PRIEST"})
+            state.combatPhase = "ACTIVE"
+            state.pvpContext = "bg"
+            local rec = SE:Evaluate(state)
+            H.assertFalse(hasCallout(rec, "CALL_BG_DEFEND"))
+            H.assertFalse(hasCallout(rec, "CALL_FLAG_CARRIER_LOW"))
+            H.assertTrue(hasRejectedCallout(rec, "CALL_BG_DEFEND", "wrong_mode"))
+            H.assertTrue(hasRejectedCallout(rec, "CALL_FLAG_CARRIER_LOW", "missing_low_flag_carrier"))
+        end)
+end)
+
+H.it(g, "capability gate: low-mana healer push fires only on the actual low-mana healer target", function()
+    local state = SE:BuildTestState({"ROGUE","MAGE","PRIEST"})
+    state.combatPhase = "ACTIVE"
+    state.pvpContext = "arena"
+    local priest = findEnemyByClass(state, "PRIEST")
+    priest.healthPct = 20
+    priest.manaPct = 10
+
+    local rec = SE:Evaluate(state)
+    H.assertTrue(hasCallout(rec, "CALL_LOW_MANA_PUSH"))
+end)
+
+H.it(g, "capability gate: post-builder burst and outnumbered callouts are not direct inserts", function()
+    local source = readAddonFile("StrategyEngine.lua")
+    H.assertFalse(source:find("table%.insert%(%s*callouts", 1, false) ~= nil,
+        "recommendation callouts must be emitted through addCallout so requirements/rejections run")
+end)
+
+H.it(g, "capability gate: every emitted callout key has a central requirement rule", function()
+    local source = readAddonFile("StrategyEngine.lua")
+    for key, _ in pairs(collectEmittedCalloutKeys()) do
+        H.assertTrue(source:find(key .. "%s*=", 1, false) ~= nil,
+            key .. " must have an explicit CALLOUT_REQUIREMENTS entry, even when intentionally unconditional")
+    end
+end)
+
+H.it(g, "action gate: owned ability actions are rejected when capability inference denies them", function()
+    local OwnComps = H.ns.OwnComps
+    local oldInfer = OwnComps.Infer
+    local oldIdentify = OwnComps.Identify
+    OwnComps.Infer = function(self, friendlies)
+        local caps = oldInfer(self, friendlies)
+        caps.hasPurge = false
+        caps.hasHoJ = false
+        caps.hasBloodlust = false
+        caps.hasTremor = false
+        return caps
+    end
+    OwnComps.Identify = function() return nil end
+
+    local rec
+    local ok, err = pcall(function()
+        local state = SE:BuildTestState({"ROGUE","MAGE","PRIEST"})
+        state.combatPhase = "ACTIVE"
+        state.pvpContext = "arena"
+        rec = SE:Evaluate(state)
+    end)
+
+    OwnComps.Infer = oldInfer
+    OwnComps.Identify = oldIdentify
+    if not ok then error(err, 0) end
+
+    local shaman = findAction(rec.playerActions, "party1")
+    local paladin = findAction(rec.playerActions, "party2")
+    H.assertNil(shaman, "shaman Purge action should be removed when hasPurge is false")
+    H.assertNil(paladin, "paladin HoJ action should be removed when hasHoJ is false")
+    H.assertTrue(hasRejectedAction(rec, "ACTION_SHAMAN_PURGE", "missing_hasPurge"))
+    H.assertTrue(hasRejectedAction(rec, "ACTION_PALADIN_HOJ", "missing_hasHoJ"))
 end)
 
 H.it(g, "Tremor down does not wake targetless RESET states", function()
@@ -885,7 +1089,7 @@ H.it(g, "Evaluate suppresses profile Tremor callout without Tremor support", fun
 end)
 
 H.it(g, "Evaluate pushes CALL_BURST_BLOCK_INCOMING when iceBlockBelow30 >= 0.7", function()
-    local state = SE:BuildTestState({"WARLOCK","DRUID","WARRIOR"})
+    local state = SE:BuildTestState({"ROGUE","MAGE","PRIEST"})
     state.combatPhase = "ACTIVE"
     seedProfile(state, "iceBlockBelow30", 9, 2)  -- ~ 0.82
     local rec = SE:Evaluate(state)
@@ -894,6 +1098,16 @@ H.it(g, "Evaluate pushes CALL_BURST_BLOCK_INCOMING when iceBlockBelow30 >= 0.7",
         if c == "CALL_BURST_BLOCK_INCOMING" then found = true; break end
     end
     H.assertTrue(found)
+end)
+
+H.it(g, "Evaluate suppresses CALL_BURST_BLOCK_INCOMING when no mage exists", function()
+    local state = SE:BuildTestState({"WARLOCK","DRUID","WARRIOR"})
+    state.combatPhase = "ACTIVE"
+    seedProfile(state, "iceBlockBelow30", 9, 2)  -- ~ 0.82
+    local rec = SE:Evaluate(state)
+    H.assertFalse(hasCallout(rec, "CALL_BURST_BLOCK_INCOMING"),
+        "Ice Block tendency must not create mage advice against a non-mage comp")
+    H.assertTrue(hasRejectedCallout(rec, "CALL_BURST_BLOCK_INCOMING", "missing_enemy_MAGE"))
 end)
 
 H.it(g, "Evaluate suppresses profile callouts when samples < threshold", function()
