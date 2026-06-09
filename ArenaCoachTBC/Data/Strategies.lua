@@ -1,4 +1,4 @@
--- ArenaCoachTBC - Composition signature -> recommended openers and callouts
+-- ArenaCoachTBC - Composition signature -> enemy plans and response hints
 -- The intent is to keep "what to do vs this comp" data-driven so it can be
 -- expanded without touching the engine.
 --
@@ -30,12 +30,15 @@ local ST = ns.Strategies
 --   bracket     : optional 2|3|5. Only matches when state.bracket equals this
 --                 value; nil means bracket-agnostic (matches anywhere).
 --                 Bracket-specific entries win over agnostic ones.
---   openTarget  : class to suggest opening on (if alive)
---   swapTarget  : class to consider swapping to
---   killTarget  : class to bias as the active KILL target when the matchup
---                 plan differs from generic role/armor scoring
---   threats     : { class -> top danger note }
---   callouts    : ordered list of callout keys (resolved via locale)
+--   targetPlan  : optional { open, swap, kill } class targets. Legacy
+--                 openTarget/swapTarget/killTarget fields are normalized
+--                 into this shape for older local extensions.
+--   enemyThreats : { class -> top danger note }
+--   responseHints : ordered list of response callout keys. These are only
+--                   candidates; StrategyEngine validates them through the
+--                   central requirements gate before display.
+--   profileDefaults : optional opponent tendency priors used before a
+--                     recorded opponent profile has enough samples.
 --   defensiveTriggers : optional list of trigger names that force DEFEND
 --   ownVariants : optional { ownArchetype -> overrides } so a single enemy
 --                 entry can give different advice to different own teams.
@@ -57,12 +60,13 @@ ST.comps = {
         core  = { MAGE = true, PRIEST = true, ROGUE = true },
         openTarget = "PRIEST",
         swapTarget = "MAGE",
-        threats = {
+        profileDefaults = { trinketsFear = 0.65, kicksFirstHeal = 0.60, iceBlockBelow30 = 0.60 },
+        enemyThreats = {
             MAGE   = "Polymorph + burst",
             ROGUE  = "Cheap Shot opener / Blind",
             PRIEST = "Fear chain",
         },
-        callouts = {
+        responseHints = {
             "CALL_TREMOR_FEAR",
             "CALL_GROUND_POLY",
             "CALL_FREEDOM_WAR",
@@ -96,7 +100,7 @@ ST.comps = {
         core  = { WARRIOR = true, MAGE = true, SHAMAN = true },
         openTarget = "MAGE",
         swapTarget = "SHAMAN",
-        callouts = { "CALL_PURGE", "CALL_TREMOR_FEAR", "CALL_FREEDOM_WAR" },
+        responseHints = { "CALL_PURGE", "CALL_TREMOR_FEAR", "CALL_FREEDOM_WAR" },
         chains = {
             { id = "wms_sheep_into_train", labelKey = "CHAIN_WMS_SHEEP_INTO_TRAIN",
               label = "Sheep healer, MS train the kill target",
@@ -113,11 +117,11 @@ ST.comps = {
         core  = { WARLOCK = true, DRUID = true },
         openTarget = "WARLOCK",
         swapTarget = "DRUID",
-        threats = {
+        enemyThreats = {
             WARLOCK = "Fear / Death Coil / Unstable Affliction",
             DRUID   = "Cyclone / kite",
         },
-        callouts = {
+        responseHints = {
             "CALL_TREMOR_FEAR",
             "CALL_GROUND_DC",
             "CALL_PURGE",
@@ -143,7 +147,7 @@ ST.comps = {
         core  = { WARLOCK = true, SHAMAN = true },
         openTarget = "SHAMAN",
         swapTarget = "WARLOCK",
-        callouts = { "CALL_PURGE", "CALL_TREMOR_FEAR" },
+        responseHints = { "CALL_PURGE", "CALL_TREMOR_FEAR" },
     },
     -- Warlock / Paladin "drain"
     {
@@ -153,7 +157,7 @@ ST.comps = {
         openTarget = "PALADIN",
         swapTarget = "WARLOCK",
         killTarget = "PALADIN",
-        callouts = { "CALL_PURGE", "CALL_MANA_BURN_PLAN" },
+        responseHints = { "CALL_PURGE", "CALL_MANA_BURN_PLAN" },
         chains = {
             { id = "wlp_fear_into_hoj", labelKey = "CHAIN_WLP_FEAR_INTO_HOJ",
               label = "Fear chain into Hammer of Justice on the paladin",
@@ -172,11 +176,11 @@ ST.comps = {
         core  = { HUNTER = true, DRUID = true },
         openTarget = "HUNTER",
         swapTarget = "DRUID",
-        threats = {
+        enemyThreats = {
             HUNTER = "Mana drain / kite",
             DRUID  = "Roots / cyclone / HoT race",
         },
-        callouts = {
+        responseHints = {
             "CALL_FREEDOM_WAR",
             "CALL_CLEANSE_ROOTS",
             "CALL_AVOID_OVERCHASE",
@@ -196,7 +200,7 @@ ST.comps = {
         core  = { HUNTER = true, WARRIOR = true },
         openTarget = "HUNTER",
         swapTarget = "WARRIOR",
-        callouts = { "CALL_FREEDOM_WAR", "CALL_AVOID_OVERCHASE" },
+        responseHints = { "CALL_FREEDOM_WAR", "CALL_AVOID_OVERCHASE" },
         chains = {
             { id = "beast_trap_into_intercept", labelKey = "CHAIN_BEAST_TRAP_INTO_INTERCEPT",
               label = "Trap kill target, warrior intercepts on land",
@@ -216,7 +220,7 @@ ST.comps = {
         core  = { WARRIOR = true, PALADIN = true },
         openTarget = "PALADIN",
         swapTarget = "WARRIOR",
-        callouts = { "CALL_PURGE", "CALL_HOJ_KILL" },
+        responseHints = { "CALL_PURGE", "CALL_HOJ_KILL" },
         chains = {
             { id = "tsg_hoj_into_intercept", labelKey = "CHAIN_TSG_HOJ_INTO_INTERCEPT",
               label = "HoJ on the priority target, intercept follow-up",
@@ -235,7 +239,7 @@ ST.comps = {
         core  = { ROGUE = true, SHAMAN = true },
         openTarget = "SHAMAN",
         swapTarget = "ROGUE",
-        callouts = { "CALL_PURGE", "CALL_TREMOR_FEAR" },
+        responseHints = { "CALL_PURGE", "CALL_TREMOR_FEAR" },
     },
     -- ============================================================
     -- Mirror melee cleave
@@ -246,11 +250,11 @@ ST.comps = {
         core  = { WARRIOR = true, SHAMAN = true, PALADIN = true, DRUID = true, PRIEST = true },
         openTarget = "PRIEST",
         swapTarget = "DRUID",
-        threats = {
+        enemyThreats = {
             PRIEST = "Mana Burn / PainSup",
             DRUID  = "Cyclone / NS",
         },
-        callouts = {
+        responseHints = {
             "CALL_PURGE",
             "CALL_CYCLONE_OFF",
             "CALL_EARTHSHOCK_HEAL",
@@ -265,7 +269,7 @@ ST.comps = {
         core  = { MAGE = true, WARLOCK = true, PRIEST = true },
         openTarget = "WARLOCK",
         swapTarget = "MAGE",
-        callouts = { "CALL_GROUND_POLY", "CALL_PURGE", "CALL_TREMOR_FEAR" },
+        responseHints = { "CALL_GROUND_POLY", "CALL_PURGE", "CALL_TREMOR_FEAR" },
         chains = {
             { id = "triple_caster_overlap", labelKey = "CHAIN_TRIPLE_CASTER_OVERLAP",
               label = "Stacked fear+sheep CC chain on the kill target",
@@ -285,7 +289,7 @@ ST.comps = {
         core  = {},
         dynamic = "DOUBLE_HEALER",
         openTarget = nil,
-        callouts = {
+        responseHints = {
             "CALL_MANA_BURN_PLAN",
             "CALL_CYCLONE_OFF",
             "CALL_PURGE",
@@ -297,7 +301,7 @@ ST.comps = {
         core  = {},
         dynamic = "TRIPLE_DPS",
         defaultMode = "DEFEND",
-        callouts = {
+        responseHints = {
             "CALL_PAIN_SUP_READY",
             "CALL_BOP_READY",
             "CALL_PEEL_PRIEST",
@@ -315,8 +319,8 @@ ST.comps = {
         label = "Rogue / Disc Priest - burst-and-fade",
         core  = { ROGUE = true, PRIEST = true },
         openTarget = "PRIEST", swapTarget = "ROGUE",
-        threats = { ROGUE = "Cheap > Kidney burst window" },
-        callouts = { "CALL_TREMOR_FEAR", "CALL_MANA_BURN_PLAN" },
+        enemyThreats = { ROGUE = "Cheap > Kidney burst window" },
+        responseHints = { "CALL_TREMOR_FEAR", "CALL_MANA_BURN_PLAN" },
         chains = {
             { id = "rp_kidney_into_blind", labelKey = "CHAIN_RP_KIDNEY_INTO_BLIND",
               label = "Kidney burst into blind reset",
@@ -332,8 +336,8 @@ ST.comps = {
         label = "Rogue / Resto Druid - DoT + sustained",
         core  = { ROGUE = true, DRUID = true },
         openTarget = "DRUID", swapTarget = "ROGUE",
-        threats = { DRUID = "HoTs + cyclone" },
-        callouts = { "CALL_CYCLONE_OFF", "CALL_PURGE" },
+        enemyThreats = { DRUID = "HoTs + cyclone" },
+        responseHints = { "CALL_CYCLONE_OFF", "CALL_PURGE" },
         chains = {
             { id = "rd_kidney_into_cyclone", labelKey = "CHAIN_RD_KIDNEY_INTO_CYCLONE",
               label = "Rogue stun + druid cyclone lockdown",
@@ -348,8 +352,8 @@ ST.comps = {
         label = "Drainteam - Affliction + Disc Priest",
         core  = { WARLOCK = true, PRIEST = true },
         openTarget = "PRIEST", swapTarget = "WARLOCK",
-        threats = { WARLOCK = "UA + fear chain", PRIEST = "Mana Burn" },
-        callouts = { "CALL_TREMOR_FEAR", "CALL_GROUND_DC", "CALL_MANA_BURN_PLAN" },
+        enemyThreats = { WARLOCK = "UA + fear chain", PRIEST = "Mana Burn" },
+        responseHints = { "CALL_TREMOR_FEAR", "CALL_GROUND_DC", "CALL_MANA_BURN_PLAN" },
     },
     {
         id = "SHATTER_FROST_2V2", bracket = 2,
@@ -357,16 +361,16 @@ ST.comps = {
         core  = { MAGE = true, PRIEST = true },
         specs = { MAGE = "FROST", PRIEST = "DISCIPLINE" },
         openTarget = "MAGE", swapTarget = "PRIEST",
-        threats = { MAGE = "Nova > Sheep > Frostbolt shatter" },
-        callouts = { "CALL_DISP_FROST", "CALL_GROUND_POLY", "CALL_TREMOR_FEAR" },
+        enemyThreats = { MAGE = "Nova > Sheep > Frostbolt shatter" },
+        responseHints = { "CALL_DISP_FROST", "CALL_GROUND_POLY", "CALL_TREMOR_FEAR" },
     },
     {
         id = "SHATTER_2V2", bracket = 2,
         label = "Shatter - Frost Mage + Disc Priest",
         core  = { MAGE = true, PRIEST = true },
         openTarget = "MAGE", swapTarget = "PRIEST",
-        threats = { MAGE = "Nova > Sheep > Frostbolt shatter" },
-        callouts = { "CALL_DISP_FROST", "CALL_GROUND_POLY", "CALL_TREMOR_FEAR" },
+        enemyThreats = { MAGE = "Nova > Sheep > Frostbolt shatter" },
+        responseHints = { "CALL_DISP_FROST", "CALL_GROUND_POLY", "CALL_TREMOR_FEAR" },
         chains = {
             { id = "shatter_nova_into_sheep", labelKey = "CHAIN_SHATTER_NOVA_INTO_SHEEP",
               label = "Frost nova root into sheep on off-target",
@@ -382,8 +386,8 @@ ST.comps = {
         label = "Enhancement Shaman + Disc Priest",
         core  = { SHAMAN = true, PRIEST = true },
         openTarget = "PRIEST", swapTarget = "SHAMAN",
-        threats = { SHAMAN = "Windfury procs + purge our buffs" },
-        callouts = { "CALL_PURGE", "CALL_TREMOR_FEAR", "CALL_MANA_BURN_PLAN" },
+        enemyThreats = { SHAMAN = "Windfury procs + purge our buffs" },
+        responseHints = { "CALL_PURGE", "CALL_TREMOR_FEAR", "CALL_MANA_BURN_PLAN" },
     },
     {
         id = "HUNTER_PRIEST_BM_2V2", bracket = 2,
@@ -391,40 +395,40 @@ ST.comps = {
         core  = { HUNTER = true, PRIEST = true },
         specs = { HUNTER = "BEAST_MASTERY", PRIEST = "DISCIPLINE" },
         openTarget = "HUNTER", swapTarget = "PRIEST",
-        threats = { HUNTER = "Pet pressure + BW window" },
-        callouts = { "CALL_FREEDOM_WAR", "CALL_AVOID_OVERCHASE", "CALL_MANA_BURN_PLAN" },
+        enemyThreats = { HUNTER = "Pet pressure + BW window" },
+        responseHints = { "CALL_FREEDOM_WAR", "CALL_AVOID_OVERCHASE", "CALL_MANA_BURN_PLAN" },
     },
     {
         id = "HUNTER_PRIEST_2V2", bracket = 2,
         label = "BM Hunter + Disc Priest",
         core  = { HUNTER = true, PRIEST = true },
         openTarget = "PRIEST", swapTarget = "HUNTER",
-        threats = { HUNTER = "Trap juggle + sustained ranged" },
-        callouts = { "CALL_MANA_BURN_PLAN", "CALL_AVOID_OVERCHASE" },
+        enemyThreats = { HUNTER = "Trap juggle + sustained ranged" },
+        responseHints = { "CALL_MANA_BURN_PLAN", "CALL_AVOID_OVERCHASE" },
     },
     {
         id = "WAR_DRUID_2V2", bracket = 2,
         label = "Warrior + Resto Druid",
         core  = { WARRIOR = true, DRUID = true },
         openTarget = "DRUID", swapTarget = "WARRIOR",
-        threats = { WARRIOR = "MS pressure into HoT", DRUID = "Cyclone peel" },
-        callouts = { "CALL_FREEDOM_WAR", "CALL_CYCLONE_OFF" },
+        enemyThreats = { WARRIOR = "MS pressure into HoT", DRUID = "Cyclone peel" },
+        responseHints = { "CALL_FREEDOM_WAR", "CALL_CYCLONE_OFF" },
     },
     {
         id = "WAR_HOLY_2V2", bracket = 2,
         label = "Warrior + Holy Paladin",
         core  = { WARRIOR = true, PALADIN = true },
         openTarget = "PALADIN", swapTarget = "WARRIOR",
-        threats = { PALADIN = "BoP + Freedom save", WARRIOR = "MS chain" },
-        callouts = { "CALL_PURGE", "CALL_HOJ_KILL", "CALL_BOP_READY" },
+        enemyThreats = { PALADIN = "BoP + Freedom save", WARRIOR = "MS chain" },
+        responseHints = { "CALL_PURGE", "CALL_HOJ_KILL", "CALL_BOP_READY" },
     },
     {
         id = "SP_PALA_2V2", bracket = 2,
         label = "Shadow Priest + Holy Paladin",
         core  = { PRIEST = true, PALADIN = true },
         openTarget = "PALADIN", swapTarget = "PRIEST",
-        threats = { PRIEST = "Mana Burn + Shadow pressure" },
-        callouts = { "CALL_PURGE", "CALL_HOJ_KILL", "CALL_MANA_BURN_PLAN" },
+        enemyThreats = { PRIEST = "Mana Burn + Shadow pressure" },
+        responseHints = { "CALL_PURGE", "CALL_HOJ_KILL", "CALL_MANA_BURN_PLAN" },
     },
 
     -- ============================================================
@@ -438,8 +442,8 @@ ST.comps = {
         core  = { ROGUE = true, MAGE = true, PRIEST = true },
         specs = { PRIEST = "SHADOW" },
         openTarget = "MAGE", swapTarget = "PRIEST",
-        threats = { PRIEST = "Mind Blast + VT pressure (no healer)", MAGE = "Sheep follow-up", ROGUE = "Cheap > Kidney" },
-        callouts = { "CALL_DISP_FROST", "CALL_TREMOR_FEAR", "CALL_PURGE" },
+        enemyThreats = { PRIEST = "Mind Blast + VT pressure (no healer)", MAGE = "Sheep follow-up", ROGUE = "Cheap > Kidney" },
+        responseHints = { "CALL_DISP_FROST", "CALL_TREMOR_FEAR", "CALL_PURGE" },
     },
     {
         id = "RMP_DISC_3V3", bracket = 3,
@@ -447,16 +451,16 @@ ST.comps = {
         core  = { ROGUE = true, MAGE = true, PRIEST = true },
         specs = { PRIEST = "DISCIPLINE" },
         openTarget = "PRIEST", swapTarget = "MAGE",
-        threats = { MAGE = "Sheep > Nova kill train", PRIEST = "Pain Sup save", ROGUE = "Kidney follow-up" },
-        callouts = { "CALL_GROUND_POLY", "CALL_TREMOR_FEAR", "CALL_DISP_FROST", "CALL_PURGE", "CALL_PAIN_SUP_READY" },
+        enemyThreats = { MAGE = "Sheep > Nova kill train", PRIEST = "Pain Sup save", ROGUE = "Kidney follow-up" },
+        responseHints = { "CALL_GROUND_POLY", "CALL_TREMOR_FEAR", "CALL_DISP_FROST", "CALL_PURGE", "CALL_PAIN_SUP_READY" },
     },
     {
         id = "RMP_3V3", bracket = 3,
         label = "RMP (Rogue / Mage / Priest)",
         core  = { ROGUE = true, MAGE = true, PRIEST = true },
         openTarget = "PRIEST", swapTarget = "MAGE",
-        threats = { MAGE = "Sheep > Nova kill train", PRIEST = "Pain Sup save", ROGUE = "Kidney follow-up" },
-        callouts = { "CALL_GROUND_POLY", "CALL_TREMOR_FEAR", "CALL_DISP_FROST", "CALL_PURGE" },
+        enemyThreats = { MAGE = "Sheep > Nova kill train", PRIEST = "Pain Sup save", ROGUE = "Kidney follow-up" },
+        responseHints = { "CALL_GROUND_POLY", "CALL_TREMOR_FEAR", "CALL_DISP_FROST", "CALL_PURGE" },
     },
     {
         id = "WLD_FERAL_3V3", bracket = 3,
@@ -465,8 +469,8 @@ ST.comps = {
         specs = { DRUID = "FERAL" },
         defaultMode = "DEFEND",
         openTarget = "WARLOCK", swapTarget = "DRUID",
-        threats = { DRUID = "Bleed + Cyclone peel", WARLOCK = "Fear chain into UA", WARRIOR = "MS into bleed" },
-        callouts = { "CALL_TREMOR_FEAR", "CALL_FREEDOM_WAR", "CALL_PEEL_DRUID" },
+        enemyThreats = { DRUID = "Bleed + Cyclone peel", WARLOCK = "Fear chain into UA", WARRIOR = "MS into bleed" },
+        responseHints = { "CALL_TREMOR_FEAR", "CALL_FREEDOM_WAR", "CALL_PEEL_DRUID" },
     },
     {
         id = "WLD_RESTO_3V3", bracket = 3,
@@ -474,24 +478,24 @@ ST.comps = {
         core  = { WARRIOR = true, WARLOCK = true, DRUID = true },
         specs = { DRUID = "RESTORATION" },
         openTarget = "DRUID", swapTarget = "WARLOCK",
-        threats = { WARLOCK = "Howl into UA pressure", WARRIOR = "MS into fear", DRUID = "HoT race" },
-        callouts = { "CALL_FREEDOM_WAR", "CALL_TREMOR_FEAR", "CALL_CYCLONE_OFF", "CALL_MANA_BURN_PLAN" },
+        enemyThreats = { WARLOCK = "Howl into UA pressure", WARRIOR = "MS into fear", DRUID = "HoT race" },
+        responseHints = { "CALL_FREEDOM_WAR", "CALL_TREMOR_FEAR", "CALL_CYCLONE_OFF", "CALL_MANA_BURN_PLAN" },
     },
     {
         id = "WLD_3V3", bracket = 3,
         label = "WLD (Warrior / Lock / Druid)",
         core  = { WARRIOR = true, WARLOCK = true, DRUID = true },
         openTarget = "DRUID", swapTarget = "WARLOCK",
-        threats = { WARLOCK = "Howl into UA pressure", WARRIOR = "MS into fear" },
-        callouts = { "CALL_FREEDOM_WAR", "CALL_TREMOR_FEAR", "CALL_CYCLONE_OFF" },
+        enemyThreats = { WARLOCK = "Howl into UA pressure", WARRIOR = "MS into fear" },
+        responseHints = { "CALL_FREEDOM_WAR", "CALL_TREMOR_FEAR", "CALL_CYCLONE_OFF" },
     },
     {
         id = "JUNGLE_3V3", bracket = 3,
         label = "Jungle (Hunter / Feral / Healer)",
         core  = { HUNTER = true, DRUID = true, PRIEST = true },
         openTarget = "PRIEST", swapTarget = "HUNTER",
-        threats = { HUNTER = "Trap juggle", DRUID = "Cyclone-into-bleed pressure" },
-        callouts = { "CALL_TREMOR_FEAR", "CALL_MANA_BURN_PLAN" },
+        enemyThreats = { HUNTER = "Trap juggle", DRUID = "Cyclone-into-bleed pressure" },
+        responseHints = { "CALL_TREMOR_FEAR", "CALL_MANA_BURN_PLAN" },
     },
     {
         id = "SHATTERPLAY_SHADOW_3V3", bracket = 3,
@@ -499,66 +503,103 @@ ST.comps = {
         core  = { MAGE = true, PRIEST = true, DRUID = true },
         specs = { MAGE = "FROST", PRIEST = "SHADOW", DRUID = "RESTORATION" },
         openTarget = "DRUID", swapTarget = "PRIEST",
-        threats = { MAGE = "Shatter combo into Sheep", PRIEST = "Mind Blast + VT pressure", DRUID = "Cyclone peel" },
-        callouts = { "CALL_PURGE", "CALL_CYCLONE_OFF", "CALL_GROUND_POLY", "CALL_DISP_FROST", "CALL_MANA_BURN_PLAN" },
+        enemyThreats = { MAGE = "Shatter combo into Sheep", PRIEST = "Mind Blast + VT pressure", DRUID = "Cyclone peel" },
+        responseHints = { "CALL_PURGE", "CALL_CYCLONE_OFF", "CALL_GROUND_POLY", "CALL_DISP_FROST", "CALL_MANA_BURN_PLAN" },
     },
     {
         id = "SHATTERPLAY_3V3", bracket = 3,
         label = "Shatterplay (Mage / SPriest / Resto Druid)",
         core  = { MAGE = true, PRIEST = true, DRUID = true },
         openTarget = "DRUID", swapTarget = "MAGE",
-        threats = { MAGE = "Shatter combo", PRIEST = "Shadow pressure + mana burn" },
-        callouts = { "CALL_PURGE", "CALL_CYCLONE_OFF", "CALL_GROUND_POLY" },
+        enemyThreats = { MAGE = "Shatter combo", PRIEST = "Shadow pressure + mana burn" },
+        responseHints = { "CALL_PURGE", "CALL_CYCLONE_OFF", "CALL_GROUND_POLY" },
     },
     {
         id = "LSD_3V3", bracket = 3,
         label = "LSD (Lock / Shaman / Druid)",
         core  = { WARLOCK = true, SHAMAN = true, DRUID = true },
         openTarget = "DRUID", swapTarget = "WARLOCK",
-        threats = { SHAMAN = "Purge + Earth Shock", WARLOCK = "UA + drains" },
-        callouts = { "CALL_PURGE", "CALL_TREMOR_FEAR", "CALL_GROUND_DC" },
+        enemyThreats = { SHAMAN = "Purge + Earth Shock", WARLOCK = "UA + drains" },
+        responseHints = { "CALL_PURGE", "CALL_TREMOR_FEAR", "CALL_GROUND_DC" },
     },
     {
         id = "RPH_3V3", bracket = 3,
         label = "RPH (Rogue / Ret / Healer)",
         core  = { ROGUE = true, PALADIN = true, PRIEST = true },
         openTarget = "PRIEST", swapTarget = "ROGUE",
-        threats = { ROGUE = "Kidney burst", PALADIN = "Cleanse + HoJ" },
-        callouts = { "CALL_PURGE", "CALL_HOJ_KILL", "CALL_TREMOR_FEAR" },
+        enemyThreats = { ROGUE = "Kidney burst", PALADIN = "Cleanse + HoJ" },
+        responseHints = { "CALL_PURGE", "CALL_HOJ_KILL", "CALL_TREMOR_FEAR" },
     },
     {
         id = "WMH_3V3", bracket = 3,
         label = "Thunder cleave (Warrior / Mage / Healer)",
         core  = { WARRIOR = true, MAGE = true, PRIEST = true },
         openTarget = "PRIEST", swapTarget = "MAGE",
-        threats = { MAGE = "Sheep into shatter", WARRIOR = "MS chain" },
-        callouts = { "CALL_FREEDOM_WAR", "CALL_DISP_FROST", "CALL_PURGE" },
+        enemyThreats = { MAGE = "Sheep into shatter", WARRIOR = "MS chain" },
+        responseHints = { "CALL_FREEDOM_WAR", "CALL_DISP_FROST", "CALL_PURGE" },
     },
     {
         id = "PALA_CLEAVE_3V3", bracket = 3,
         label = "Pala cleave (Warrior / Ret / Healer)",
         core  = { WARRIOR = true, PALADIN = true, DRUID = true },
         openTarget = "DRUID", swapTarget = "PALADIN",
-        threats = { WARRIOR = "MS into peel chain" },
-        callouts = { "CALL_FREEDOM_WAR", "CALL_PURGE", "CALL_CYCLONE_OFF" },
+        enemyThreats = { WARRIOR = "MS into peel chain" },
+        responseHints = { "CALL_FREEDOM_WAR", "CALL_PURGE", "CALL_CYCLONE_OFF" },
     },
     {
         id = "ELE_SHAMAN_3V3", bracket = 3,
         label = "Ele Shaman + Mage + Healer",
         core  = { SHAMAN = true, MAGE = true, PRIEST = true },
         openTarget = "PRIEST", swapTarget = "SHAMAN",
-        threats = { SHAMAN = "LB + shock burst", MAGE = "Sheep + nova" },
-        callouts = { "CALL_PURGE", "CALL_GROUND_POLY", "CALL_TREMOR_FEAR" },
+        enemyThreats = { SHAMAN = "LB + shock burst", MAGE = "Sheep + nova" },
+        responseHints = { "CALL_PURGE", "CALL_GROUND_POLY", "CALL_TREMOR_FEAR" },
     },
     {
         id = "HUNTER_LOCK_PRIEST_3V3", bracket = 3,
         label = "Hunter / Lock / Priest",
         core  = { HUNTER = true, WARLOCK = true, PRIEST = true },
         openTarget = "PRIEST", swapTarget = "WARLOCK",
-        threats = { HUNTER = "Trap juggle", WARLOCK = "Fear chain + UA" },
-        callouts = { "CALL_TREMOR_FEAR", "CALL_GROUND_DC", "CALL_MANA_BURN_PLAN" },
+        enemyThreats = { HUNTER = "Trap juggle", WARLOCK = "Fear chain + UA" },
+        responseHints = { "CALL_TREMOR_FEAR", "CALL_GROUND_DC", "CALL_MANA_BURN_PLAN" },
     },
 }
+
+local function hasAny(t)
+    return type(t) == "table" and next(t) ~= nil
+end
+
+local function normalizeTargetPlan(entry)
+    if not entry then return end
+    local plan = {}
+    for k, v in pairs(entry.targetPlan or {}) do plan[k] = v end
+    if entry.openTarget ~= nil and plan.open == nil then plan.open = entry.openTarget end
+    if entry.swapTarget ~= nil and plan.swap == nil then plan.swap = entry.swapTarget end
+    if entry.killTarget ~= nil and plan.kill == nil then plan.kill = entry.killTarget end
+    entry.targetPlan = plan
+    entry.openTarget = nil
+    entry.swapTarget = nil
+    entry.killTarget = nil
+end
+
+local function normalizeResponseFields(entry)
+    if not entry then return end
+    if entry.threats and not entry.enemyThreats then entry.enemyThreats = entry.threats end
+    if entry.callouts and not entry.responseHints then entry.responseHints = entry.callouts end
+    entry.threats = nil
+    entry.callouts = nil
+end
+
+local function normalizeEntry(entry)
+    normalizeTargetPlan(entry)
+    normalizeResponseFields(entry)
+end
+
+for _, comp in ipairs(ST.comps) do
+    normalizeEntry(comp)
+    for _, variant in pairs(comp.ownVariants or {}) do
+        normalizeEntry(variant)
+    end
+end
 
 -- Predefined enemy comps for /acc test
 ST.testComps = {
@@ -661,7 +702,16 @@ function ST:ApplyOwnVariant(comp, ownArchetypeId)
     if not v then return comp end
     local out = {}
     for k, val in pairs(comp) do out[k] = val end
-    for k, val in pairs(v) do out[k] = val end
+    for k, val in pairs(v) do
+        if k == "targetPlan" and type(val) == "table" then
+            local plan = {}
+            for pk, pv in pairs(out.targetPlan or {}) do plan[pk] = pv end
+            for pk, pv in pairs(val) do plan[pk] = pv end
+            out.targetPlan = plan
+        else
+            out[k] = val
+        end
+    end
     out._variantApplied = ownArchetypeId
     return out
 end

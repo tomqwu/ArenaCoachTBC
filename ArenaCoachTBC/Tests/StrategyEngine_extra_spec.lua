@@ -66,9 +66,9 @@ local function collectEmittedCalloutKeys()
     end
     local function addComp(comp)
         if not comp then return end
-        addList(comp.callouts)
+        addList(comp.responseHints or comp.callouts)
         for _, variant in pairs(comp.ownVariants or {}) do
-            addList(variant.callouts)
+            addList(variant.responseHints or variant.callouts)
         end
     end
     local Strategies = H.ns.Strategies or {}
@@ -85,6 +85,19 @@ local function collectEmittedCalloutKeys()
     add("CALL_LOW_MANA_PUSH")
     add("CALL_OUTNUMBERED_DISENGAGE")
     keys.BURST_NOW = true
+    return keys
+end
+
+local function collectCatalogResponseHints()
+    local keys = {}
+    local Strategies = H.ns.Strategies or {}
+    local function addList(list)
+        for _, key in ipairs(list or {}) do keys[key] = true end
+    end
+    for _, comp in ipairs(Strategies.comps or {}) do
+        addList(comp.responseHints)
+        for _, variant in pairs(comp.ownVariants or {}) do addList(variant.responseHints) end
+    end
     return keys
 end
 
@@ -443,6 +456,17 @@ H.it(g, "capability gate: pattern callouts require their enemy setup", function(
     end)
 end)
 
+H.it(g, "catalog lint: every response hint has a central requirement rule", function()
+    H.assertNotNil(SE.HasCalloutRequirement, "StrategyEngine must expose requirement lint helper")
+    local hints = collectCatalogResponseHints()
+    local count = 0
+    for key, _ in pairs(hints) do
+        count = count + 1
+        H.assertTrue(SE:HasCalloutRequirement(key), "missing callout requirement for response hint " .. tostring(key))
+    end
+    H.assertTrue(count > 0, "catalog response hint lint should inspect at least one hint")
+end)
+
 H.it(g, "capability gate: injected callouts still require live threat and target facts", function()
     withPatternMatches({ { labelKey = "CALL_PATTERN_FEAR_INTO_POLY" } }, function()
             local state = SE:BuildTestState({"MAGE","DRUID"})
@@ -758,7 +782,7 @@ H.it(g, "Evaluate consumes state.bracket so scoring picks up overrides", functio
     H.assertNotNil(rec)  -- engine still produces a rec under bracket=2
 end)
 
-H.it(g, "comp openTarget biases PRE target selection", function()
+H.it(g, "comp targetPlan.open biases PRE target selection", function()
     local state = SE:BuildTestState({"WARLOCK","DRUID","WARRIOR"})
     state.combatPhase = "PRE"
     local rec = SE:Evaluate(state)
@@ -1123,6 +1147,26 @@ H.it(g, "Evaluate suppresses profile callouts when samples < threshold", functio
         H.assertTrue(c ~= "CALL_FAKE_KICK_2",
             "should not push CALL_FAKE_KICK_2 with n=3 (below threshold)")
     end
+end)
+
+H.it(g, "Evaluate uses comp profileDefaults before profile samples mature", function()
+    local Strategies = H.ns.Strategies
+    local rmp
+    for _, comp in ipairs(Strategies.comps or {}) do
+        if comp.id == "RMP" then rmp = comp; break end
+    end
+    H.assertNotNil(rmp, "RMP comp missing")
+    local savedDefaults = rmp.profileDefaults
+    rmp.profileDefaults = { iceBlockBelow30 = 0.75 }
+
+    local state = SE:BuildTestState({"ROGUE","MAGE","PRIEST"})
+    state.combatPhase = "ACTIVE"
+    seedProfile(state, "iceBlockBelow30", 4, 1)  -- n = 3, so EstimateOrDefault uses comp default
+    local rec = SE:Evaluate(state)
+
+    rmp.profileDefaults = savedDefaults
+    H.assertTrue(hasCallout(rec, "CALL_BURST_BLOCK_INCOMING"),
+        "comp profileDefaults should feed profile callouts before samples mature")
 end)
 
 H.it(g, "Evaluate does not push profile callouts when no profile is on state", function()

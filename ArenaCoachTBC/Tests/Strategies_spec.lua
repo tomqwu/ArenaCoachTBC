@@ -80,9 +80,9 @@ H.it(g, "testComps has all 5 entries", function()
 end)
 
 H.it(g, "ApplyOwnVariant returns base comp when no variants", function()
-    local base = { id = "X", openTarget = "A" }
+    local base = { id = "X", targetPlan = { open = "A" } }
     local out = ST:ApplyOwnVariant(base, "MELEE_CLEAVE")
-    H.assertEq(out.openTarget, "A")
+    H.assertEq(out.targetPlan.open, "A")
 end)
 
 H.it(g, "ApplyOwnVariant merges variant fields", function()
@@ -99,9 +99,9 @@ H.it(g, "ApplyOwnVariant returns nil for nil input", function()
 end)
 
 H.it(g, "ApplyOwnVariant returns comp unchanged when archetype unknown", function()
-    local base = { id = "X", openTarget = "A", ownVariants = { Y = { openTarget = "B" } } }
+    local base = { id = "X", targetPlan = { open = "A" }, ownVariants = { Y = { targetPlan = { open = "B" } } } }
     local out = ST:ApplyOwnVariant(base, "Z")
-    H.assertEq(out.openTarget, "A")
+    H.assertEq(out.targetPlan.open, "A")
 end)
 
 H.it(g, "comps catalog contains expanded entries", function()
@@ -160,14 +160,33 @@ H.it(g, "3v3 catalog contains at least 10 bracket-tagged entries", function()
     H.assertTrue(#found >= 10, "expected >=10 3v3 comps, got " .. #found)
 end)
 
-H.it(g, "every bracket-tagged comp has core, openTarget, callouts", function()
+H.it(g, "every bracket-tagged comp has core, targetPlan, and response hints", function()
     for _, c in ipairs(ST.comps) do
         if c.bracket then
             H.assertNotNil(c.id,         "comp missing id")
             H.assertNotNil(c.label,      c.id .. " missing label")
             H.assertNotNil(c.core,       c.id .. " missing core")
-            H.assertNotNil(c.openTarget, c.id .. " missing openTarget")
-            H.assertNotNil(c.callouts,   c.id .. " missing callouts")
+            H.assertNotNil(c.targetPlan, c.id .. " missing targetPlan")
+            H.assertNotNil(c.targetPlan.open, c.id .. " missing targetPlan.open")
+            H.assertNotNil(c.responseHints, c.id .. " missing responseHints")
+        end
+    end
+end)
+
+H.it(g, "built-in comps use split catalog fields instead of executable callouts", function()
+    for _, c in ipairs(ST.comps) do
+        H.assertNil(c.callouts, c.id .. " should use responseHints, not callouts")
+        H.assertNil(c.threats, c.id .. " should use enemyThreats, not threats")
+        H.assertNil(c.openTarget, c.id .. " should use targetPlan.open, not openTarget")
+        H.assertNil(c.swapTarget, c.id .. " should use targetPlan.swap, not swapTarget")
+        H.assertNil(c.killTarget, c.id .. " should use targetPlan.kill, not killTarget")
+        H.assertNotNil(c.targetPlan, c.id .. " missing normalized targetPlan")
+        H.assertNotNil(c.responseHints, c.id .. " missing normalized responseHints")
+        for _, variant in pairs(c.ownVariants or {}) do
+            H.assertNil(variant.callouts, c.id .. " variant should use responseHints, not callouts")
+            H.assertNil(variant.openTarget, c.id .. " variant should use targetPlan.open, not openTarget")
+            H.assertNil(variant.swapTarget, c.id .. " variant should use targetPlan.swap, not swapTarget")
+            H.assertNil(variant.killTarget, c.id .. " variant should use targetPlan.kill, not killTarget")
         end
     end
 end)
@@ -533,8 +552,8 @@ H.it(g, "every bracket-tagged comp references existing locale keys", function()
     local L = H.ns.locales and H.ns.locales.enUS
     H.assertNotNil(L, "enUS locale failed to load")
     for _, c in ipairs(ST.comps) do
-        if c.bracket and c.callouts then
-            for _, key in ipairs(c.callouts) do
+        if c.bracket and c.responseHints then
+            for _, key in ipairs(c.responseHints) do
                 H.assertNotNil(L[key], c.id .. " uses missing locale key " .. key)
             end
         end

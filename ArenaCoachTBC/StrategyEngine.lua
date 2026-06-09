@@ -315,6 +315,16 @@ end
 -- ============================================================
 -- Scoring
 -- ============================================================
+local function compTargetPlan(comp, slot)
+    if not comp then return nil end
+    local plan = comp.targetPlan
+    if type(plan) == "table" and plan[slot] ~= nil then return plan[slot] end
+    if slot == "open" then return comp.openTarget end
+    if slot == "swap" then return comp.swapTarget end
+    if slot == "kill" then return comp.killTarget end
+    return nil
+end
+
 local function scoreEnemy(enemy, state, comp)
     local w = SE:GetWeights(state and state.bracket)
     local score = 0
@@ -364,14 +374,14 @@ local function scoreEnemy(enemy, state, comp)
 
     local phase = state.combatPhase or "PRE"
     local cfg = (state.config and state.config.strategy) or {}
-    if comp and comp.openTarget and phase == "PRE" and enemy.class == comp.openTarget then
+    if phase == "PRE" and enemy.class == compTargetPlan(comp, "open") then
         add(w.comp_open_target, "comp_open_target")
     end
-    if comp and comp.swapTarget and phase ~= "PRE" and cfg.allowDpsSwap ~= false
-       and enemy.class == comp.swapTarget then
+    if phase ~= "PRE" and cfg.allowDpsSwap ~= false
+       and enemy.class == compTargetPlan(comp, "swap") then
         add(w.comp_swap_target, "comp_swap_target")
     end
-    if comp and comp.killTarget and phase ~= "PRE" and enemy.class == comp.killTarget then
+    if phase ~= "PRE" and enemy.class == compTargetPlan(comp, "kill") then
         add(w.comp_kill_target, "comp_kill_target")
     end
 
@@ -857,6 +867,10 @@ local CALLOUT_REQUIREMENTS = {
     BURST_NOW = { requireMode = "KILL", requirePrimaryTarget = true, requireBurstAllowed = true },
 }
 
+function SE:HasCalloutRequirement(key)
+    return CALLOUT_REQUIREMENTS[key] ~= nil
+end
+
 local function hasAnyCap(caps, names)
     for _, name in ipairs(names or {}) do
         if caps[name] == true then return true end
@@ -1055,8 +1069,9 @@ local function buildCallouts(state, comp, primaryTarget, mode)
         return addCallout(state, out, seen, key, primaryTarget, context, true)
     end
 
-    if comp and comp.callouts then
-        for _, k in ipairs(comp.callouts) do push(k) end
+    local responseHints = comp and (comp.responseHints or comp.callouts)
+    if responseHints then
+        for _, k in ipairs(responseHints) do push(k) end
     end
 
     local obs = state.observations or {}
@@ -1109,7 +1124,8 @@ local function buildCallouts(state, comp, primaryTarget, mode)
     if OP and profile then
         local contrib = {}
         local function checkTendency(key, threshold, callKey)
-            local v = OP:EstimateOrDefault(profile, key, 0.5)
+            local defaults = (comp and comp.profileDefaults) or {}
+            local v = OP:EstimateOrDefault(profile, key, defaults[key] or 0.5)
             if v >= threshold then
                 if push(callKey) then
                     table.insert(contrib, string.format("%s=%.2f", key, v))
