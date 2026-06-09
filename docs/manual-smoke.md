@@ -82,7 +82,8 @@ behaviour is what tests can't see.
 - [ ] Play one real arena, battleground, or world-PvP fight where the advice feels wrong, late, or absent
 - [ ] After the fight, run `/acc trace dump` and `/acc record status`; then `/reload` or logout so SavedVariables are written
 - [ ] Keep the matching `Logs/WoWCombatLog*.txt` file and `WTF/Account/<account>/SavedVariables/ArenaCoachTBC.lua`
-- [ ] Replay the addon recording with `lua5.1 tools/replay.lua <path/to/ArenaCoachTBC.lua>` and compare the last recommendations with the screenshot or clip
+- [ ] Replay the addon recording with `lua5.1 tools/replay.lua <path/to/ArenaCoachTBC.lua>` and compare the redacted timeline with the screenshot or clip
+- [ ] For a committed fixture, run `lua5.1 tools/replay.lua --golden ArenaCoachTBC/Tests/Fixtures/<name>.golden.txt ArenaCoachTBC/Tests/Fixtures/<name>.lua`; use `--update-golden` only when the changed advice is intentional
 
 ## Integration
 

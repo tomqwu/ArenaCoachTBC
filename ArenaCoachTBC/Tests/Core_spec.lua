@@ -1382,6 +1382,8 @@ H.it(g, "record captures CLEU events when enabled", function()
     EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
     H.assertEq(#_G.ArenaCoachTBCDB.record.events, 1)
     H.assertEq(_G.ArenaCoachTBCDB.record.events[1].spell, 30330)
+    H.assertEq(_G.ArenaCoachTBCDB.record.events[1].srcName, "Src")
+    H.assertEq(_G.ArenaCoachTBCDB.record.events[1].dstName, "Dst")
 end)
 
 H.it(g, "record honours the maxEvents cap", function()

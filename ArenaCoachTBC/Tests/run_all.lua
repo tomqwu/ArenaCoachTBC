@@ -45,6 +45,7 @@ local specs = {
     "ScreenEdgeGlow_spec.lua",
     "Nameplate_spec.lua",
     "WeakAuraBridge_spec.lua",
+    "ReplayReport_spec.lua",
     "Locales_spec.lua",
     "StrategyEngine_extra_spec.lua",
     "UI_spec.lua",

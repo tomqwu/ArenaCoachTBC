@@ -1,0 +1,7 @@
+# ArenaCoachTBC replay report
+reportVersion=1
+source=ArenaCoachTBC/Tests/Fixtures/replay_tiny.lua
+events=2 rows=2
+idx | time | event | src>dst | mode | comp | target | playerAction | callouts | rejected | bars
+001 | 0.0 | SPELL_CAST_SUCCESS:12472/Icy Veins | G01/P01>G02/P02 | KILL | RMP_DISC_3V3 | PRIEST/P03 | player:ACTION_WARRIOR_KILL->P03 | CALL_EARTHSHOCK_HEAL,CALL_GROUND_POLY,CALL_TREMOR_FEAR | callouts=CALL_DISP_FROST:missing_any_cap,CALL_PAIN_SUP_READY:missing_hasPainSuppression,CALL_PURGE:missing_purgeable_target | party1:ACTION_SHAMAN_PURGE@10s->P03,party2:ACTION_DRUID_HEAL_CC@10s->P01,player:ACTION_WARRIOR_KILL@10s->P03
+002 | 1.5 | SPELL_AURA_APPLIED:408/Kidney Shot | G03/P04>G02/P02 | KILL | RMP_DISC_3V3 | PRIEST/P03 | player:ACTION_WARRIOR_KILL->P03 | CALL_EARTHSHOCK_HEAL,CALL_GROUND_POLY,CALL_TREMOR_FEAR | callouts=CALL_DISP_FROST:missing_any_cap,CALL_PAIN_SUP_READY:missing_hasPainSuppression,CALL_PURGE:missing_purgeable_target | party1:ACTION_SHAMAN_PURGE@10s->P03,party2:ACTION_DRUID_HEAL_CC@10s->P01,player:ACTION_WARRIOR_KILL@10s->P03

@@ -84,7 +84,7 @@ local RECORD_DEFAULT_CAP = 1000
 
 -- Append a CLEU event to the recording buffer when enabled. Used by the
 -- companion tools/replay.lua to re-run the engine on captured logs.
-local function appendRecord(subEvent, ts, srcGUID, destGUID, spellID, spellName)
+local function appendRecord(subEvent, ts, srcGUID, srcName, destGUID, destName, spellID, spellName)
     local db = _G.ArenaCoachTBCDB
     if not (db and db.record and db.record.enabled and subEvent) then return end
     db.record.events = db.record.events or {}
@@ -93,7 +93,9 @@ local function appendRecord(subEvent, ts, srcGUID, destGUID, spellID, spellName)
         ts    = ts or 0,
         sub   = subEvent,
         src   = srcGUID,
+        srcName = srcName,
         dst   = destGUID,
+        dstName = destName,
         spell = spellID,
         name  = spellName,
     })
@@ -1061,7 +1063,7 @@ local function onCLEU(_event, ...)
     if not subEvent then return end
 
     -- Recording (for offline replay)
-    appendRecord(subEvent, ts, sourceGUID, destGUID, spellID, spellName)
+    appendRecord(subEvent, ts, sourceGUID, sourceName, destGUID, destName, spellID, spellName)
 
     -- Cooldown tracking
     if ns.CooldownTracker then
@@ -1354,37 +1356,106 @@ local function handleSlash(input)
     end
 end
 
+local function cloneReplayUnit(unit, fallbackUnit)
+    if type(unit) ~= "table" then return nil end
+    local copy = {}
+    for k, v in pairs(unit) do
+        if type(v) ~= "table" then copy[k] = v end
+    end
+    copy.unit = copy.unit or fallbackUnit
+    copy.guid = copy.guid or copy.unit or fallbackUnit
+    copy.class = copy.class or "WARRIOR"
+    if copy.alive == nil then copy.alive = true end
+    copy.healthPct = copy.healthPct or copy.hpPct or 100
+    copy.hasTrinket = copy.hasTrinket ~= false
+    copy.importantBuffs = {}
+    for k, v in pairs(unit.importantBuffs or {}) do copy.importantBuffs[k] = v end
+    copy.importantDebuffs = {}
+    for k, v in pairs(unit.importantDebuffs or {}) do copy.importantDebuffs[k] = v end
+    copy.observedSpells = {}
+    for k, v in pairs(unit.observedSpells or {}) do copy.observedSpells[k] = v end
+    return copy
+end
+
+local function seedReplayUnits(dst, src, defaultPrefix)
+    local keys = {}
+    for key in pairs(src or {}) do table.insert(keys, key) end
+    table.sort(keys, function(a, b) return tostring(a) < tostring(b) end)
+    for i, key in ipairs(keys) do
+        local unit = cloneReplayUnit(src[key], defaultPrefix .. tostring(i))
+        if unit then dst[unit.guid or key] = unit end
+    end
+end
+
+local function replayEnemyClassList(enemies)
+    local keys, out = {}, {}
+    for key in pairs(enemies or {}) do table.insert(keys, key) end
+    table.sort(keys, function(a, b) return tostring(a) < tostring(b) end)
+    for _, key in ipairs(keys) do table.insert(out, enemies[key].class) end
+    return out
+end
+
+local function copyReplayList(list)
+    local out = {}
+    for _, value in ipairs(list or {}) do table.insert(out, value) end
+    return out
+end
+
+local function copyReplayRecords(list)
+    local out = {}
+    for _, item in ipairs(list or {}) do
+        local copy = {}
+        for k, v in pairs(item) do
+            if type(v) ~= "table" then copy[k] = v end
+        end
+        table.insert(out, copy)
+    end
+    return out
+end
+
 -- M10 #68: replay db.record.events through the engine offline and
--- return a sequence of (mode, comp, chainId) summaries — one per
--- evaluated event. `modifier` is an optional function (events,index)
--- -> events that mutates the event list before replay; absent
--- means baseline. Pure: builds a synthetic state, doesn't touch
--- the live one. Headless tests call this directly.
-function Core:ReplayRecord(events, modifier)
+-- return a sequence of recommendation summaries — one per evaluated
+-- event. `modifier` is an optional function (events,index) -> events
+-- that mutates the event list before replay; absent means baseline.
+-- `opts.state` may seed friendlies/enemies/bracket/pvpContext for golden
+-- fixtures. Pure: builds a synthetic state, doesn't touch the live one.
+-- Headless tests call this directly.
+function Core:ReplayRecord(events, modifier, opts)
     if type(events) ~= "table" then return {} end
     local replay = events
     if type(modifier) == "function" then replay = modifier(events) end
+    opts = opts or {}
+    local initial = opts.state or opts.context or {}
 
     local SE = ns.StrategyEngine
     local CT = ns.CooldownTracker
     local DR = ns.DRTracker
     local S  = ns.Spells
+    local P  = ns.Patterns
     if not (SE and CT and DR) then return {} end
 
     -- Snapshot live trackers so the replay's cooldown / DR observations
-    -- don't bleed into the in-game state. We restore at the end.
+    -- don't bleed into the in-game state. Pattern progress also feeds
+    -- callouts, so clear it for deterministic golden reports.
     local savedCT = CT._cooldowns; CT._cooldowns = {}
     local savedDR = DR._state;     DR._state     = {}
+    local savedPatterns
+    if P then savedPatterns = P._progress; P._progress = {} end
 
     local state = {
         enemies        = {},
         friendlies     = {},
         observations   = {},
         enemyClassList = {},
-        combatPhase    = "ACTIVE",
-        bracket        = 5,
+        combatPhase    = initial.combatPhase or "ACTIVE",
+        bracket        = initial.bracket or 5,
+        pvpContext     = initial.pvpContext,
         config         = { strategy = {} },
     }
+    if type(initial.config) == "table" then state.config = initial.config end
+    seedReplayUnits(state.friendlies, initial.friendlies, "party")
+    seedReplayUnits(state.enemies, initial.enemies, "arena")
+
     local function ensureEnemy(guid)
         if not guid then return nil end
         if not state.enemies[guid] then
@@ -1404,23 +1475,29 @@ function Core:ReplayRecord(events, modifier)
             DR:OnCC(ev.sub, ev.dst, ev.spell, S.CATEGORIES[ev.spell], ev.ts)
         end
         ensureEnemy(ev.src)
-        local list = {}
-        for _, e in pairs(state.enemies) do table.insert(list, e.class) end
-        state.enemyClassList = list
+        state.enemyClassList = replayEnemyClassList(state.enemies)
         local rec = SE:Evaluate(state)
         if rec then
             table.insert(out, {
-                index   = i,
-                ts      = ev.ts,
-                mode    = rec.mode,
-                comp    = rec.comp,
-                chainId = rec.chain and rec.chain.id or nil,
+                index              = i,
+                ts                 = ev.ts,
+                mode               = rec.mode,
+                comp               = rec.comp,
+                chainId            = rec.chain and rec.chain.id or nil,
+                primaryTarget      = rec.primaryTarget,
+                primaryTargetName  = rec.primaryTargetName,
+                primaryTargetClass = rec.primaryTargetClass,
+                playerActions      = copyReplayRecords(rec.playerActions),
+                callouts           = copyReplayList(rec.callouts),
+                rejectedCallouts   = copyReplayRecords(rec.rejectedCallouts),
+                rejectedActions    = copyReplayRecords(rec.rejectedActions),
             })
         end
     end
 
     CT._cooldowns = savedCT
     DR._state     = savedDR
+    if P then P._progress = savedPatterns end
     return out
 end
 

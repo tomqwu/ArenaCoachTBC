@@ -1,19 +1,35 @@
 #!/usr/bin/env lua5.1
 -- tools/replay.lua
 --
--- Replays a recorded CLEU log against the StrategyEngine and prints each
--- post-event recommendation. Pairs with /acc record on in-game.
+-- Replays a recorded CLEU log against the StrategyEngine and prints a
+-- deterministic, redacted report. Pairs with /acc record on in-game.
 --
 -- Usage:
---   lua5.1 tools/replay.lua <path/to/ArenaCoachTBC.lua>
+--   lua5.1 tools/replay.lua [--golden report.txt] [--update-golden report.txt] <path/to/ArenaCoachTBC.lua>
 --
 -- The SavedVariables file is a snippet of Lua that assigns ArenaCoachTBCDB
 -- as a table. We dofile() it after stubbing the globals it references, then
 -- walk db.record.events through the addon's trackers and the engine.
 
-local svPath = arg[1]
+local svPath, goldenPath, updateGoldenPath
+local i = 1
+while i <= #arg do
+    local a = arg[i]
+    if a == "--golden" then
+        i = i + 1; goldenPath = arg[i]
+    elseif a == "--update-golden" then
+        i = i + 1; updateGoldenPath = arg[i]
+    elseif not svPath then
+        svPath = a
+    else
+        io.stderr:write("Unexpected argument: " .. tostring(a) .. "\n")
+        os.exit(2)
+    end
+    i = i + 1
+end
+
 if not svPath then
-    io.stderr:write("Usage: lua5.1 tools/replay.lua <ArenaCoachTBC.lua>\n")
+    io.stderr:write("Usage: lua5.1 tools/replay.lua [--golden report.txt] [--update-golden report.txt] <ArenaCoachTBC.lua>\n")
     os.exit(2)
 end
 
@@ -27,6 +43,7 @@ package.path = addonDir .. "/?.lua;" .. package.path
 _G.GetTime    = function() return 0 end
 _G.GetLocale  = function() return "enUS" end
 _G.GetSpellInfo = function(id) return "Spell" .. tostring(id) end
+_G.SlashCmdList = {}
 
 -- Load addon files into a shared namespace.
 local function loadAddon(file)
@@ -43,6 +60,8 @@ loadAddon("Data/SpellSpecHints.lua")
 loadAddon("CooldownTracker.lua")
 loadAddon("DRTracker.lua")
 loadAddon("StrategyEngine.lua")
+loadAddon("ReplayReport.lua")
+loadAddon("Core.lua")
 local ns = _G.__ACC_NS
 
 -- Load the SavedVariables file. It assigns into the global table.
@@ -55,58 +74,45 @@ if not (db and db.record and db.record.events) then
 end
 
 local events = db.record.events
-print(string.format("Replaying %d events from %s", #events, svPath))
+local context = db.record.context or db.record.replayContext or {}
+local rows = ns.Core:ReplayRecord(events, nil, { state = context })
+local report = ns.ReplayReport:Format(events, rows, { source = svPath })
+io.write(report)
 
--- A bare-minimum state: one synthetic enemy per unique sourceGUID we observe.
-local state = {
-    enemies        = {},
-    friendlies     = {},
-    observations   = {},
-    enemyClassList = {},
-    combatPhase    = "ACTIVE",
-    bracket        = 5,
-}
-
-local function ensureEnemy(guid)
-    if not guid then return nil end
-    if not state.enemies[guid] then
-        state.enemies[guid] = {
-            unit = guid, guid = guid, class = "WARRIOR",
-            alive = true, healthPct = 100, hasTrinket = true,
-            importantBuffs = {}, importantDebuffs = {}, observedSpells = {},
-        }
-    end
-    return state.enemies[guid]
+local function readFile(path)
+    local f = io.open(path, "rb")
+    if not f then return nil end
+    local text = f:read("*a")
+    f:close()
+    return text
 end
 
-local SE = ns.StrategyEngine
-local CT = ns.CooldownTracker
-local DR = ns.DRTracker
-local S  = ns.Spells
+local function writeFile(path, text)
+    local f = assert(io.open(path, "wb"))
+    f:write(text)
+    f:close()
+end
 
-local printedRecs = 0
-for i, ev in ipairs(events) do
-    _G.GetTime = function() return ev.ts or 0 end
-    CT:OnCombatLogEvent(ev.sub, ev.src, ev.dst, ev.spell)
-    if S and S.CATEGORIES and S.CATEGORIES[ev.spell] then
-        DR:OnCC(ev.sub, ev.dst, ev.spell, S.CATEGORIES[ev.spell], ev.ts)
+if updateGoldenPath then
+    writeFile(updateGoldenPath, report)
+    io.stderr:write("Updated golden report: " .. updateGoldenPath .. "\n")
+end
+
+if goldenPath then
+    local expected = readFile(goldenPath)
+    if not expected then
+        io.stderr:write("Cannot read golden report: " .. goldenPath .. "\n")
+        os.exit(2)
     end
-    ensureEnemy(ev.src)
-    if ev.sub == "SPELL_CAST_SUCCESS" or ev.sub == "UNIT_DIED"
-       or ev.sub == "SPELL_AURA_APPLIED" or ev.sub == "SPELL_AURA_REMOVED" then
-        -- Rebuild the class list each Evaluate.
-        local list = {}
-        for _, e in pairs(state.enemies) do table.insert(list, e.class) end
-        state.enemyClassList = list
-        local rec = SE:Evaluate(state)
-        if rec and (i % 25 == 0 or i == #events) then
-            printedRecs = printedRecs + 1
-            print(string.format("[%4d] t=%-8s mode=%s target=%s reason=%s",
-                i, tostring(ev.ts), tostring(rec.mode),
-                tostring(rec.primaryTargetClass), tostring(rec.reason)))
+    local diffs, samples = ns.ReplayReport:DiffText(report, expected)
+    if diffs > 0 then
+        io.stderr:write(string.format("Golden replay drift: %d differing lines\n", diffs))
+        for _, sample in ipairs(samples) do
+            io.stderr:write(string.format(
+                "line %d\n  expected: %s\n  actual:   %s\n",
+                sample.line, sample.expected, sample.actual))
         end
+        os.exit(1)
     end
+    io.stderr:write("Golden replay matched: " .. goldenPath .. "\n")
 end
-
-print(string.format("Done. Replayed %d events, printed %d recommendation snapshots.",
-    #events, printedRecs))
