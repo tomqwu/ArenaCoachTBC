@@ -215,11 +215,17 @@ H.it(g, "CLEU train detection requires repeated damage on the same healer", func
     H.setUnit("party3", nil)
     H.setUnit("party4", nil)
     H.setUnit("arena1", { class = "ROGUE", guid = "guid-rogue", name = "Enemy Rogue", hp = 100, hpMax = 100 })
-    for i = 2, 5 do H.setUnit("arena" .. i, nil) end
+    H.setUnit("arena2", { class = "MAGE", guid = "guid-mage", name = "Enemy Mage", hp = 100, hpMax = 100 })
+    for i = 3, 5 do H.setUnit("arena" .. i, nil) end
     Core:RefreshFriendlies()
     Core:RefreshArenaEnemies()
     Core.state.friendlies.party1.role = "HEALER"
     Core.state.friendlies.party2.role = "HEALER"
+
+    H.fireCLEU(999.5, "SPELL_AURA_APPLIED", false, "guid-mage", "Enemy Mage", 0, 0,
+        "guid-leaves", "Leaves", 0, 0, H.ns.Spells.POLYMORPH_SHEEP, "Polymorph")
+    EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
+    H.assertEq(#Core._friendlyCCEvents, 1, "healer CC should be captured as pressure evidence")
 
     local function fireDamage(ts, destGuid, destName)
         H.fireCLEU(ts, "SPELL_DAMAGE", false, "guid-rogue", "Enemy Rogue", 0, 0,
@@ -239,8 +245,30 @@ H.it(g, "CLEU train detection requires repeated damage on the same healer", func
     Core:Evaluate()
     H.assertTrue(Core.state.observations.healerUnderPressure)
     H.assertEq(Core.state.observations.healerPressure.guid, "guid-leaves")
+    H.assertEq(Core.state.observations.healerPressure.targetGuid, "guid-leaves")
     H.assertEq(Core.state.observations.healerPressure.unit, "party1")
+    H.assertEq(Core.state.observations.healerPressure.targetUnit, "party1")
+    H.assertEq(Core.state.observations.healerPressure.targetName, "Leaves")
+    H.assertEq(Core.state.observations.healerPressure.targetRole, "HEALER")
     H.assertEq(Core.state.observations.healerPressure.events, 3)
+    H.assertEq(Core.state.observations.healerPressure.damageEvents, 3)
+    H.assertEq(#Core.state.observations.healerPressure.damageSamples, 3)
+    H.assertEq(#Core.state.observations.healerPressure.ccSamples, 1)
+    H.assertEq(Core.state.observations.healerPressure.sourceEnemyGuids[1], "guid-mage")
+    H.assertEq(Core.state.observations.healerPressure.sourceEnemyGuids[2], "guid-rogue")
+    H.assertEq(Core.state.observations.healerPressure.startedAt, 1000)
+    H.assertEq(Core.state.observations.healerPressure.lastSeenAt, 1003)
+    H.assertEq(Core.state.observations.healerPressure.expiresAt, 1008)
+    H.assertEq(Core.state.observations.healerPressure.confidence, 1)
+    H.assertEq(Core.state.observations.healerPressure.pressureType, "cc_chain")
+
+    H.advanceTime(9)
+    Core:Evaluate()
+    H.assertFalse(Core.state.observations.healerUnderPressure,
+        "pressure evidence should expire after the train window")
+    H.assertNil(Core.state.observations.healerPressure)
+    H.assertEq(#Core._friendlyDamageEvents, 0)
+    H.assertEq(#Core._friendlyCCEvents, 0)
 end)
 
 H.it(g, "Evaluate is a no-op when disabled", function()
@@ -532,6 +560,7 @@ local function rebootForEvents()
     H.ns.EventBus:_Reset()  -- start from a known empty state
     Core._friendlyDamageTs = {}
     Core._friendlyDamageEvents = {}
+    Core._friendlyCCEvents = {}
     H._lastCLEU = nil
     Core:Boot()             -- re-register all of Core's handlers
 end
@@ -544,6 +573,7 @@ local function clearArenaApis()
     _G.GetPersonalRatedInfo = nil
     Core._friendlyDamageTs = {}
     Core._friendlyDamageEvents = {}
+    Core._friendlyCCEvents = {}
 end
 
 local function setupRealisticArena3v3()
@@ -555,6 +585,7 @@ local function setupRealisticArena3v3()
     Core.state.observations = {}
     Core._friendlyDamageTs = {}
     Core._friendlyDamageEvents = {}
+    Core._friendlyCCEvents = {}
     H.ns.WeakAuraBridge._last = nil
     H.ns.WeakAuraBridge._state = nil
     if H.ns.UI then H.ns.UI._flash = nil; H.ns.UI:CreateFrame() end
@@ -1144,6 +1175,33 @@ H.it(g, "trace records snapshots when enabled and stays under cap", function()
     Core:RefreshArenaEnemies()
     for i = 1, 5 do Core:Evaluate() end
     H.assertEq(#_G.ArenaCoachTBCDB.trace.log, 3, "should cap at 3 entries")
+end)
+
+H.it(g, "trace snapshots include pressure evidence for DEFEND decisions", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    _G.ArenaCoachTBCDB.trace.enabled = true
+    _G.ArenaCoachTBCDB.trace.log = {}
+    H._gameTime = 200
+    Core.state.combatPhase = "ACTIVE"
+    Core.state.pvpContext = "arena"
+    Core.state.enemies = {}
+    H.setUnit("player", { class = "PRIEST", guid = "guid-me", name = "Me", hp = 100, hpMax = 100 })
+    Core:RefreshFriendlies()
+    Core._friendlyDamageTs = { 200, 200, 200 }
+    Core._friendlyDamageEvents = {
+        { ts = 200, guid = "guid-me", unit = "player", name = "Me", class = "PRIEST", sourceGUID = "enemy-a" },
+        { ts = 200, guid = "guid-me", unit = "player", name = "Me", class = "PRIEST", sourceGUID = "enemy-a" },
+        { ts = 200, guid = "guid-me", unit = "player", name = "Me", class = "PRIEST", sourceGUID = "enemy-a" },
+    }
+
+    Core:Evaluate()
+    local last = _G.ArenaCoachTBCDB.trace.log[#_G.ArenaCoachTBCDB.trace.log]
+    H.assertEq(last.mode, "DEFEND")
+    H.assertEq(last.pressureTarget, "Me")
+    H.assertEq(last.pressureType, "train")
+    H.assertEq(last.pressureEvents, 3)
+    H.assertEq(last.pressureSources, 1)
 end)
 
 H.it(g, "trace records nothing when disabled", function()

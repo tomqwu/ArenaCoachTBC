@@ -226,10 +226,15 @@ end
 H.it(g, "real-arena scenario exercises opener, defensive, kill, and reset modes", function()
     resetState()
     local modes = {}
+    local pressureSnapshots = {}
     local origEvaluate = SIM._evaluate
     SIM._evaluate = function(self, ...)
         local rec = origEvaluate(self, ...)
         if rec and rec.mode then table.insert(modes, rec.mode) end
+        local pressure = Core.state.observations and Core.state.observations.healerPressure or nil
+        if rec and rec.mode == "DEFEND" and pressure then
+            table.insert(pressureSnapshots, pressure)
+        end
         return rec
     end
     local ok, err = pcall(function()
@@ -245,6 +250,15 @@ H.it(g, "real-arena scenario exercises opener, defensive, kill, and reset modes"
     H.assertTrue(seen.DEFEND, "real arena sim should show DEFEND under healer pressure")
     H.assertTrue(seen.KILL or seen.SWAP, "real arena sim should return to an offensive call")
     H.assertTrue(seen.RESET, "real arena sim should end with RESET")
+    H.assertTrue(#pressureSnapshots >= 1, "DEFEND should carry target-specific pressure evidence")
+    H.assertEq(pressureSnapshots[1].targetName, "Leaves")
+    H.assertEq(pressureSnapshots[1].targetUnit, "party2")
+    H.assertEq(pressureSnapshots[1].targetRole, "HEALER")
+    H.assertEq(pressureSnapshots[1].pressureType, "cc_chain")
+    H.assertEq(#pressureSnapshots[1].damageSamples, 3)
+    H.assertEq(#pressureSnapshots[1].ccSamples, 1)
+    H.assertEq(pressureSnapshots[1].sourceEnemyGuids[1], "sim-guid-arena1")
+    H.assertEq(pressureSnapshots[1].sourceEnemyGuids[2], "sim-guid-arena2")
     H.assertEq(Core.state.pvpContext, "arena")
     H.assertEq(Core.state.bracket, 3)
 end)

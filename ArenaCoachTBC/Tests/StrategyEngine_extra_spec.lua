@@ -263,9 +263,10 @@ H.it(g, "DEFEND player actions prefer the combat-log pressure target over lowest
     state.observations = {
         healerUnderPressure = true,
         healerPressure = {
-            guid = state.friendlies.party4.guid,
-            unit = "party4",
-            name = "Totemkin",
+            targetGuid = state.friendlies.party4.guid,
+            targetUnit = "party4",
+            targetName = "Totemkin",
+            targetRole = "HEALER",
             events = 3,
             window = 5,
         },
