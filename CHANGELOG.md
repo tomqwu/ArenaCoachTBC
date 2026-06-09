@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.43] - 2026-06-09
+
 ### Fixed
 - **Central requirements now own every StrategyEngine callout insertion.** Pattern/catalog hints, `BURST_NOW`, outnumbered warnings, BG defend/flag cues, low-mana pushes, peel cues, fake-kick advice, and Ice Block profile warnings now all pass through the same roster/context/target gate before reaching the HUD.
 - **Owned player actions are capability-gated before assignment.** Shaman and paladin actions such as Purge, Tremor refresh, Bloodlust, and HoJ are rejected with diagnostics when the inferred team capability says the action is impossible.
