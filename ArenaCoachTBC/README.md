@@ -148,7 +148,8 @@ Entries can also carry an optional `specs = { CLASS = "SPEC" }` map. A spec-keye
   ownCapabilities     = { hasMortalStrike=true, hasBloodlust=true, ... },
   burstAllowed        = true,
   burstBlockedBy      = nil,
-  burstDecision       = { allowed=true, gates={ target_vulnerable={}, ms_active={}, windfury={}, melee_uptime={}, kill_prob={}, chain_ready={} } },
+  burstDecision       = { allowed=true, gates={ target_valid={}, target_vulnerable={}, major_defensive_absent={}, ms_active={}, control_ready={}, purge_response={}, windfury={}, melee_uptime={}, kill_prob={}, chain_ready={} } },
+  killWindow          = { targetName="Holyman", duration=8, expiresAt=128.4 },
   primaryTargetHp     = 0.37,
   killProb            = 0.82,
 }
@@ -341,8 +342,8 @@ CI（`.github/workflows/test.yml`）在每个 PR 上运行此套件并强制 99%
 
 - **Enemy specs are guessed** from class alone unless observed casts reveal otherwise.
   **敌方天赋按职业默认推测**，除非观测到的施法明确揭示。
-- **Burst gates depend on observed auras.** Mortal Strike and Windfury are read from live unit auras when the client exposes them; missing aura data keeps burst calls conservative.
-  **爆发门禁依赖观测到的光环。** 致死打击和风怒图腾从单位光环读取；光环数据缺失时爆发判断会更保守。
+- **Burst gates are target-specific.** If your roster has Mortal Strike/Aimed Shot/Wound Poison capability, `BURST_NOW` requires that healing-reduction evidence on the actual target, plus no active immunity/major defensive and an available control or purge answer. Missing aura data keeps burst calls conservative.
+  **爆发门禁是目标级别的。** 如果队伍具备致死打击/瞄准射击/致伤毒药能力，`BURST_NOW` 必须在当前目标身上看到减疗证据，并且目标不能有免疫/大减伤，同时我方要有控制或驱散应对。光环数据缺失时爆发判断会更保守。
 - **Cooldown durations** are conservative TBC 2.4.3 values; edit `CooldownTracker.lua > CT.defaults` for TBC Anniversary tweaks. When unsure, we mark a CD ready rather than block on unknowns.
   **冷却时间**采用 TBC 2.4.3 保守数值；调整 TBC 周年服值时编辑 `CooldownTracker.lua > CT.defaults`。未知情况下默认认为 CD 就绪。
 - **DR window** defaults to 17s; tune `DRTracker.lua > DR.resetWindow`.

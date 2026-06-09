@@ -107,14 +107,16 @@ The catalog currently contains **40 enemy strategy entries** across 2v2, 3v3, 5v
 The addon does not simply yell "burst" whenever a target is low. It checks multiple gates first:
 
 - target is not immune
-- configured Mortal Strike requirement is satisfied
+- active major defensives are not covering the target
+- Mortal Strike, Aimed Shot, or Wound Poison is on the actual target when your roster can provide healing reduction
+- your team has a relevant control, interrupt, purge, or dispel answer for the window
 - configured Windfury requirement is satisfied
 - melee can connect
 - kill probability is high enough for your aggression setting
 - incoming pressure is not forcing DEFEND
 - optional chain readiness, if enabled
 
-If burst is blocked, the decision records the blocker for trace and WeakAura displays.
+If burst is blocked, the decision records every failed gate for trace and WeakAura displays. If it passes, the addon exposes a timed kill window so DBM-style bars can count down the moment to commit burst or Bloodlust.
 
 ### DBM-Style Player Assignments
 
