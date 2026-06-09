@@ -33,6 +33,12 @@ jobs:
       - name: Package metadata gate
         run: lua5.1 tools/check_package_shape.lua
 
+      - name: Release workflow gate
+        run: lua5.1 tools/check_release_gate.lua
+
+      - name: Golden replay gate
+        run: lua5.1 tools/replay.lua --golden ArenaCoachTBC/Tests/Fixtures/replay_tiny.golden.txt ArenaCoachTBC/Tests/Fixtures/replay_tiny.lua
+
       - name: Run test suite with coverage
         run: |
           rm -f luacov.stats.out luacov.report.out
@@ -89,6 +95,12 @@ jobs:
 
       - name: Package metadata gate
         run: luajit tools/check_package_shape.lua
+
+      - name: Release workflow gate
+        run: luajit tools/check_release_gate.lua
+
+      - name: Golden replay gate
+        run: luajit tools/replay.lua --golden ArenaCoachTBC/Tests/Fixtures/replay_tiny.golden.txt ArenaCoachTBC/Tests/Fixtures/replay_tiny.lua
 
       - name: Run test suite
         run: luajit ArenaCoachTBC/Tests/run_all.lua

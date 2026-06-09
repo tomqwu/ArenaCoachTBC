@@ -20,6 +20,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Install release gate dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y lua5.1 luarocks unzip zip
+          sudo luarocks install luacov
+
       - name: Resolve version + tag
         id: v
         run: |
@@ -41,6 +48,25 @@ jobs:
           } >> "$GITHUB_OUTPUT"
           echo "Resolved tag=$tag kind=$kind prerelease=$prerelease"
 
+      - name: Release gate: locale, package, release notes, and golden replay
+        run: |
+          set -euo pipefail
+          lua5.1 tools/check_locales.lua
+          lua5.1 tools/check_package_shape.lua
+          lua5.1 tools/check_release_gate.lua
+          lua5.1 tools/replay.lua --golden ArenaCoachTBC/Tests/Fixtures/replay_tiny.golden.txt ArenaCoachTBC/Tests/Fixtures/replay_tiny.lua
+
+      - name: Release gate: tests and coverage
+        run: |
+          set -euo pipefail
+          rm -f luacov.stats.out luacov.report.out
+          lua5.1 -lluacov ArenaCoachTBC/Tests/run_all.lua
+          luacov
+          lua5.1 ArenaCoachTBC/Tests/StrategyEngine_spec.lua
+          total=$(grep -E '^Total' luacov.report.out | awk '{print $NF}' | tr -d '%')
+          echo "Coverage: $total%"
+          awk -v t="$total" 'BEGIN { if (t+0 < 99.0) { print "Coverage below 99%"; exit 1 } }'
+
       - name: Extract release notes from CHANGELOG.md
         run: |
           set -euo pipefail
@@ -60,6 +86,10 @@ jobs:
             ' CHANGELOG.md > /tmp/notes.md
           fi
           if [[ ! -s /tmp/notes.md ]]; then
+            if [[ "${{ steps.v.outputs.kind }}" == "release" ]]; then
+              echo "Stable releases require CHANGELOG.md notes for ${{ steps.v.outputs.tag }}."
+              exit 1
+            fi
             printf '_No notes found in CHANGELOG.md - commit summary:_\n\n%s\n' \
               "$(git log -1 --pretty=format:'%s%n%n%b')" > /tmp/notes.md
           fi
@@ -71,6 +101,12 @@ jobs:
             echo "2. Extract into \`<WoW>/_classic_/Interface/AddOns/\`."
             echo "3. \`/reload\` in-game, then \`/acc help\` to see commands."
             echo "4. \`/acc selftest\` for in-client validation."
+            echo ""
+            echo "### Validation evidence"
+            echo ""
+            echo "- Lua suite, standalone strategy smoke spec, and 99% minimum coverage gate passed in this workflow."
+            echo "- Locale parity, package shape, release-note lint, and golden replay gates passed in this workflow."
+            echo "- Stable tag publishing fails if BigWigs upload to CurseForge/Wago or GitHub release upload fails."
           } >> /tmp/notes.md
           echo "--- Resolved notes ---"
           cat /tmp/notes.md
