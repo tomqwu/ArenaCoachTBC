@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.47] - 2026-06-09
+
 ### Added
 - **Arena acceptance fixture pack.** Added curated arena/BG/world snapshots that assert exact personal actions, teammate actions, forbidden impossible advice, rejected reason codes, and fixture performance.
 
