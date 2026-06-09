@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.50] - 2026-06-09
+
 ### Added
 - **Typed strategy signals with expiration and evidence.** `StrategyEngine:Evaluate` now emits `rec.signals` for `strategy`, `callout`, and `player_action` records. Each signal carries owner/target metadata, required capabilities, source evidence, priority, display style, duration, and `expiresAt`, so DBM-style bars and WeakAura-style icons can render advice without parsing localized text.
 - **WeakAura typed-state getters.** `_G.ArenaCoachTBC` now exposes `GetSignals()`, `GetSignalsByKind(kind)`, `GetActiveSignals(now)`, and `GetPersonalSignal(now)` while preserving the existing callout and player-action getters.

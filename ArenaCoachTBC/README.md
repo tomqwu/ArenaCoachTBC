@@ -211,7 +211,7 @@ The addon publishes its current recommendation and full state through the global
 | `GetFriendlies()` | full friendlies map / 完整己方表 |
 | `GetEnemyByGUID(guid)` | one enemy / 单个敌方 |
 | `GetCombatPhase()` | "PRE" / "ACTIVE" / "POST" |
-| `GetVersion()` | "2.8.49" |
+| `GetVersion()` | "2.8.50" |
 
 Typed signals have this stable shape. `kind="strategy"` describes the current plan, `kind="callout"` mirrors executable callout keys, and `kind="player_action"` owns the DBM-style instruction for one friendly player.
 
