@@ -326,6 +326,7 @@ H.it(g, "Burst KILL with no MS/WF requirement appends BURST_NOW callout", functi
         if e.class == "PRIEST" then
             e.healthPct = 10
             e.hasTrinket = false
+            e.importantDebuffs = { [H.ns.Spells.MORTAL_STRIKE] = true }
         end
     end
     local rec = SE:Evaluate(state)

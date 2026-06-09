@@ -54,6 +54,7 @@ end
 load("Locales/enUS.lua")
 load("Data/Spells.lua")
 load("Data/Classes.lua")
+load("Data/OwnComps.lua")
 load("Data/Strategies.lua")
 load("EventBus.lua")
 load("CooldownTracker.lua")

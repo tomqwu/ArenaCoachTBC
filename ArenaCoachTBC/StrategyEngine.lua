@@ -103,6 +103,11 @@ end
 -- ============================================================
 local function isAlive(e) return e and e.alive ~= false and (e.healthPct or 100) > 0 end
 
+local function stateNow(state)
+    local raw = state and (state.now or state.time or state.timestamp)
+    return tonumber(raw) or 0
+end
+
 local function classToken(unit)
     return unit and unit.class and tostring(unit.class):upper() or nil
 end
@@ -137,6 +142,18 @@ local function activeImmunity(enemy)
     return nil
 end
 
+local function activeMajorDefensive(enemy)
+    if not enemy or not enemy.importantBuffs then return nil end
+    local Spells = ns.Spells
+    if not Spells or not Spells.MAJOR_DEFENSIVES then return nil end
+    for spellID, _ in pairs(enemy.importantBuffs) do
+        if Spells.MAJOR_DEFENSIVES[spellID] then
+            return Spells.MAJOR_DEFENSIVES[spellID]
+        end
+    end
+    return nil
+end
+
 -- Returns the seconds remaining until this enemy's soonest major defensive
 -- comes off cooldown, based on observed casts. nil means "no defensive has
 -- ever been observed used" - treat as already-available (no penalty).
@@ -163,6 +180,25 @@ local function hasPurgeableBuff(enemy)
         if Spells.PURGEABLE[spellID] then return true end
     end
     return false
+end
+
+local function purgeableBuffName(enemy)
+    if not enemy or not enemy.importantBuffs then return nil end
+    local Spells = ns.Spells
+    if not Spells or not Spells.PURGEABLE then return nil end
+    for spellID, _ in pairs(enemy.importantBuffs) do
+        if Spells.PURGEABLE[spellID] then return Spells.PURGEABLE[spellID] end
+    end
+    return nil
+end
+
+local function inferOwnCaps(state)
+    local caps = state and (state._ownCaps or state.ownCapabilities)
+    if caps then return caps end
+    if ns.OwnComps and ns.OwnComps.Infer then
+        return ns.OwnComps:Infer((state and state.friendlies) or {})
+    end
+    return {}
 end
 
 local function classCanHeal(class)
@@ -299,6 +335,115 @@ local function ourHealerCCd(state)
         end
     end
     return false
+end
+
+local function stunDRMultiplier(target)
+    if not (target and target.guid) then return nil end
+    if ns.DRTracker and ns.DRTracker.NextMultiplier then
+        return ns.DRTracker:NextMultiplier(target.guid, "STUN")
+    end
+    return nil
+end
+
+local function targetHealthPct(target)
+    if not target then return 100 end
+    if type(target.healthPct) == "number" then return target.healthPct end
+    if type(target.hpPct) == "number" then return target.hpPct * 100 end
+    if target.hp and target.hpMax and target.hpMax > 0 then
+        return (target.hp / target.hpMax) * 100
+    end
+    return 100
+end
+
+local function targetDebuffName(spellID, payload)
+    if type(payload) == "table" then
+        return payload.name or payload.spellName or payload.label
+    end
+    if type(payload) == "string" then return payload end
+    local Spells = ns.Spells
+    if Spells and Spells.Name then return Spells:Name(spellID) end
+    return nil
+end
+
+local function targetHasHealingReduction(target, state)
+    if not target then return false end
+    if target.healingReductionActive or target.msActive or target.mortalStrikeActive then
+        return true, "unit_field"
+    end
+    if target.woundPoisonStacks and target.woundPoisonStacks > 0 then
+        return true, "wound_poison"
+    end
+
+    local obs = state and state.observations or nil
+    local msOn = obs and obs.msActiveOn or nil
+    if type(msOn) == "string" then
+        if msOn == target.guid or msOn == target.unit or msOn == target.name then
+            return true, "observation"
+        end
+    elseif type(msOn) == "table" then
+        if (target.guid and msOn[target.guid])
+           or (target.unit and msOn[target.unit])
+           or (target.name and msOn[target.name]) then
+            return true, "observation"
+        end
+    end
+
+    local Spells = ns.Spells
+    local debuffs = target.importantDebuffs or target.debuffs
+    if not debuffs then return false end
+    for spellID, payload in pairs(debuffs) do
+        if Spells and Spells.HEALING_REDUCTION_DEBUFFS
+           and Spells.HEALING_REDUCTION_DEBUFFS[spellID] then
+            return true, Spells.HEALING_REDUCTION_DEBUFFS[spellID]
+        end
+        local name = targetDebuffName(spellID, payload)
+        if name then
+            local lower = tostring(name):lower()
+            if lower:find("mortal strike", 1, true)
+               or lower:find("wound poison", 1, true)
+               or lower:find("aimed shot", 1, true) then
+                return true, name
+            end
+        end
+    end
+    return false
+end
+
+local function controlWindowForTarget(state, target)
+    local caps = inferOwnCaps(state)
+    local obs = state and state.observations or {}
+    local purgeName = purgeableBuffName(target)
+    local stunMult = stunDRMultiplier(target)
+    local stunDRClean = (stunMult == nil) or stunMult > 0
+
+    local stunReady = caps.hasHoJ == true
+        and obs.hojReady == true
+        and stunDRClean
+    local interruptReady = caps.hasInterrupt == true
+        and obs.interruptReady ~= false
+    local purgeReady = purgeName ~= nil
+        and (caps.hasPurge == true or caps.hasDispelMagic == true)
+        and obs.purgeReady ~= false
+
+    local allowed = stunReady or interruptReady or purgeReady
+    local reason
+    if not allowed then
+        if caps.hasHoJ == true and obs.hojReady == true and stunMult == 0 then
+            reason = "stun_dr_immune"
+        else
+            reason = "no_control_ready"
+        end
+    end
+
+    return {
+        allowed        = allowed,
+        reason         = reason,
+        stunReady      = stunReady,
+        stunDR         = stunMult,
+        interruptReady = interruptReady,
+        purgeReady     = purgeReady,
+        purgeName      = purgeName,
+    }
 end
 
 local function teamAvgHP(state)
@@ -475,35 +620,23 @@ SE.KILL_PROB_WEIGHTS = {
 function SE:KillProb(target, state)
     if not target then return { prob = 0, components = {} } end
     local W = self.KILL_PROB_WEIGHTS
-    local hp = 1 - ((target.healthPct or 100) / 100)
+    local hp = 1 - (targetHealthPct(target) / 100)
     local comps = { hp = hp * W.hpDelta }
     if target.hasTrinket == false then comps.defensiveDown = W.defensiveDown
     else comps.defensiveDown = 0 end
-    local activeImm = false
-    if target.importantBuffs and ns.Spells and ns.Spells.IMMUNITY_BUFFS then
-        for id, _ in pairs(target.importantBuffs) do
-            if ns.Spells.IMMUNITY_BUFFS[id] then activeImm = true; break end
-        end
-    end
+    local activeImm = activeImmunity(target) ~= nil
     comps.immunityAbsent = (not activeImm) and W.immunityAbsent or 0
-    comps.burstReady = (state and state.observations and state.observations.hojReady)
+    local stunMult = stunDRMultiplier(target)
+    comps.burstReady = (state and state.observations and state.observations.hojReady
+        and (stunMult == nil or stunMult > 0))
         and W.burstReady or 0
     comps.healerLowMana = 0
-    if state and state.enemies then
-        for _, e in pairs(state.enemies) do
-            local role = e.roleGuess
-            if not role and e.class then role = roleOf(e) end
-            if role == "HEALER" and e.manaPct and e.manaPct < 30 then
-                comps.healerLowMana = W.healerLowMana
-                break
-            end
-        end
+    if isHealer(target) and target.manaPct and target.manaPct < 30 then
+        comps.healerLowMana = W.healerLowMana
     end
     comps.drClean = 0
-    if ns.DRTracker and ns.DRTracker.NextMultiplier and target.guid then
-        if ns.DRTracker:NextMultiplier(target.guid, "STUN") == 1.0 then
-            comps.drClean = W.drClean
-        end
+    if stunMult == 1.0 then
+        comps.drClean = W.drClean
     end
     local total = 0
     for _, v in pairs(comps) do total = total + v end
@@ -526,6 +659,8 @@ SE.BURST_KILL_PROB_THRESHOLD = {
     safe     = 0.55,
 }
 
+SE.KILL_WINDOW_DURATION = 8
+
 function SE:BurstDecision(state, target, chain)
     state = state or {}
     local gates = {}
@@ -536,13 +671,15 @@ function SE:BurstDecision(state, target, chain)
         or "balanced"
 
     -- 1. kill_prob gate
-    local killProb = target and self:KillProb(target, state).prob or 0
+    local killOut = target and self:KillProb(target, state) or { prob = 0, components = {} }
+    local killProb = killOut.prob or 0
     local killThreshold = self.BURST_KILL_PROB_THRESHOLD[agg]
         or self.BURST_KILL_PROB_THRESHOLD.balanced
     gates.kill_prob = {
         allowed   = killProb >= killThreshold,
         value     = killProb,
         threshold = killThreshold,
+        reason    = (killProb < killThreshold) and "kill_probability_below_threshold" or nil,
     }
 
     -- 2. chain_ready gate. Chain planning is advisory by default because
@@ -553,26 +690,67 @@ function SE:BurstDecision(state, target, chain)
         allowed  = (chain ~= nil and chainEP > 0) or cfg.requireChainForBurst ~= true,
         value    = chainEP,
         required = cfg.requireChainForBurst == true,
+        reason   = (chain == nil or chainEP <= 0) and cfg.requireChainForBurst == true
+            and "required_chain_missing" or nil,
     }
 
     -- 3. configured prerequisite gates. These are the older burstAllowed()
     -- checks folded into the auditable decision so the HUD and API cannot
     -- disagree about BURST_NOW.
+    local caps = inferOwnCaps(state)
+    local immunity = activeImmunity(target)
+    local majorDefensive = activeMajorDefensive(target)
+    local healingReduction, healingReductionEvidence = targetHasHealingReduction(target, state)
+    local requireMS = caps.hasMortalStrike == true or cfg.callBurstOnlyWhenMSActive == true
+    local purgeName = purgeableBuffName(target)
+    local hasPurgeAnswer = (caps.hasPurge == true or caps.hasDispelMagic == true)
+        and obs.purgeReady ~= false
+    local control = controlWindowForTarget(state, target)
+
+    gates.target_valid = {
+        allowed = target ~= nil and isAlive(target),
+        reason  = (not target) and "missing_target" or (not isAlive(target) and "target_dead" or nil),
+    }
     gates.target_vulnerable = {
-        allowed = not (target and activeImmunity(target)),
-        reason  = target and activeImmunity(target) or nil,
+        allowed = immunity == nil,
+        reason  = immunity and "target_immune" or nil,
+        value   = immunity,
+    }
+    gates.major_defensive_absent = {
+        allowed = majorDefensive == nil,
+        reason  = majorDefensive and "major_defensive_active" or nil,
+        value   = majorDefensive,
     }
     gates.ms_active = {
-        allowed = ((not cfg.callBurstOnlyWhenMSActive)
-            or (target and obs.msActiveOn and obs.msActiveOn == target.guid)) and true or false,
-        value   = obs.msActiveOn,
+        allowed  = (not requireMS) or healingReduction == true,
+        required = requireMS,
+        value    = healingReductionEvidence,
+        reason   = (requireMS and not healingReduction) and "missing_target_healing_reduction" or nil,
+    }
+    gates.control_ready = {
+        allowed = control.allowed,
+        reason  = control.reason,
+        blockedBy = control.reason,
+        value   = {
+            stunReady      = control.stunReady,
+            stunDR         = control.stunDR,
+            interruptReady = control.interruptReady,
+            purgeReady     = control.purgeReady,
+        },
+    }
+    gates.purge_response = {
+        allowed = (purgeName == nil) or hasPurgeAnswer,
+        reason  = (purgeName and not hasPurgeAnswer) and "purgeable_defensive_no_answer" or nil,
+        value   = purgeName,
     }
     gates.windfury = {
         allowed = (not cfg.requireWindfuryNearby) or obs.windfuryActive == true,
         value   = obs.windfuryActive == true,
+        reason  = (cfg.requireWindfuryNearby and obs.windfuryActive ~= true) and "windfury_missing" or nil,
     }
     gates.melee_uptime = {
         allowed = not meleeLockedDown(state),
+        reason  = meleeLockedDown(state) and "melee_locked_down" or nil,
     }
 
     -- 4. incoming_pressure gate
@@ -580,7 +758,7 @@ function SE:BurstDecision(state, target, chain)
         or obs.multipleBurstsDetected
     gates.incoming_pressure = {
         allowed = not underPressure,
-        reason  = underPressure and "healer trained / enemy lust" or nil,
+        reason  = underPressure and "incoming_pressure" or nil,
     }
 
     -- 5. rating_aware: an audit trail of the aggression label that
@@ -592,23 +770,68 @@ function SE:BurstDecision(state, target, chain)
     }
 
     local order = {
-        "target_vulnerable", "ms_active", "windfury", "melee_uptime",
-        "kill_prob", "chain_ready", "incoming_pressure", "rating_aware",
+        "target_valid", "target_vulnerable", "major_defensive_absent",
+        "ms_active", "control_ready", "purge_response", "windfury",
+        "melee_uptime", "kill_prob", "chain_ready", "incoming_pressure",
+        "rating_aware",
     }
     local blockedNames = {
+        target_valid      = "target_invalid",
         target_vulnerable = "target_immune",
+        major_defensive_absent = "major_defensive",
         ms_active         = "no_ms",
+        control_ready     = "no_control",
+        purge_response    = "no_purge_answer",
         windfury          = "no_windfury",
         melee_uptime      = "melee_root",
     }
     local allowed, blockedBy = true, nil
+    local blockedReasons = {}
     for _, key in ipairs(order) do
         if gates[key].allowed == false then
             allowed = false
-            if not blockedBy then blockedBy = blockedNames[key] or key end
+            gates[key].reason = gates[key].reason or blockedNames[key] or key
+            local gateBlockedBy = gates[key].blockedBy or blockedNames[key] or key
+            table.insert(blockedReasons, {
+                gate      = key,
+                blockedBy = gateBlockedBy,
+                reason    = gates[key].reason,
+                value     = gates[key].value,
+                threshold = gates[key].threshold,
+            })
+            if not blockedBy then blockedBy = gateBlockedBy end
         end
     end
-    return { allowed = allowed, blockedBy = blockedBy, gates = gates }
+
+    local killWindow
+    if allowed then
+        local duration = tonumber(cfg.killWindowDuration) or self.KILL_WINDOW_DURATION
+        local now = stateNow(state)
+        killWindow = {
+            targetGuid   = target and target.guid or nil,
+            targetUnit   = target and target.unit or nil,
+            targetName   = target and target.name or nil,
+            targetClass  = target and target.class or nil,
+            healthPct    = target and targetHealthPct(target) or nil,
+            killProb     = killProb,
+            duration     = duration,
+            expiresAt    = now + duration,
+            evidence     = {
+                healingReduction = healingReductionEvidence,
+                control          = gates.control_ready.value,
+                purgeableBuff    = purgeName,
+                killComponents   = killOut.components,
+            },
+        }
+    end
+
+    return {
+        allowed = allowed,
+        blockedBy = blockedBy,
+        blockedReasons = blockedReasons,
+        gates = gates,
+        killWindow = killWindow,
+    }
 end
 
 -- ============================================================
@@ -718,12 +941,7 @@ local FEAR_THREAT_CALLOUTS = {
 }
 
 local function ownCapsFor(state)
-    local caps = state and (state._ownCaps or state.ownCapabilities)
-    if caps then return caps end
-    if ns.OwnComps and ns.OwnComps.Infer then
-        return ns.OwnComps:Infer((state and state.friendlies) or {})
-    end
-    return {}
+    return inferOwnCaps(state)
 end
 
 local function hasEnemyClass(state, class)
@@ -1173,7 +1391,7 @@ local function addPlayerAction(out, f, actionKey, target, targetType, priority, 
         rejectAction(state, f.unit, actionKey, reason)
         return
     end
-    table.insert(out, {
+    local action = {
         unit        = f.unit,
         guid        = f.guid,
         name        = f.name,
@@ -1187,10 +1405,16 @@ local function addPlayerAction(out, f, actionKey, target, targetType, priority, 
         targetName  = target and target.name or nil,
         targetClass = target and target.class or nil,
         targetType  = target and (targetType or "enemy") or nil,
-    })
+    }
+    if actionKey == "ACTION_SHAMAN_BLOODLUST" and context and context.killWindow then
+        action.duration = context.killWindow.duration
+        action.expiresAt = context.killWindow.expiresAt
+        action.killWindow = context.killWindow
+    end
+    table.insert(out, action)
 end
 
-local function buildPlayerActions(state, mode, primaryTarget, secondTarget, burstAllowed, tremorRefresh)
+local function buildPlayerActions(state, mode, primaryTarget, secondTarget, burstAllowed, tremorRefresh, killWindow)
     local actions = {}
     local killTarget = primaryTarget
     local offTarget = offTargetForAction(state, primaryTarget, secondTarget)
@@ -1200,6 +1424,7 @@ local function buildPlayerActions(state, mode, primaryTarget, secondTarget, burs
         mode = mode,
         burstAllowed = burstAllowed == true,
         tremorRefresh = tremorRefresh == true,
+        killWindow = killWindow,
     }
 
     for _, f in ipairs(friendlyActionList(state.friendlies)) do
@@ -1302,8 +1527,7 @@ local SIGNAL_DURATIONS = {
 }
 
 local function signalNow(state)
-    local raw = state and (state.now or state.time or state.timestamp)
-    return tonumber(raw) or 0
+    return stateNow(state)
 end
 
 local function copyCapsFromRule(rule)
@@ -1360,9 +1584,9 @@ local function applyTargetFromAction(signal, action)
 end
 
 local function finishSignal(signals, signal, now, duration)
-    duration = duration or 6
+    duration = signal.duration or duration or 6
     signal.duration = duration
-    signal.expiresAt = now + duration
+    signal.expiresAt = signal.expiresAt or (now + duration)
     signal.changed = true
     table.insert(signals, signal)
 end
@@ -1393,6 +1617,7 @@ local function buildSignals(state, rec, topTarget, secondTarget)
             topScore = rec._topScore,
             secondScore = rec._secondScore,
             burstBlockedBy = rec.burstBlockedBy,
+            killWindow = rec.killWindow,
         },
     }
     applyOwnerFromFriendly(strategySignal, owner)
@@ -1421,6 +1646,11 @@ local function buildSignals(state, rec, topTarget, secondTarget)
             },
         }
         applyTargetFromUnit(signal, topTarget, "enemy")
+        if key == "BURST_NOW" and rec.killWindow then
+            signal.duration = rec.killWindow.duration
+            signal.expiresAt = rec.killWindow.expiresAt
+            signal.sourceEvidence.killWindow = rec.killWindow
+        end
         finishSignal(signals, signal, now, SIGNAL_DURATIONS.callout)
     end
 
@@ -1440,8 +1670,11 @@ local function buildSignals(state, rec, topTarget, secondTarget)
                 actionKey = action.actionKey,
                 burstAllowed = rec.burstAllowed,
                 burstBlockedBy = rec.burstBlockedBy,
+                killWindow = action.killWindow,
             },
         }
+        if action.duration then signal.duration = action.duration end
+        if action.expiresAt then signal.expiresAt = action.expiresAt end
         applyOwnerFromFriendly(signal, ownerFriendly)
         applyTargetFromAction(signal, action)
         finishSignal(signals, signal, now, SIGNAL_DURATIONS.player_action)
@@ -1692,6 +1925,7 @@ function SE:Evaluate(state)
     local burstDecision = (mode == "KILL") and self:BurstDecision(state, topTarget, pickedChain) or nil
     local burstOK = burstDecision and burstDecision.allowed == true or false
     local burstBlockedBy = (burstDecision and not burstDecision.allowed) and burstDecision.blockedBy or nil
+    local killWindow = burstDecision and burstDecision.killWindow or nil
     local calloutSeen = calloutSeenMap(callouts)
     if mode == "KILL" and burstOK then
         addCallout(state, callouts, calloutSeen, "BURST_NOW", topTarget,
@@ -1745,7 +1979,7 @@ function SE:Evaluate(state)
     else priority = "HIGH" end
 
     local tremorRefresh = (mode ~= "RESET") and shouldRefreshTremor(state, callouts) or false
-    local playerActions = buildPlayerActions(state, mode, topTarget, secondTarget, burstOK, tremorRefresh)
+    local playerActions = buildPlayerActions(state, mode, topTarget, secondTarget, burstOK, tremorRefresh, killWindow)
 
     local recommendation = {
         mode            = mode,
@@ -1772,6 +2006,7 @@ function SE:Evaluate(state)
         aggression      = state.aggression,
         rating          = state.rating,
         burstDecision   = burstDecision,
+        killWindow      = killWindow,
         ownArchetype    = ownArchetype and ownArchetype.id or nil,
         ownArchetypeLabel = ownArchetype and ownArchetype.label or nil,
         ownCapabilities = ownCaps,

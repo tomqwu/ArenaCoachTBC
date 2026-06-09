@@ -96,8 +96,8 @@ Sequence-of-cast detector for canonical kill setups. Five seeded patterns: `RMP_
 - `hp` (1 − hp/100, weight 1.0)
 - `defensiveDown` (+0.10 if trinket used / 饰品已使用)
 - `immunityAbsent` (+0.10 if no Ice Block / Divine Shield / BoP)
-- `burstReady` (+0.05 if HoJ up / 制裁就绪)
-- `healerLowMana` (+0.10 if their healer <30% mana / 治疗蓝量 <30%)
+- `burstReady` (+0.05 if HoJ is up and the target's STUN DR can still receive it / 制裁就绪且目标眩晕 DR 可用)
+- `healerLowMana` (+0.10 if this target is a healer below 30% mana / 当前目标是低蓝治疗)
 - `drClean` (+0.05 if STUN DR fresh / 眩晕 DR 干净)
 
 Sum clamped to `[0..1]`. Weights exposed via `SE.KILL_PROB_WEIGHTS`. WeakAuraBridge exposes `GetKillProb(guid)` / `GetKillProbBreakdown(guid)`.
@@ -106,9 +106,9 @@ Sum clamped to `[0..1]`. Weights exposed via `SE.KILL_PROB_WEIGHTS`. WeakAuraBri
 
 ### BurstDecision (M11)
 
-`SE:BurstDecision(state, target, chain) -> { allowed, blockedBy, gates }` is the single source of truth for `BURST_NOW`. It includes target/setup prerequisite gates (`target_vulnerable`, `ms_active`, `windfury`, `melee_uptime`), the calibrated `kill_prob` gate (threshold scales with aggression: greedy 0.35, balanced 0.45, safe 0.55), `chain_ready`, `incoming_pressure`, and `rating_aware`. `chain_ready` is advisory by default so BG/world fights and sparse arena catalog entries can still recommend a clean burst window; set `db.strategy.requireChainForBurst = true` to make a positive chain mandatory. Engine populates `rec.burstDecision` and mirrors the first failing gate into `rec.burstBlockedBy` (`target_immune`, `no_ms`, `no_windfury`, `melee_root`, `kill_prob`, `chain_ready`, etc.).
+`SE:BurstDecision(state, target, chain) -> { allowed, blockedBy, blockedReasons, gates, killWindow }` is the single source of truth for `BURST_NOW`. It includes target-specific prerequisite gates (`target_valid`, `target_vulnerable`, `major_defensive_absent`, `ms_active`, `control_ready`, `purge_response`, `windfury`, `melee_uptime`), the calibrated `kill_prob` gate (threshold scales with aggression: greedy 0.35, balanced 0.45, safe 0.55), `chain_ready`, `incoming_pressure`, and `rating_aware`. If the friendly roster can provide Mortal Strike/Aimed Shot/Wound Poison, `ms_active` requires that healing-reduction evidence on the actual target. `control_ready` accepts a live HoJ, interrupt, or purge/dispel answer and explains blocks such as `stun_dr_immune` or `no_control_ready`. `chain_ready` is advisory by default so BG/world fights and sparse arena catalog entries can still recommend a clean burst window; set `db.strategy.requireChainForBurst = true` to make a positive chain mandatory. Engine populates `rec.burstDecision`, mirrors the first failing gate into `rec.burstBlockedBy`, and emits `rec.killWindow` with duration/expiration for `BURST_NOW` and Shaman Bloodlust bars.
 
-爆发判断现在统一在 `BurstDecision` 内完成：目标是否免疫、MS 是否在目标上、风怒是否就位、近战是否能贴住、击杀概率、控制链、敌方压力与分数侵略性都会进入同一个 `gates` 表。默认情况下 `chain_ready` 只做审计提示；只有 `db.strategy.requireChainForBurst = true` 时才会阻止爆发。
+爆发判断现在统一在 `BurstDecision` 内完成：目标是否有效、免疫/大减伤、MS/瞄准射击/致伤毒药是否在当前目标上、我方是否有制裁/打断/驱散应对、风怒是否就位、近战是否能贴住、击杀概率、控制链、敌方压力与分数侵略性都会进入同一个 `gates` 表。默认情况下 `chain_ready` 只做审计提示；只有 `db.strategy.requireChainForBurst = true` 时才会阻止爆发。
 
 ### Rating-aware aggression (M11 — Core / 分数感知侵略性)
 
@@ -223,7 +223,8 @@ The engine's `Evaluate` returns roughly this / 引擎 `Evaluate` 返回大致结
   compSpecConfirmed  = bool,
   ownArchetype       = "MELEE_CLEAVE",
   burstAllowed       = bool,
-  burstDecision      = { allowed, blockedBy, gates = {target_vulnerable, ms_active, windfury, melee_uptime, kill_prob, chain_ready, ...} },
+  burstDecision      = { allowed, blockedBy, blockedReasons, gates = {target_valid, target_vulnerable, major_defensive_absent, ms_active, control_ready, purge_response, windfury, melee_uptime, kill_prob, chain_ready, ...} },
+  killWindow         = { targetGuid, targetName, duration, expiresAt, killProb, evidence },
   chain              = { id, label, labelKey, steps, links, expectedProb, expectedValue },
   primaryTargetHp    = 0..1,
   killProb           = 0..1,

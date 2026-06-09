@@ -129,6 +129,7 @@ S.E_PSYCHIC_SCREAM   = 10890
 S.E_DISPEL_MAGIC     = 988
 
 -- Hunter
+S.AIMED_SHOT         = 27065  -- Aimed Shot rank 7, TBC Classic/Wowhead spell=27065
 S.WYVERN_STING       = 27068
 S.SCATTER_SHOT       = 19503
 S.FREEZING_TRAP      = 14310
@@ -218,6 +219,18 @@ S.SILENCING_SHOT     = 34490   -- MARKSMANSHIP talent
 -- ============================================================
 -- Categorised lookups
 -- ============================================================
+
+-- Healing-reduction debuffs that create a real kill window on the target.
+-- Mortal Strike and Aimed Shot use the max-rank TBC Classic spell IDs above;
+-- Wound Poison uses the harmful target aura IDs observed in TBC Classic data
+-- (Wowhead spell=43461, plus legacy rank aura spell=13224 for private/era
+-- combat logs that report rank-specific poison auras).
+S.HEALING_REDUCTION_DEBUFFS = {
+    [S.MORTAL_STRIKE] = "Mortal Strike",
+    [S.AIMED_SHOT]    = "Aimed Shot",
+    [43461]           = "Wound Poison",
+    [13224]           = "Wound Poison",
+}
 
 -- Spell -> category mapping (used by DRTracker and threat analysis)
 S.CATEGORIES = {

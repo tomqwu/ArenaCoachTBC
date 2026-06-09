@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Burst windows are target-specific.** `BURST_NOW` now requires live evidence on the actual target: no active immunity/major defensive, target-specific Mortal Strike/Aimed Shot/Wound Poison when your roster has healing-reduction, a control/purge answer, enough kill probability, and no incoming pressure veto.
+- **Bloodlust inherits the kill-window timer.** Shaman Bloodlust advice appears only for Shaman owners during a valid burst window, and its typed player-action bar uses the same duration/expiration as the kill window.
+
+### Tests
+- Added arena-shaped regressions for high HP, immunity, missing MS/Wound, stun DR immunity, no-Shaman rosters, and a positive kill-window fixture with expected `duration`/`expiresAt` on `BURST_NOW` and Bloodlust signals.
+
 ## [2.8.52] - 2026-06-09
 
 ### Added

@@ -10,6 +10,7 @@ H.load("Data/Spells.lua")
 H.load("Data/Classes.lua")
 H.load("Data/OwnComps.lua")
 H.load("Data/Strategies.lua")
+H.load("DRTracker.lua")
 H.load("Patterns.lua")
 H.load("StrategyEngine.lua")
 
@@ -25,6 +26,18 @@ end
 local function findAction(actions, unit)
     for _, a in ipairs(actions or {}) do
         if a.unit == unit then return a end
+    end
+end
+
+local function findActionByKey(actions, key)
+    for _, a in ipairs(actions or {}) do
+        if a.actionKey == key then return a end
+    end
+end
+
+local function findSignal(signals, id)
+    for _, s in ipairs(signals or {}) do
+        if s.id == id then return s end
     end
 end
 
@@ -308,6 +321,7 @@ H.it(g, "Shaman player gets urgent targetless Bloodlust action when burst gate o
     priest.healthPct = 20
     priest.hasTrinket = false
     priest.importantBuffs = {}
+    priest.importantDebuffs = { [H.ns.Spells.MORTAL_STRIKE] = true }
 
     local rec = SE:Evaluate(state)
     H.assertTrue(rec.burstAllowed, "test setup should open the burst gate")
@@ -625,8 +639,10 @@ H.it(g, "Burst blocked when no windfury (config requires it)", function()
     local state = SE:BuildTestState({"WARRIOR","MAGE","PRIEST","ROGUE","DRUID"})
     state.combatPhase = "ACTIVE"
     state.config.strategy.requireWindfuryNearby = true
-    state.config.strategy.callBurstOnlyWhenMSActive = false
     state.observations.windfuryActive = false
+    for _, enemy in pairs(state.enemies) do
+        enemy.importantDebuffs = { [H.ns.Spells.MORTAL_STRIKE] = true }
+    end
     local rec = SE:Evaluate(state)
     H.assertFalse(rec.burstAllowed)
     H.assertEq(rec.burstBlockedBy, "no_windfury")
@@ -1217,7 +1233,7 @@ H.it(g, "BurstDecision blocks on kill_prob when target is high HP", function()
     state.aggression  = "balanced"
     local target
     for _, e in pairs(state.enemies) do
-        e.healthPct = 100; e.hasTrinket = true; target = e
+        e.healthPct = 100; e.hasTrinket = true; e.importantDebuffs = { [H.ns.Spells.MORTAL_STRIKE] = true }; target = e
     end
     local out = SE:BurstDecision(state, target, nil)
     H.assertFalse(out.gates.kill_prob.allowed)
@@ -1251,6 +1267,7 @@ H.it(g, "BurstDecision allows when all gates pass", function()
     state.aggression  = "greedy"
     state.observations = {}
     local target = { healthPct = 20, hasTrinket = false, importantBuffs = {}, guid = "g1" }
+    target.importantDebuffs = { [H.ns.Spells.MORTAL_STRIKE] = true }
     local out = SE:BurstDecision(state, target, { expectedProb = 0.8 })
     H.assertTrue(out.gates.kill_prob.allowed)
     H.assertTrue(out.gates.chain_ready.allowed)
@@ -1284,6 +1301,7 @@ H.it(g, "BurstDecision does not treat rooted healers as failed melee uptime", fu
     state.friendlies.player.debuffs = nil
     state.friendlies.party4.debuffs = { rooted = true } -- priest healer/support, not melee uptime
     local target = { healthPct = 5, hasTrinket = false, importantBuffs = {}, guid = "g1" }
+    target.importantDebuffs = { [H.ns.Spells.MORTAL_STRIKE] = true }
     local out = SE:BurstDecision(state, target, nil)
     H.assertTrue(out.gates.melee_uptime.allowed,
         "a rooted priest should not block burst as if the melee were rooted")
@@ -1294,9 +1312,9 @@ H.it(g, "BurstDecision only requires a chain when configured strictly", function
     local state = SE:BuildTestState({"PRIEST","MAGE"})
     state.combatPhase = "ACTIVE"
     state.aggression = "greedy"
-    state.config.strategy.callBurstOnlyWhenMSActive = false
     state.config.strategy.requireWindfuryNearby = false
     local target = { healthPct = 5, hasTrinket = false, importantBuffs = {}, guid = "g1" }
+    state.observations.msActiveOn = target.guid
     local out = SE:BurstDecision(state, target, nil)
     H.assertTrue(out.gates.chain_ready.allowed,
         "missing chain should be advisory by default so BG/world and sparse catalog entries can still burst")
@@ -1321,7 +1339,7 @@ end)
 
 H.it(g, "arena quality: BURST_NOW is suppressed when BurstDecision blocks kill probability", function()
     local state = SE:BuildTestState({ "ROGUE", "MAGE", "PRIEST" }, {
-        observations = { hojReady = true, windfuryActive = true },
+        observations = { hojReady = true, windfuryActive = true, interruptReady = false },
         config = { strategy = { callBurstOnlyWhenMSActive = false, requireWindfuryNearby = true } },
     })
     state.combatPhase = "ACTIVE"
@@ -1332,6 +1350,7 @@ H.it(g, "arena quality: BURST_NOW is suppressed when BurstDecision blocks kill p
         enemy.healthPct = 100
         enemy.hasTrinket = true
         enemy.importantBuffs = {}
+        enemy.importantDebuffs = { [H.ns.Spells.MORTAL_STRIKE] = true }
     end
 
     local rec = SE:Evaluate(state)
@@ -1342,6 +1361,187 @@ H.it(g, "arena quality: BURST_NOW is suppressed when BurstDecision blocks kill p
     H.assertEq(rec.burstBlockedBy, "kill_prob")
     for _, callout in ipairs(rec.callouts or {}) do
         H.assertNotEq(callout, "BURST_NOW", "BURST_NOW should not appear when BurstDecision blocks")
+    end
+end)
+
+H.it(g, "arena quality: BURST_NOW is blocked when the kill target has no target-specific MS", function()
+    local state = SE:BuildTestState({ "PRIEST", "MAGE", "ROGUE" }, {
+        observations = { hojReady = true, windfuryActive = true, interruptReady = false },
+        config = { strategy = { requireWindfuryNearby = false } },
+    })
+    state.combatPhase = "ACTIVE"
+    state.aggression = "greedy"
+    local target = findEnemyByClass(state, "PRIEST")
+    target.healthPct = 5
+    target.hasTrinket = false
+    target.importantBuffs = {}
+    target.importantDebuffs = {}
+
+    local out = SE:BurstDecision(state, target, nil)
+
+    H.assertFalse(out.allowed)
+    H.assertEq(out.blockedBy, "no_ms")
+    H.assertEq(out.gates.ms_active.reason, "missing_target_healing_reduction")
+end)
+
+H.it(g, "arena quality: BURST_NOW is blocked by active immunity on the specific target", function()
+    local state = SE:BuildTestState({ "MAGE", "PRIEST", "ROGUE" }, {
+        observations = { hojReady = true, windfuryActive = true },
+        config = { strategy = { requireWindfuryNearby = false } },
+    })
+    state.combatPhase = "ACTIVE"
+    state.aggression = "greedy"
+    local target = findEnemyByClass(state, "MAGE")
+    target.healthPct = 5
+    target.hasTrinket = false
+    target.importantBuffs = { [H.ns.Spells.ICE_BLOCK] = true }
+    target.importantDebuffs = { [H.ns.Spells.MORTAL_STRIKE] = true }
+
+    local out = SE:BurstDecision(state, target, nil)
+
+    H.assertFalse(out.allowed)
+    H.assertEq(out.blockedBy, "target_immune")
+    H.assertEq(out.gates.target_vulnerable.reason, "target_immune")
+end)
+
+H.it(g, "arena quality: BURST_NOW explains a stun DR immune target", function()
+    local DR = H.ns.DRTracker
+    DR:Clear()
+    local state = SE:BuildTestState({ "PRIEST", "MAGE", "ROGUE" }, {
+        observations = { hojReady = true, windfuryActive = true, interruptReady = false },
+        config = { strategy = { requireWindfuryNearby = false } },
+    })
+    state.combatPhase = "ACTIVE"
+    state.aggression = "greedy"
+    local target = findEnemyByClass(state, "PRIEST")
+    target.healthPct = 5
+    target.hasTrinket = false
+    target.importantBuffs = {}
+    target.importantDebuffs = { [H.ns.Spells.MORTAL_STRIKE] = true }
+    local now = GetTime()
+    DR:Apply(target.guid, "STUN", now - 3)
+    DR:Apply(target.guid, "STUN", now - 2)
+    DR:Apply(target.guid, "STUN", now - 1)
+
+    local out = SE:BurstDecision(state, target, nil)
+    DR:Clear()
+
+    H.assertFalse(out.allowed)
+    H.assertEq(out.blockedBy, "stun_dr_immune")
+    H.assertEq(out.gates.control_ready.reason, "stun_dr_immune")
+end)
+
+H.it(g, "arena quality: positive kill window gives BURST_NOW and Bloodlust bars a real duration", function()
+    local DR = H.ns.DRTracker
+    DR:Clear()
+    local state = SE:BuildTestState({ "PRIEST", "MAGE", "ROGUE" }, {
+        observations = { hojReady = true, windfuryActive = true },
+        config = { strategy = { requireWindfuryNearby = false } },
+    })
+    state.combatPhase = "ACTIVE"
+    state.aggression = "greedy"
+    state.now = 100
+    local target = findEnemyByClass(state, "PRIEST")
+    target.healthPct = 5
+    target.hasTrinket = false
+    target.importantBuffs = {}
+    target.importantDebuffs = { [H.ns.Spells.MORTAL_STRIKE] = true }
+
+    local rec = SE:Evaluate(state)
+
+    H.assertEq(rec.mode, "KILL")
+    H.assertTrue(rec.burstAllowed)
+    H.assertNotNil(rec.killWindow)
+    H.assertEq(rec.killWindow.duration, 8)
+    H.assertEq(rec.killWindow.expiresAt, 108)
+    H.assertTrue(hasCallout(rec, "BURST_NOW"))
+    local burstSignal = findSignal(rec.signals, "callout:BURST_NOW")
+    H.assertNotNil(burstSignal)
+    H.assertEq(burstSignal.duration, 8)
+    H.assertEq(burstSignal.expiresAt, 108)
+    local lustAction = findActionByKey(rec.playerActions, "ACTION_SHAMAN_BLOODLUST")
+    H.assertNotNil(lustAction)
+    H.assertEq(lustAction.class, "SHAMAN")
+    H.assertEq(lustAction.duration, 8)
+    H.assertEq(lustAction.expiresAt, 108)
+end)
+
+H.it(g, "arena quality: Bloodlust advice is absent when no friendly shaman owns it", function()
+    local state = SE:BuildTestState({ "PRIEST", "MAGE", "ROGUE" }, {
+        observations = { hojReady = true, windfuryActive = true },
+        config = { strategy = { requireWindfuryNearby = false } },
+    })
+    state.friendlies = {
+        player = { unit = "player", class = "WARRIOR", spec = "ARMS", alive = true, healthPct = 100 },
+        party1 = { unit = "party1", class = "PALADIN", spec = "RETRIBUTION", alive = true, healthPct = 100 },
+        party2 = { unit = "party2", class = "DRUID", spec = "RESTORATION", alive = true, healthPct = 100 },
+    }
+    state.combatPhase = "ACTIVE"
+    state.aggression = "greedy"
+    local target = findEnemyByClass(state, "PRIEST")
+    target.healthPct = 5
+    target.hasTrinket = false
+    target.importantBuffs = {}
+    target.importantDebuffs = { [H.ns.Spells.MORTAL_STRIKE] = true }
+
+    local rec = SE:Evaluate(state)
+
+    H.assertTrue(rec.burstAllowed, "kill window can exist without a shaman")
+    H.assertNil(findActionByKey(rec.playerActions, "ACTION_SHAMAN_BLOODLUST"))
+end)
+
+H.it(g, "arena quality: burst accepts target-specific healing reduction evidence shapes", function()
+    local cases = {
+        {
+            label = "unit field",
+            target = { healingReductionActive = true },
+            observations = {},
+        },
+        {
+            label = "wound stacks",
+            target = { woundPoisonStacks = 5 },
+            observations = {},
+        },
+        {
+            label = "msActiveOn table",
+            target = {},
+            observations = { msActiveOn = { ["g-ms-table"] = true } },
+        },
+        {
+            label = "table debuff name",
+            target = { importantDebuffs = { [900001] = { name = "Wound Poison" } } },
+            observations = {},
+        },
+        {
+            label = "string debuff name",
+            target = { importantDebuffs = { [900002] = "Aimed Shot" } },
+            observations = {},
+        },
+    }
+
+    for _, case in ipairs(cases) do
+        local state = {
+            friendlies = {},
+            enemies = {},
+            observations = case.observations,
+            config = { strategy = { requireWindfuryNearby = false } },
+            aggression = "greedy",
+            _ownCaps = { hasMortalStrike = true, hasInterrupt = true },
+        }
+        local target = case.target
+        target.guid = "g-ms-table"
+        target.name = "Killtarget"
+        target.class = "PRIEST"
+        target.roleGuess = "HEALER"
+        target.healthPct = 5
+        target.hasTrinket = false
+        target.importantBuffs = target.importantBuffs or {}
+        target.importantDebuffs = target.importantDebuffs or {}
+
+        local out = SE:BurstDecision(state, target, nil)
+
+        H.assertTrue(out.gates.ms_active.allowed, case.label .. " should satisfy MS gate")
+        H.assertTrue(out.allowed, case.label .. " should create a valid burst window")
     end
 end)
 
@@ -1367,9 +1567,9 @@ H.it(g, "KillProb shifts monotonically as HP drops", function()
 end)
 
 H.it(g, "KillProb breakdown surfaces each contributing component", function()
-    local target = { healthPct = 50, hasTrinket = false, importantBuffs = {} }
+    local target = { class = "PRIEST", roleGuess = "HEALER", manaPct = 20, healthPct = 50, hasTrinket = false, importantBuffs = {} }
     local state  = {
-        enemies = { p = { class = "PRIEST", roleGuess = "HEALER", manaPct = 20, alive = true } },
+        enemies = { p = target },
         observations = { hojReady = true },
     }
     local out = SE:KillProb(target, state)
