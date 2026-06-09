@@ -263,12 +263,15 @@ local function observedPressureFriendly(state)
     local obs = state and state.observations or nil
     local pressure = obs and obs.healerPressure or nil
     if not friendlies or not pressure then return nil end
+    local targetGuid = pressure.targetGuid or pressure.guid
+    local targetUnit = pressure.targetUnit or pressure.unit
+    local targetName = pressure.targetName or pressure.name
 
     for _, f in pairs(friendlies) do
         if f.alive ~= false and isFriendlySupport(f) then
-            if pressure.guid and f.guid == pressure.guid then return f end
-            if pressure.unit and f.unit == pressure.unit then return f end
-            if pressure.name and f.name == pressure.name then return f end
+            if targetGuid and f.guid == targetGuid then return f end
+            if targetUnit and f.unit == targetUnit then return f end
+            if targetName and f.name == targetName then return f end
         end
     end
     return nil

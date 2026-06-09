@@ -83,6 +83,8 @@ local function setupEnemies(scenario)
         hojReady = true,
     })
     ns.Core._friendlyDamageTs = {}
+    ns.Core._friendlyDamageEvents = {}
+    ns.Core._friendlyCCEvents = {}
 end
 
 local function setupFriendlies(scenario)
@@ -133,6 +135,12 @@ local function markFriendlyDebuff(f, spell)
     if ns.Spells and (spell == ns.Spells.COUNTERSPELL or spell == ns.Spells.SPELL_LOCK) then
         f.debuffs.silenced = true
     end
+end
+
+local function isControlSpell(spell)
+    local cat = spell and ns.Spells and ns.Spells.CATEGORIES and ns.Spells.CATEGORIES[spell]
+    return cat == "STUN" or cat == "FEAR" or cat == "INCAPACITATE"
+        or cat == "DISORIENT" or cat == "ROOT" or cat == "CYCLONE", cat
 end
 
 local function clearFriendlyDebuff(f, spell)
@@ -202,22 +210,66 @@ function SIM:Apply(ev)
         local f = friendlyAt(ev.unit)
         if f then f.healthPct = ev.pct end
     elseif ev.type == "friendly_debuff" then
-        markFriendlyDebuff(friendlyAt(ev.unit), ev.spell)
+        local f = friendlyAt(ev.unit)
+        markFriendlyDebuff(f, ev.spell)
+        local isControl, category = isControlSpell(ev.spell)
+        if f and isControl then
+            local src = enemyAt(ev.by or ev.source)
+            table.insert(ns.Core._friendlyCCEvents, {
+                ts         = ev.t or 0,
+                subEvent   = "SPELL_AURA_APPLIED",
+                guid       = f.guid,
+                unit       = f.unit,
+                name       = f.name,
+                class      = f.class,
+                sourceGUID = src and src.guid or nil,
+                sourceName = src and src.name or nil,
+                spellID    = ev.spell,
+                spellName  = ev.label,
+                category   = category,
+            })
+            if ns.Core.RefreshFriendlyPressure then
+                ns.Core:RefreshFriendlyPressure(ev.t or 0)
+            end
+        end
     elseif ev.type == "friendly_debuff_off" then
         clearFriendlyDebuff(friendlyAt(ev.unit), ev.spell)
     elseif ev.type == "damage" then
         local f = friendlyAt(ev.on or ev.unit)
         if f and ev.pct then f.healthPct = ev.pct end
         local hits = tonumber(ev.hits) or 1
-        for _ = 1, hits do table.insert(ns.Core._friendlyDamageTs, ev.t or 0) end
+        local src = enemyAt(ev.by or ev.source or 1)
+        for _ = 1, hits do
+            table.insert(ns.Core._friendlyDamageTs, ev.t or 0)
+            if f then
+                table.insert(ns.Core._friendlyDamageEvents, {
+                    ts         = ev.t or 0,
+                    subEvent   = "SPELL_DAMAGE",
+                    guid       = f.guid,
+                    unit       = f.unit,
+                    name       = f.name,
+                    class      = f.class,
+                    sourceGUID = src and src.guid or nil,
+                    sourceName = src and src.name or nil,
+                    spellID    = ev.spell,
+                    spellName  = ev.label,
+                })
+            end
+        end
         ns.Core.state.observations = ns.Core.state.observations or {}
         local strat = (_G.ArenaCoachTBCDB and _G.ArenaCoachTBCDB.strategy) or {}
         ns.Core.state.observations.healerUnderPressure =
             #ns.Core._friendlyDamageTs >= (strat.peelTriggerDamage or 3)
+        if ns.Core.RefreshFriendlyPressure then
+            ns.Core:RefreshFriendlyPressure(ev.t or 0)
+        end
     elseif ev.type == "clear_pressure" then
         ns.Core._friendlyDamageTs = {}
+        ns.Core._friendlyDamageEvents = {}
+        ns.Core._friendlyCCEvents = {}
         ns.Core.state.observations = ns.Core.state.observations or {}
         ns.Core.state.observations.healerUnderPressure = false
+        ns.Core.state.observations.healerPressure = nil
     elseif ev.type == "observation" then
         ns.Core.state.observations = ns.Core.state.observations or {}
         ns.Core.state.observations[ev.key] = ev.value
@@ -231,6 +283,8 @@ function SIM:Apply(ev)
         ns.Core.state.enemyClassList = {}
         ns.Core.state.combatPhase = "POST"
         ns.Core._friendlyDamageTs = {}
+        ns.Core._friendlyDamageEvents = {}
+        ns.Core._friendlyCCEvents = {}
         ns.Core.state.observations = {}
     end
 end

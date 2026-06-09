@@ -107,6 +107,7 @@ local function appendTrace(rec, state)
     if not (db and db.trace and db.trace.enabled and rec) then return end
     db.trace.log = db.trace.log or {}
     local cap = db.trace.maxLines or TRACE_DEFAULT_CAP
+    local pressure = state and state.observations and state.observations.healerPressure or nil
     local snapshot = {
         ts             = (type(GetTime) == "function") and GetTime() or os.time(),
         mode           = rec.mode,
@@ -123,6 +124,13 @@ local function appendTrace(rec, state)
         callouts       = rec.callouts and table.concat(rec.callouts, ",") or "",
         profileContrib = rec.profileContrib or "",
     }
+    if pressure then
+        snapshot.pressureTarget = pressure.targetName or pressure.name or pressure.targetUnit or pressure.unit
+        snapshot.pressureType   = pressure.pressureType
+        snapshot.pressureEvents = pressure.damageEvents or pressure.events
+        snapshot.pressureExpiry = pressure.expiresAt
+        snapshot.pressureSources = #(pressure.sourceEnemyGuids or {})
+    end
     table.insert(db.trace.log, snapshot)
     while #db.trace.log > cap do table.remove(db.trace.log, 1) end
 end
@@ -227,9 +235,11 @@ Core.state = {
 -- Train-detection: ring of damage event timestamps against friendlies in the
 -- last TRAIN_WINDOW seconds. When count exceeds TRAIN_THRESHOLD, the engine
 -- forces DEFEND. Configurable via db.strategy.peelTriggerWindow / peelTriggerDamage.
+local friendlyIsHealer
 Core._friendlyGUIDs    = {}  -- guid -> friendly model
 Core._friendlyDamageTs = {}  -- list of timestamps
-Core._friendlyDamageEvents = {}  -- { ts, guid, unit, name, class }
+Core._friendlyDamageEvents = {}  -- { ts, guid, unit, name, class, sourceGUID, sourceName, spellID, spellName }
+Core._friendlyCCEvents = {}  -- { ts, guid, unit, name, class, sourceGUID, sourceName, spellID, spellName, category }
 
 local function pruneFriendlyDamage(now, window)
     local cutoff = (now or 0) - (window or 5)
@@ -240,16 +250,81 @@ local function pruneFriendlyDamage(now, window)
        and (Core._friendlyDamageEvents[1].ts or 0) < cutoff do
         table.remove(Core._friendlyDamageEvents, 1)
     end
+    while #Core._friendlyCCEvents > 0
+       and (Core._friendlyCCEvents[1].ts or 0) < cutoff do
+        table.remove(Core._friendlyCCEvents, 1)
+    end
+end
+
+local CONTROL_CATEGORIES = {
+    STUN = true,
+    FEAR = true,
+    INCAPACITATE = true,
+    DISORIENT = true,
+    ROOT = true,
+    CYCLONE = true,
+}
+
+local CONTROL_AURA_EVENTS = {
+    SPELL_AURA_APPLIED = true,
+    SPELL_AURA_REFRESH = true,
+}
+
+local function isControlSubEvent(subEvent, spellID)
+    local S = ns.Spells
+    local category = S and S.CATEGORIES and spellID and S.CATEGORIES[spellID] or nil
+    return CONTROL_AURA_EVENTS[subEvent] == true and CONTROL_CATEGORIES[category] == true, category
+end
+
+local function friendlyPressureRole(model)
+    if not model then return nil end
+    return model.roleGuess or model.role or (friendlyIsHealer(model) and "HEALER" or nil)
+end
+
+local function compactPressureSample(ev)
+    return {
+        ts         = ev.ts,
+        sourceGUID = ev.sourceGUID,
+        sourceName = ev.sourceName,
+        spellID    = ev.spellID,
+        spellName  = ev.spellName,
+        subEvent   = ev.subEvent,
+        category   = ev.category,
+    }
+end
+
+local function sortedKeys(set)
+    local out = {}
+    for key in pairs(set or {}) do table.insert(out, key) end
+    table.sort(out)
+    return out
+end
+
+local function pressureTypeFor(damageCount, ccCount, sourceCount, threshold)
+    if (ccCount or 0) > 0 then return "cc_chain" end
+    if (sourceCount or 0) >= 2 or (damageCount or 0) >= ((threshold or 3) + 2) then
+        return "burst"
+    end
+    return "train"
 end
 
 local function currentHealerPressure(threshold, window)
-    local counts, latest, models = {}, {}, {}
+    local counts, latest, started, models = {}, {}, {}, {}
+    local damageSamples, ccSamples, sourceSets = {}, {}, {}
     for _, ev in ipairs(Core._friendlyDamageEvents or {}) do
         local guid = ev.guid
         if guid then
             counts[guid] = (counts[guid] or 0) + 1
-            latest[guid] = ev.ts or latest[guid] or 0
+            local ts = ev.ts or 0
+            if not latest[guid] or ts > latest[guid] then latest[guid] = ts end
+            if not started[guid] or ts < started[guid] then started[guid] = ts end
             models[guid] = Core._friendlyGUIDs[guid] or ev
+            damageSamples[guid] = damageSamples[guid] or {}
+            table.insert(damageSamples[guid], compactPressureSample(ev))
+            if ev.sourceGUID and ev.sourceGUID ~= guid then
+                sourceSets[guid] = sourceSets[guid] or {}
+                sourceSets[guid][ev.sourceGUID] = true
+            end
         end
     end
 
@@ -263,15 +338,58 @@ local function currentHealerPressure(threshold, window)
 
     if not bestGuid or bestCount < (threshold or 3) then return nil end
     local model = models[bestGuid] or {}
+    for _, ev in ipairs(Core._friendlyCCEvents or {}) do
+        if ev.guid == bestGuid then
+            ccSamples[bestGuid] = ccSamples[bestGuid] or {}
+            table.insert(ccSamples[bestGuid], compactPressureSample(ev))
+            if ev.sourceGUID and ev.sourceGUID ~= bestGuid then
+                sourceSets[bestGuid] = sourceSets[bestGuid] or {}
+                sourceSets[bestGuid][ev.sourceGUID] = true
+            end
+        end
+    end
+    local sources = sortedKeys(sourceSets[bestGuid])
+    local samples = damageSamples[bestGuid] or {}
+    local ccs = ccSamples[bestGuid] or {}
+    local needed = threshold or 3
+    if needed < 1 then needed = 1 end
+    local win = window or 5
     return {
-        guid       = bestGuid,
-        unit       = model.unit,
-        name       = model.name,
-        class      = model.class,
-        events     = bestCount,
-        window     = window or 5,
-        lastSeenAt = bestLatest,
+        guid             = bestGuid,
+        unit             = model.unit,
+        name             = model.name,
+        class            = model.class,
+        events           = bestCount,
+        window           = win,
+        lastSeenAt       = bestLatest,
+        targetGuid       = bestGuid,
+        targetUnit       = model.unit,
+        targetName       = model.name,
+        targetClass      = model.class,
+        targetRole       = friendlyPressureRole(model),
+        damageSamples    = samples,
+        damageEvents     = bestCount,
+        ccSamples        = ccs,
+        sourceEnemyGuids = sources,
+        startedAt        = started[bestGuid] or bestLatest,
+        expiresAt        = (bestLatest or 0) + win,
+        confidence       = math.min(1, bestCount / needed),
+        pressureType     = pressureTypeFor(bestCount, #ccs, #sources, needed),
     }
+end
+
+function Core:RefreshFriendlyPressure(now, threshold, window)
+    local strat = (_G.ArenaCoachTBCDB and _G.ArenaCoachTBCDB.strategy) or {}
+    local win = window or strat.peelTriggerWindow or 5
+    local needed = threshold or strat.peelTriggerDamage or 3
+    local at = now
+    if at == nil then at = (type(GetTime) == "function") and GetTime() or 0 end
+    pruneFriendlyDamage(at, win)
+    self.state.observations = self.state.observations or {}
+    local pressure = currentHealerPressure(needed, win)
+    self.state.observations.healerUnderPressure = pressure ~= nil
+    self.state.observations.healerPressure = pressure
+    return pressure
 end
 
 -- Read the current arena bracket from the WoW battlefield API.
@@ -662,7 +780,7 @@ local function isDamageSubEvent(subEvent)
         or subEvent:find("_DAMAGE_LANDED$") ~= nil
 end
 
-local function friendlyIsHealer(f)
+function friendlyIsHealer(f)
     if not f then return false end
     local role = f.roleGuess or f.role
     if role then return role == "HEALER" end
@@ -789,14 +907,7 @@ function Core:Evaluate()
     self.state.config = _G.ArenaCoachTBCDB
     -- Refresh train-detection signal before scoring.
     local now = (type(GetTime) == "function") and GetTime() or 0
-    local strat = (_G.ArenaCoachTBCDB.strategy) or {}
-    local window    = strat.peelTriggerWindow or 5
-    local threshold = strat.peelTriggerDamage or 3
-    pruneFriendlyDamage(now, window)
-    self.state.observations = self.state.observations or {}
-    local pressure = currentHealerPressure(threshold, window)
-    self.state.observations.healerUnderPressure = pressure ~= nil
-    self.state.observations.healerPressure = pressure
+    self:RefreshFriendlyPressure(now)
 
     -- M13 #v2.1: route enemy discovery based on PvP context.
     -- DetectPvPContext caches result on state.pvpContext. Refresh
@@ -911,11 +1022,40 @@ local function onCLEU(_event, ...)
         local at = ts or ((type(GetTime) == "function") and GetTime()) or 0
         table.insert(Core._friendlyDamageTs, at)
         table.insert(Core._friendlyDamageEvents, {
-            ts    = at,
-            guid  = destGUID,
-            unit  = damagedFriendly.unit,
-            name  = damagedFriendly.name or destName,
-            class = damagedFriendly.class,
+            ts         = at,
+            subEvent   = subEvent,
+            guid       = destGUID,
+            unit       = damagedFriendly.unit,
+            name       = damagedFriendly.name or destName,
+            class      = damagedFriendly.class,
+            sourceGUID = sourceGUID,
+            sourceName = sourceName,
+            spellID    = spellID,
+            spellName  = spellName,
+        })
+        local strat = (_G.ArenaCoachTBCDB and _G.ArenaCoachTBCDB.strategy) or {}
+        local window = strat.peelTriggerWindow or 5
+        local threshold = strat.peelTriggerDamage or 3
+        pruneFriendlyDamage(at, window)
+        friendlyDamageShouldEvaluate = currentHealerPressure(threshold, window) ~= nil
+    end
+    local controlledFriendly = Core._friendlyGUIDs[destGUID]
+    local isControl, controlCategory = isControlSubEvent(subEvent, spellID)
+    if subEvent and controlledFriendly and friendlyIsHealer(controlledFriendly)
+       and isControl then
+        local at = ts or ((type(GetTime) == "function") and GetTime()) or 0
+        table.insert(Core._friendlyCCEvents, {
+            ts         = at,
+            subEvent   = subEvent,
+            guid       = destGUID,
+            unit       = controlledFriendly.unit,
+            name       = controlledFriendly.name or destName,
+            class      = controlledFriendly.class,
+            sourceGUID = sourceGUID,
+            sourceName = sourceName,
+            spellID    = spellID,
+            spellName  = spellName,
+            category   = controlCategory,
         })
         local strat = (_G.ArenaCoachTBCDB and _G.ArenaCoachTBCDB.strategy) or {}
         local window = strat.peelTriggerWindow or 5
@@ -1399,10 +1539,12 @@ function Core:HandleTrace(rest)
         local last = log[#log]
         if not last then chatPrint("trace log is empty"); return end
         chatPrint(string.format(
-            "trace[%d]: mode=%s target=%s reason=%s comp=%s bracket=%s callouts=[%s]",
+            "trace[%d]: mode=%s target=%s reason=%s comp=%s bracket=%s pressure=%s/%s/%s callouts=[%s]",
             #log, tostring(last.mode), tostring(last.primaryClass),
             tostring(last.reason), tostring(last.comp),
-            tostring(last.bracket), tostring(last.callouts)))
+            tostring(last.bracket), tostring(last.pressureTarget or "-"),
+            tostring(last.pressureType or "-"), tostring(last.pressureEvents or "-"),
+            tostring(last.callouts)))
     else
         chatPrint("usage: /acc trace on|off|status|dump|clear")
     end
@@ -1860,6 +2002,7 @@ local function onPlayerEnteringWorld()
     Core.state.combatPhase     = "PRE"
     Core._friendlyDamageTs     = {}
     Core._friendlyDamageEvents = {}
+    Core._friendlyCCEvents     = {}
 
     Core:InitDB()
     Core:RefreshFriendlies()

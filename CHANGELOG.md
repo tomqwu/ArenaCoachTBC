@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Defensive pressure now carries target-specific evidence.** `observations.healerPressure` keeps the old compatibility fields and now also reports `targetGuid`, `targetUnit`, `targetName`, `targetRole`, `damageSamples`, `ccSamples`, `sourceEnemyGuids`, `startedAt`, `lastSeenAt`, `expiresAt`, `confidence`, and `pressureType`.
+- **Simulator pressure matches live combat-log pressure.** `/acc test` and built-in scenarios now feed the same target/source evidence used by real CLEU damage and healer CC.
+
+### Fixed
+- **DEFEND trace output explains the pressure target.** `/acc trace dump` and trace snapshots now include compact pressure target/type/event evidence so a bug report can explain why defensive advice fired.
+
+### Tests
+- Added Core and Simulator regressions for CC-plus-damage pressure on the actual Restoration druid target, source enemy attribution, pressure expiration, typed `target*` pressure lookup, and trace pressure evidence.
+
 ## [2.8.43] - 2026-06-09
 
 ### Fixed
