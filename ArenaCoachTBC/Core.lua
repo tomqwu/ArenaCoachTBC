@@ -1488,6 +1488,7 @@ function Core:ReplayRecord(events, modifier, opts)
                 primaryTargetName  = rec.primaryTargetName,
                 primaryTargetClass = rec.primaryTargetClass,
                 playerActions      = copyReplayRecords(rec.playerActions),
+                signals            = copyReplayRecords(rec.signals),
                 callouts           = copyReplayList(rec.callouts),
                 rejectedCallouts   = copyReplayRecords(rec.rejectedCallouts),
                 rejectedActions    = copyReplayRecords(rec.rejectedActions),

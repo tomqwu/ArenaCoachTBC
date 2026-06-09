@@ -31,6 +31,18 @@ local sampleRec = {
         { unit = "party1", name = "Shaman", class = "SHAMAN",
           actionKey = "ACTION_SHAMAN_PURGE", targetName = "Holyman", targetType = "enemy" },
     },
+    signals = {
+        { id = "strategy:KILL", kind = "strategy", ownerUnit = "player", ownerGuid = "friendly-warrior",
+          targetGuid = "guid-priest", targetName = "Holyman", reasonKey = nil, priority = "HIGH",
+          displayStyle = "alert", duration = 8, expiresAt = 108 },
+        { id = "callout:CALL_PURGE", kind = "callout", ownerUnit = "team",
+          targetGuid = "guid-priest", targetName = "Holyman", reasonKey = "CALL_PURGE",
+          requiredCaps = { "hasPurge" }, displayStyle = "text", duration = 6, expiresAt = 106 },
+        { id = "player_action:player:ACTION_WARRIOR_KILL", kind = "player_action",
+          ownerUnit = "player", ownerGuid = "friendly-warrior", targetGuid = "guid-priest",
+          targetName = "Holyman", reasonKey = "ACTION_WARRIOR_KILL", displayStyle = "bar",
+          duration = 10, expiresAt = 110 },
+    },
     burstAllowed = true,
     burstBlockedBy = nil,
 }
@@ -85,6 +97,17 @@ H.it(g, "player action getters expose DBM-style assignments", function()
     H.assertEq(API.GetPlayerAction().actionKey, "ACTION_WARRIOR_KILL")
     H.assertEq(API.GetActionForUnit("party1").actionKey, "ACTION_SHAMAN_PURGE")
     H.assertNil(API.GetActionForUnit("party4"))
+end)
+
+H.it(g, "typed signal getters expose structured state without text parsing", function()
+    WAB:Publish(sampleRec, sampleState)
+    local signals = API.GetSignals()
+    H.assertEq(#signals, 3)
+    H.assertEq(API.GetSignalsByKind("callout")[1].reasonKey, "CALL_PURGE")
+    H.assertEq(API.GetSignalsByKind("player_action")[1].ownerUnit, "player")
+    H.assertEq(API.GetPersonalSignal(100).reasonKey, "ACTION_WARRIOR_KILL")
+    H.assertEq(#API.GetActiveSignals(107), 2)
+    H.assertEq(#API.GetActiveSignals(111), 0)
 end)
 
 H.it(g, "comp identification getters", function()
@@ -244,6 +267,10 @@ H.it(g, "no-state safety: getters return empty/nil when nothing published", func
     H.assertNil(API.GetReason())
     H.assertEq(#API.GetCallouts(), 0)
     H.assertEq(#API.GetPlayerActions(), 0)
+    H.assertEq(#API.GetSignals(), 0)
+    H.assertEq(#API.GetSignalsByKind("callout"), 0)
+    H.assertEq(#API.GetActiveSignals(100), 0)
+    H.assertNil(API.GetPersonalSignal(100))
     H.assertNil(API.GetPlayerAction())
     H.assertNil(API.GetActionForUnit("party1"))
     H.assertFalse(API.IsBurstAllowed())

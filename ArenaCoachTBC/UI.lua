@@ -1458,7 +1458,7 @@ local function setAssignmentSlots(frame, actions, scaffold)
                             text = text,
                             action = action,
                             isSelf = selfSlot,
-                            expiresAt = now + ACTION_BAR_SECONDS,
+                            expiresAt = action.expiresAt or (now + ACTION_BAR_SECONDS),
                             _frac = 1,
                         }
                     end
@@ -1778,8 +1778,36 @@ local function actionPlainText(action)
     return text
 end
 
+local function playerActionsFromSignals(recommendation)
+    if not recommendation then return nil end
+    if type(recommendation.playerActions) == "table" and #recommendation.playerActions > 0 then
+        return recommendation.playerActions
+    end
+    local out = {}
+    for _, signal in ipairs(recommendation.signals or {}) do
+        if signal.kind == "player_action" then
+            table.insert(out, {
+                unit        = signal.ownerUnit,
+                guid        = signal.ownerGuid,
+                name        = signal.ownerName,
+                class       = signal.ownerClass,
+                role        = signal.ownerRole,
+                actionKey   = signal.reasonKey,
+                priority    = signal.priority,
+                target      = signal.targetGuid,
+                targetUnit  = signal.targetUnit,
+                targetName  = signal.targetName,
+                targetClass = signal.targetClass,
+                targetType  = signal.targetType,
+                expiresAt   = signal.expiresAt,
+            })
+        end
+    end
+    return out
+end
+
 local function selfActionFrom(recommendation)
-    local actions = recommendation and recommendation.playerActions
+    local actions = playerActionsFromSignals(recommendation)
     if type(actions) ~= "table" then return nil end
     for i = 1, #actions do
         if isSelfAction(actions[i]) then return actions[i] end
@@ -2201,17 +2229,18 @@ function UI:Apply(recommendation)
     local scaffold = layoutScaffoldActive(recommendation)
     local integratedUnitText = formatUnitStrip(recommendation, true)
     local integratedRailText = formatCueRail(recommendation, true)
-    local integratedAssignText = formatPlayerActions(recommendation.playerActions, true)
+    local assignmentActions = playerActionsFromSignals(recommendation)
+    local integratedAssignText = formatPlayerActions(assignmentActions, true)
     setFontStringText(f.unitText, integratedUnitText)
     setFontStringText(f.railText, integratedRailText)
     setFontStringText(f.assignText, integratedAssignText)
-    setAssignmentSlots(f, recommendation.playerActions, scaffold)
+    setAssignmentSlots(f, assignmentActions, scaffold)
     if f.assignText and f.assignText.Hide then f.assignText:Hide() end
 
     if detachedModulesEnabled() and showBoard then
         setModuleText(self.unitFrame, "text", formatUnitStrip(recommendation, scaffold), "_hasUnits")
         setModuleText(self.railFrame, "text", formatCueRail(recommendation, scaffold), "_hasCues")
-        setModuleText(self.assignFrame, "actionText", formatPlayerActions(recommendation.playerActions, scaffold), "_hasAssignments")
+        setModuleText(self.assignFrame, "actionText", formatPlayerActions(assignmentActions, scaffold), "_hasAssignments")
     else
         setModuleText(self.unitFrame, "text", "", "_hasUnits")
         setModuleText(self.railFrame, "text", "", "_hasCues")

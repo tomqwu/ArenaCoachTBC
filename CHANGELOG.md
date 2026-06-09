@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Typed strategy signals with expiration and evidence.** `StrategyEngine:Evaluate` now emits `rec.signals` for `strategy`, `callout`, and `player_action` records. Each signal carries owner/target metadata, required capabilities, source evidence, priority, display style, duration, and `expiresAt`, so DBM-style bars and WeakAura-style icons can render advice without parsing localized text.
+- **WeakAura typed-state getters.** `_G.ArenaCoachTBC` now exposes `GetSignals()`, `GetSignalsByKind(kind)`, `GetActiveSignals(now)`, and `GetPersonalSignal(now)` while preserving the existing callout and player-action getters.
+
+### Changed
+- **Replay reports include signal timelines.** Golden replay output now prints signal kind/id, owner, target, and remaining window so real arena fixtures can catch stale or mis-owned advice.
+- **The built-in HUD can render typed personal signals directly.** If a recommendation has `signals` but no legacy `playerActions`, the player-first action line and slow action bar still render from the typed contract.
+
+### Tests
+- Added `StrategySignals_spec.lua` plus WeakAuraBridge, ReplayReport, UI, and golden replay regressions for KILL, DEFEND, OPEN, RESET, player-action ownership, callout compatibility, active/expired filtering, and signal-only UI rendering.
+
 ## [2.8.49] - 2026-06-09
 
 ### Added

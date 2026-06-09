@@ -193,6 +193,10 @@ The addon publishes its current recommendation and full state through the global
 | `GetPlayerActions()` | DBM-style per-friendly assignments / 每个队友的分工提示 |
 | `GetPlayerAction()` | assignment for `player` / 玩家自己的分工 |
 | `GetActionForUnit("party1")` | assignment for a party unit / 指定队友的分工 |
+| `GetSignals()` | typed strategy/callout/action records / 结构化策略、提示、动作信号 |
+| `GetSignalsByKind("player_action")` | filtered typed signals / 按类型过滤的结构化信号 |
+| `GetActiveSignals(now)` | non-expired typed signals / 尚未过期的结构化信号 |
+| `GetPersonalSignal(now)` | current player-owned action or strategy signal / 当前玩家自己的动作或策略信号 |
 | `IsBurstAllowed()` | true / false |
 | `GetBurstBlocker()` | "no_ms" / "target_immune" / nil |
 | `GetEnemyComp()` | "RMP" / "WLD" / ... |
@@ -208,6 +212,33 @@ The addon publishes its current recommendation and full state through the global
 | `GetEnemyByGUID(guid)` | one enemy / 单个敌方 |
 | `GetCombatPhase()` | "PRE" / "ACTIVE" / "POST" |
 | `GetVersion()` | "2.8.49" |
+
+Typed signals have this stable shape. `kind="strategy"` describes the current plan, `kind="callout"` mirrors executable callout keys, and `kind="player_action"` owns the DBM-style instruction for one friendly player.
+
+结构化信号使用这个稳定格式。`kind="strategy"` 表示当前策略，`kind="callout"` 对应可执行提示键，`kind="player_action"` 表示某个己方玩家的 DBM 风格动作。
+
+```lua
+{
+    id = "player_action:player:ACTION_WARRIOR_KILL",
+    kind = "player_action",
+    ownerUnit = "player",
+    ownerGuid = "...",
+    ownerName = "You",
+    ownerClass = "WARRIOR",
+    targetGuid = "...",
+    targetName = "Holyman",
+    targetClass = "PRIEST",
+    requiredCaps = { "hasMortalStrike" },
+    sourceEvidence = { mode = "KILL", burstAllowed = true },
+    confidence = 0.73,
+    duration = 10,
+    expiresAt = 128.5,
+    priority = "HIGH",
+    displayStyle = "bar",
+    reasonKey = "ACTION_WARRIOR_KILL",
+    changed = true,
+}
+```
 
 ### Sample custom trigger / 自定义触发器示例
 

@@ -45,6 +45,55 @@ end
 function API.GetPlayerAction()
     return API.GetActionForUnit("player")
 end
+
+-- ----- Typed signals -----
+function API.GetSignals()
+    return WAB._last and WAB._last.signals or {}
+end
+
+function API.GetSignalsByKind(kind)
+    local out = {}
+    if not kind then return out end
+    for _, signal in ipairs(API.GetSignals()) do
+        if signal.kind == kind then table.insert(out, signal) end
+    end
+    return out
+end
+
+local function currentTime(now)
+    if type(now) == "number" then return now end
+    if type(GetTime) == "function" then return GetTime() end
+    return 0
+end
+
+local function signalExpired(signal, now)
+    if not (signal and signal.expiresAt) then return false end
+    return currentTime(now) >= signal.expiresAt
+end
+
+function API.GetActiveSignals(now)
+    local out = {}
+    local t = currentTime(now)
+    for _, signal in ipairs(API.GetSignals()) do
+        if not signalExpired(signal, t) then table.insert(out, signal) end
+    end
+    return out
+end
+
+function API.GetPersonalSignal(now)
+    for _, signal in ipairs(API.GetActiveSignals(now)) do
+        if signal.kind == "player_action" and signal.ownerUnit == "player" then
+            return signal
+        end
+    end
+    for _, signal in ipairs(API.GetActiveSignals(now)) do
+        if signal.kind == "strategy" and signal.ownerUnit == "player" then
+            return signal
+        end
+    end
+    return nil
+end
+
 function API.IsBurstAllowed()    return WAB._last and WAB._last.burstAllowed or false end
 function API.GetBurstBlocker()   return WAB._last and WAB._last.burstBlockedBy end
 function API.GetBurstDecision()  return WAB._last and WAB._last.burstDecision end

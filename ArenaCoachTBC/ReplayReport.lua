@@ -86,6 +86,13 @@ local function targetToken(row, action, redactor)
     return dash(action and (action.targetClass or action.targetUnit) or row.primaryTargetClass)
 end
 
+local function signalTargetToken(signal, redactor)
+    if not signal then return "-" end
+    if not empty(signal.targetName) then return redactor:Name(signal.targetName) end
+    if not empty(signal.targetGuid) then return redactor:Guid(signal.targetGuid) end
+    return dash(signal.targetClass or signal.targetUnit or signal.targetType)
+end
+
 local function firstPlayerAction(actions)
     if type(actions) ~= "table" then return nil end
     for _, action in ipairs(actions) do
@@ -142,6 +149,24 @@ local function formatBars(row, redactor)
     return stableJoin(out, ",")
 end
 
+local function formatSignalExpiry(signal)
+    if not (signal and signal.expiresAt) then return "-" end
+    local n = tonumber(signal.expiresAt)
+    if n then return string.format("%.1f", n) end
+    return tostring(signal.expiresAt)
+end
+
+local function formatSignals(row, redactor)
+    local out = {}
+    for _, signal in ipairs((row and row.signals) or {}) do
+        table.insert(out, dash(signal.kind) .. ":" .. dash(signal.id)
+            .. "@" .. dash(signal.ownerUnit)
+            .. "->" .. signalTargetToken(signal, redactor)
+            .. "~" .. formatSignalExpiry(signal))
+    end
+    return stableJoin(out, ",")
+end
+
 function RR:BuildRows(events, replayRows, opts)
     opts = opts or {}
     local redactor = opts.redactor or self:NewRedactor()
@@ -161,6 +186,7 @@ function RR:BuildRows(events, replayRows, opts)
             callouts = formatCallouts(row.callouts),
             rejected = formatRejected(row),
             bars     = formatBars(row, redactor),
+            signals  = formatSignals(row, redactor),
         })
     end
     return rows
@@ -174,13 +200,13 @@ function RR:Format(events, replayRows, opts)
         "reportVersion=" .. tostring(self.VERSION),
         "source=" .. dash(opts.source),
         string.format("events=%d rows=%d", #(events or {}), #rows),
-        "idx | time | event | src>dst | mode | comp | target | playerAction | callouts | rejected | bars",
+        "idx | time | event | src>dst | mode | comp | target | playerAction | callouts | rejected | bars | signals",
     }
     for _, row in ipairs(rows) do
         table.insert(lines, string.format(
-            "%03d | %s | %s | %s>%s | %s | %s | %s | %s | %s | %s | %s",
+            "%03d | %s | %s | %s>%s | %s | %s | %s | %s | %s | %s | %s | %s",
             row.index, row.time, row.event, row.source, row.dest, row.mode, row.comp,
-            row.target, row.action, row.callouts, row.rejected, row.bars))
+            row.target, row.action, row.callouts, row.rejected, row.bars, row.signals))
     end
     return table.concat(lines, "\n") .. "\n"
 end
