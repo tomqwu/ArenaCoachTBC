@@ -48,11 +48,70 @@ H.it(g, "trinket cell is READY until a medallion use is observed", function()
     H.assertTrue(m.trinket.remaining > 100, "2m trinket should have >100s left")
 end)
 
-H.it(g, "WotF also drives the trinket cell (separate CC-break CD)", function()
+H.it(g, "WotF-only use does NOT flip the trinket cell (medallion still up)", function()
+    -- WotF and the medallion are independent CC-breaks; an undead who
+    -- burned only WotF can still trinket. Mirrors Core's hasTrinket
+    -- semantics — the cell answers "can they break CC right now".
     reset()
     CT:MarkUsed("guid-fh-1", S.WILL_OF_THE_FORSAKEN)
     local m = FH:BuildRowModel(freshEnemy())
+    H.assertTrue(m.trinket.ready)
+end)
+
+H.it(g, "medallion + WotF both down counts down to the FIRST break back", function()
+    reset()
+    local t = (type(GetTime) == "function") and GetTime() or os.time()
+    CT:_record("guid-fh-1", S.PVP_TRINKET_EFFECT, 120, t - 30)     -- back in 90s
+    CT:_record("guid-fh-1", S.WILL_OF_THE_FORSAKEN, 120, t - 100)  -- back in 20s
+    local m = FH:BuildRowModel(freshEnemy())
     H.assertFalse(m.trinket.ready)
+    H.assertTrue(m.trinket.remaining <= 21, "shows the soonest CC-break")
+end)
+
+H.it(g, "medallion down but WotF observed back up -> ready (undead racial up)", function()
+    reset()
+    local t = (type(GetTime) == "function") and GetTime() or os.time()
+    CT:_record("guid-fh-1", S.PVP_TRINKET_EFFECT, 120, t - 30)      -- still down
+    CT:_record("guid-fh-1", S.WILL_OF_THE_FORSAKEN, 120, t - 150)   -- expired -> ready
+    local m = FH:BuildRowModel(freshEnemy())
+    H.assertTrue(m.trinket.ready)
+end)
+
+H.it(g, "max-rank Kick (38768) populates the interrupt cell (v2.9 rank fix)", function()
+    -- CLEU carries the rank actually cast; a level-70 rogue kicks with
+    -- rank 5, not the rank-1 ID. Regression: CT.defaults must know it.
+    reset()
+    CT:OnCombatLogEvent("SPELL_CAST_SUCCESS", "guid-fh-1", "guid-x", S.KICK_R5)
+    local m = FH:BuildRowModel(freshEnemy({ class = "ROGUE" }))
+    H.assertNotNil(m.interrupt, "rank-5 kick must be tracked")
+    H.assertTrue(m.interrupt.remaining <= 10)
+end)
+
+H.it(g, "Divine Shield rank 2 (1020) populates the defensive cell", function()
+    reset()
+    CT:OnCombatLogEvent("SPELL_AURA_APPLIED", "guid-x", "guid-fh-1", S.DIVINE_SHIELD_R2)
+    local m = FH:BuildRowModel(freshEnemy({ class = "PALADIN" }))
+    H.assertNotNil(m.defensive, "rank-2 bubble must be tracked")
+end)
+
+H.it(g, "Update rate-limits direct repaints to the ticker cadence (v2.9)", function()
+    reset()
+    _G.ArenaCoachTBCDB = { factsHud = { enabled = true } }
+    FH.frame = nil
+    FH:CreateFrame()
+    local paints = 0
+    local savedRepaint = FH.Repaint
+    FH.Repaint = function(self) paints = paints + 1; self._lastPaint = (type(GetTime) == "function") and GetTime() or 0 end
+    FH._lastPaint = nil
+    local state = { enemies = { arena1 = freshEnemy() }, pvpContext = "arena" }
+    FH:Update(state)  -- overdue -> paints
+    FH:Update(state)  -- same tick -> rate-limited
+    FH:Update(state)
+    H.assertEq(paints, 1, "CLEU-rate Update calls must not repaint each time")
+    H.advanceTime(1)
+    FH:Update(state)  -- overdue again
+    H.assertEq(paints, 2)
+    FH.Repaint = savedRepaint
 end)
 
 H.it(g, "defensive cell empty until observed, then shows the downed CD", function()

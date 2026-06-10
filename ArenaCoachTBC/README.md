@@ -184,10 +184,9 @@ Scoring weights are exposed as a flat table / 打分权重以扁平表暴露：
 SE.weights = {
     role_healer          =  25,
     role_cloth_dps       =  15,
-    role_melee_overext   =  10,
     health_below_50      =  30,
     trinket_down         =  20,
-    major_defensive_down =  15,
+    major_defensive_down =  15,  -- target's OWN class immunity observed >= 15s from ready
     no_immunity          =  10,
     purgeable_defensive  =  10,
     ms_active            =  25,
@@ -197,8 +196,6 @@ SE.weights = {
     priest_can_dispel    =  10,
     off_healer_cc        =  15,
     target_immune        = -100,
-    target_unreachable   =  -30,
-    target_los_blocked   =  -20,
     melee_locked_down    =  -20,
     our_healer_cc        =  -25,
     our_team_low_hp      =  -30,

@@ -56,12 +56,34 @@ CT.defaults = {
     [42292] = 120, -- PvP medallion
     -- Racial CC-breaks (not on the same cooldown as the trinket in TBC)
     [7744]  = 120, -- Will of the Forsaken (Undead)
-    -- Interrupts (v2.9 facts HUD: a downed kick is a free-cast window)
-    [1766]  = 10,  -- Kick (rogue)
-    [6554]  = 10,  -- Pummel (warrior)
-    [25454] = 6,   -- Earth Shock (shaman; rank 8, 6s shared shock CD)
+    -- Interrupts (v2.9 facts HUD: a downed kick is a free-cast window).
+    -- Every rank listed: CLEU carries the rank actually cast and this
+    -- table matches IDs exactly — a level-70 rogue kicks with 38768.
+    [1766]  = 10,  -- Kick r1
+    [1767]  = 10,  -- Kick r2
+    [1768]  = 10,  -- Kick r3
+    [1769]  = 10,  -- Kick r4
+    [38768] = 10,  -- Kick r5 (TBC max)
+    [6552]  = 10,  -- Pummel r1
+    [6554]  = 10,  -- Pummel r2
+    [2139]  = 24,  -- Counterspell (cast ID; single rank)
+    [8042]  = 6,   -- Earth Shock r1 (the interrupt-weave rank)
+    [8044]  = 6,   -- Earth Shock r2
+    [8045]  = 6,   -- Earth Shock r3
+    [8046]  = 6,   -- Earth Shock r4
+    [10412] = 6,   -- Earth Shock r5
+    [10413] = 6,   -- Earth Shock r6
+    [10414] = 6,   -- Earth Shock r7
+    [25454] = 6,   -- Earth Shock r8 (TBC max)
     -- Defensives missing from the original list (v2.9 facts HUD)
     [30823] = 120, -- Shamanistic Rage (2m)
+    [45438] = 300, -- Ice Block (alternate TBC-era ID)
+    [1020]  = 300, -- Divine Shield r2 (what a level-70 paladin casts)
+    [1022]  = 300, -- Blessing of Protection r1
+    [5599]  = 300, -- Blessing of Protection r2
+    [5277]  = 270, -- Evasion r1
+    [1856]  = 180, -- Vanish r1
+    [1857]  = 180, -- Vanish r2
 }
 
 local function now()
@@ -131,8 +153,11 @@ function CT:OnCombatLogEvent(subEvent, sourceGUID, destGUID, spellID, ...)
         if spellID == 7744 then
             self:_record(destGUID, 7744)
         end
-        -- Ice Block / Divine Shield are casts but also auras - record from aura too
-        if spellID == 27619 or spellID == 642 or spellID == 10278 then
+        -- Ice Block / Divine Shield / BoP are casts but also auras —
+        -- record from the aura too, across every rank ID (v2.9).
+        if spellID == 27619 or spellID == 45438
+           or spellID == 642 or spellID == 1020
+           or spellID == 10278 or spellID == 1022 or spellID == 5599 then
             self:_record(destGUID, spellID)
         end
     end

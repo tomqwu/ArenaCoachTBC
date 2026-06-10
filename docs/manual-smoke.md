@@ -63,7 +63,7 @@ behaviour is what tests can't see.
 - [ ] Optional edge cue is thin, static, low-alpha, and dark on RESET; it must not pulse or flash around the screen
 - [ ] DEFEND/URGENT does not create a full-screen red flash; use HUD colour, nameplate, arcade cue, and sound cues instead
 - [ ] Nameplate of the kill target gets a red border; swap target gets orange (when in SWAP mode)
-- [ ] Audio cue fires on mode flip (KILL/SWAP/DEFEND/OPEN play distinct WoW SoundKit IDs); arena-only
+- [ ] Audio cue fires on KILL and DEFEND mode flips only (v2.9: SWAP/OPEN flips are intentionally silent); arena-only
 - [ ] URGENT callouts stay readable without a full-screen flash, even if an old SavedVariables file has `alerts.screenFlash = true`
 - [ ] Standing in Stormwind / Orgrimmar for 30 s: no frame-rate drop (city-lag fix, v2.2.5)
 - [ ] While PvP-flagged outside instances, hitting or being hit by an ordinary creature does not show the HUD; a real hostile player or duel still does

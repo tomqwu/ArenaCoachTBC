@@ -461,9 +461,12 @@ end
 
 -- Read the current arena bracket from the WoW battlefield API.
 -- Returns 2/3/5 if in an arena queue or active arena; falls back to the
--- previously known bracket (default 5) when no battlefield is active.
+-- previously known bracket (default 3) when no battlefield is active.
+-- Note: only arena queues report teamSize > 0 — BG / world contexts run
+-- on the default, which is why the engine only applies bracket weight
+-- overrides in arena (see scoreEnemy).
 function Core:UpdateBracket()
-    local prev = self.state.bracket or 5
+    local prev = self.state.bracket or 3
     if type(GetMaxBattlefieldID) ~= "function" or type(GetBattlefieldStatus) ~= "function" then
         return prev
     end
@@ -1075,12 +1078,22 @@ local CUE_DEDUP_WINDOW = 3  -- seconds
 function Core:_PlayEventCue(eventKey, guid, spellID)
     local db = _G.ArenaCoachTBCDB
     if not (db and db.alerts and db.alerts.sound) then return false end
+    -- Arena only — the same gate every other audio cue uses. In BG /
+    -- world the enemy table holds every hostile seen on any nameplate;
+    -- dozens of trinkets and immunities popping in an AV team fight
+    -- would chirp continuously and train the ear to ignore all audio.
     local ctx = self.state.pvpContext
-    if ctx ~= "arena" and ctx ~= "bg" and ctx ~= "world" then return false end
+    if ctx ~= "arena" then return false end
     local key = eventKey .. ":" .. tostring(guid) .. ":" .. tostring(spellID)
     local t = (type(GetTime) == "function") and GetTime() or 0
     if (t - (self._lastCueTs[key] or -CUE_DEDUP_WINDOW)) < CUE_DEDUP_WINDOW then
         return false
+    end
+    -- Opportunistic prune: entries older than the dedup window are dead
+    -- weight; without this the table grows one key per enemy guid+spell
+    -- for the whole session.
+    for k, ts in pairs(self._lastCueTs) do
+        if (t - ts) > (CUE_DEDUP_WINDOW * 10) then self._lastCueTs[k] = nil end
     end
     self._lastCueTs[key] = t
     if ns.Sounds and ns.Sounds.PlayEvent then ns.Sounds:PlayEvent(eventKey) end
@@ -1503,7 +1516,7 @@ function Core:ReplayRecord(events, modifier, opts)
         observations   = {},
         enemyClassList = {},
         combatPhase    = initial.combatPhase or "ACTIVE",
-        bracket        = initial.bracket or 5,
+        bracket        = initial.bracket or 3,
         pvpContext     = initial.pvpContext,
         config         = { strategy = {} },
     }

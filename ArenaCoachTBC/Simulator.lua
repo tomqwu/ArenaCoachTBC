@@ -350,6 +350,12 @@ function SIM:_evaluate(label)
             if not uiOK then chatPrint("simulation HUD failed: " .. tostring(uiErr)) end
         end
     end
+    -- v2.9: demo the facts panel too — the simulator already feeds
+    -- CooldownTracker, and sim state carries pvpContext "arena", so the
+    -- same Update path Core:Evaluate uses works here.
+    if ns.FactsHUD and ns.FactsHUD.Update then
+        pcall(ns.FactsHUD.Update, ns.FactsHUD, state)
+    end
     if ns.WeakAuraBridge and ns.WeakAuraBridge.Publish then
         pcall(ns.WeakAuraBridge.Publish, ns.WeakAuraBridge, rec, state)
     end

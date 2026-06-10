@@ -174,6 +174,29 @@ local function nextMajorDefensiveCD(enemy)
     return soonest
 end
 
+-- Seconds until the target's OWN class immunity (Ice Block / Divine
+-- Shield / CloS) is back, from observed cooldowns. nil = never observed
+-- or the class has no self-immunity. Unlike nextMajorDefensiveCD this
+-- ignores cross-target spells (BoP lands on the protected teammate's
+-- GUID) and other classes' immunities, so it answers "is THEIR escape
+-- down", not "did anyone nearby burn something".
+local function classImmunityCD(enemy)
+    if not enemy or not enemy.guid or not enemy.class then return nil end
+    local CT = ns.CooldownTracker
+    local S  = ns.Spells
+    if not CT or not S or not S.CLASS_SELF_IMMUNITY then return nil end
+    local ids = S.CLASS_SELF_IMMUNITY[enemy.class]
+    if not ids then return nil end
+    local soonest = nil
+    for _, spellID in ipairs(ids) do
+        local rem = CT:GetRemaining(enemy.guid, spellID)
+        if rem and rem > 0 and (not soonest or rem < soonest) then
+            soonest = rem
+        end
+    end
+    return soonest
+end
+
 local function hasPurgeableBuff(enemy)
     if not enemy.importantBuffs then return false end
     local Spells = ns.Spells
@@ -473,7 +496,14 @@ local function compTargetPlan(comp, slot)
 end
 
 local function scoreEnemy(enemy, state, comp)
-    local w = SE:GetWeights(state and state.bracket)
+    -- Bracket weight overrides are arena tuning. Outside arena the
+    -- bracket is just the boot default (BGs report teamSize 0), so
+    -- applying 2s/3s overrides there would silently retune BG / world
+    -- scoring. nil context = headless tests / bootstrap = allowed.
+    local ctxForWeights = state and state.pvpContext
+    local bracketForWeights = (ctxForWeights == nil or ctxForWeights == "arena")
+        and (state and state.bracket) or nil
+    local w = SE:GetWeights(bracketForWeights)
     local score = 0
     local contrib = {}  -- ordered list of {reasonKey, points}
     local function add(pts, key)
@@ -500,18 +530,23 @@ local function scoreEnemy(enemy, state, comp)
     if enemy.hasTrinket == false then
         add(w.trinket_down, "trinket_down")
     end
-    -- Major-defensive timing, both directions, from observed cooldowns:
-    --   >= 15s out: their escape is unavailable -> bonus (kill window).
-    --   <  15s out: committing burst into a soon-immune target is wasted
-    --               effort -> penalty.
+    -- Major-defensive timing, both directions, from observed cooldowns.
+    -- Penalty (broad): ANY observed immunity coming back within 15s
+    -- means burst may be wasted — conservative is fine here.
+    -- Bonus (narrow): only the target's OWN class immunity being down
+    -- >= 15s opens a kill window. The broad set would mis-credit e.g. a
+    -- paladin who BoP'd a teammate while Divine Shield is still up.
+    -- Neither fires while the target is actively immune (target_immune
+    -- already dominates, and "their escape is down" is false mid-bubble).
     -- nil = never observed = unknown; neither applies. (v2.9: the bonus
     -- branch used to read enemy.majorDefensiveDown, which nothing set.)
     local nextDef = nextMajorDefensiveCD(enemy)
-    if nextDef then
-        if nextDef >= 15 then
+    if nextDef and nextDef < 15 then
+        add(w.kill_defensive_soon, "kill_defensive_soon")
+    elseif not activeImmunity(enemy) then
+        local ownImm = classImmunityCD(enemy)
+        if ownImm and ownImm >= 15 then
             add(w.major_defensive_down, "major_defensive_down")
-        else
-            add(w.kill_defensive_soon, "kill_defensive_soon")
         end
     end
     if not activeImmunity(enemy) then

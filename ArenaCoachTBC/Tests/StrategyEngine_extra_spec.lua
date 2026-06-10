@@ -738,6 +738,64 @@ H.it(g, "kill_defensive_soon penalty when observed CD nearly back (v2.9)", funct
     CT:Clear()
 end)
 
+H.it(g, "v2.9: BoP burned on a teammate does NOT grant the kill-window bonus", function()
+    -- BoP lands on the protected teammate's GUID and says nothing about
+    -- the paladin's own Divine Shield. The bonus must key on the
+    -- target's OWN class immunity only.
+    H.load("CooldownTracker.lua")
+    local CT = H.ns.CooldownTracker
+    CT:Clear()
+    local state = SE:BuildTestState({"PALADIN","PRIEST"})
+    local pala = findEnemyByClass(state, "PALADIN")
+    -- The paladin cast BoP (recorded against the caster on CAST_SUCCESS)
+    -- but Divine Shield was never observed.
+    CT:MarkUsed(pala.guid, H.ns.Spells.E_BLESSING_PROTECT)
+    SE:Evaluate(state)
+    for _, c in ipairs(pala._contrib or {}) do
+        H.assertNotEq(c.key, "major_defensive_down",
+            "BoP down must not read as 'their escape is down'")
+    end
+    -- But an observed Divine Shield rank 2 does open the window.
+    CT:Clear()
+    CT:MarkUsed(pala.guid, H.ns.Spells.DIVINE_SHIELD_R2)
+    local state2 = SE:BuildTestState({"PALADIN","PRIEST"})
+    local pala2 = findEnemyByClass(state2, "PALADIN")
+    SE:Evaluate(state2)
+    local found = false
+    for _, c in ipairs(pala2._contrib or {}) do
+        if c.key == "major_defensive_down" then found = true end
+    end
+    H.assertTrue(found, "own bubble down >= 15s = kill window")
+    CT:Clear()
+end)
+
+H.it(g, "v2.9: bracket weight overrides apply in arena only", function()
+    -- BGs report teamSize 0, so state.bracket is just the boot default
+    -- there; applying 3v3 overrides would silently retune BG scoring.
+    local arena = SE:BuildTestState({"PRIEST","MAGE"})
+    arena.combatPhase = "ACTIVE"
+    arena.pvpContext = "arena"
+    arena.bracket = 2
+    SE:Evaluate(arena)
+    local arenaScore = findEnemyByClass(arena, "PRIEST")._score
+
+    local bg = SE:BuildTestState({"PRIEST","MAGE"})
+    bg.combatPhase = "ACTIVE"
+    bg.pvpContext = "bg"
+    bg.bracket = 2  -- stale boot value; must be ignored outside arena
+    SE:Evaluate(bg)
+    local bgPriest = findEnemyByClass(bg, "PRIEST")
+    local w = SE:GetWeights(nil)
+    local w2 = SE:GetWeights(2)
+    H.assertTrue(w2.role_healer > w.role_healer, "precondition: 2s overweights healers")
+    -- The BG row gets base role_healer (25), not the 2v2 override (40):
+    local healerPts
+    for _, c in ipairs(bgPriest._contrib or {}) do
+        if c.key == "role_healer" then healerPts = c.pts end
+    end
+    H.assertEq(healerPts, w.role_healer, "BG must use base weights")
+end)
+
 H.it(g, "v2.9 regression: positional pseudo-weights stay deleted", function()
     -- These weights read fields (overextended / unreachable / losBlocked)
     -- that no production code ever set — the client exposes no positioning

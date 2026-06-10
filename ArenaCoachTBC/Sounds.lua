@@ -56,7 +56,11 @@ Sounds.byMode = {
 -- scroll. Distinct sounds per event class.
 Sounds.byEvent = {
     ENEMY_TRINKET_USED   = 12867,  -- loud chord: their CC-break is gone for 2m
-    ENEMY_DEFENSIVE_USED = 8454,   -- short ding: Ice Block / bubble / CloS just burned
+    -- 3093 (IG_QUEST_LIST_CLOSE) deliberately: 8454 carried the SWAP /
+    -- "queue ding" meaning since v2.1.6 and still backs CALL_TREMOR_FEAR;
+    -- reusing it for "stop hitting, immunity up" would invert a learned
+    -- reaction. 3093 is unused anywhere else in the addon.
+    ENEMY_DEFENSIVE_USED = 3093,   -- soft pop: Ice Block / bubble / CloS just burned
 }
 
 function Sounds:PathFor(callout)

@@ -30,6 +30,22 @@ FH.frame = nil
 FH.MAX_ROWS = 5
 FH.REFRESH_INTERVAL = 0.5  -- seconds between countdown repaints
 
+local function now()
+    if type(GetTime) == "function" then return GetTime() end
+    return os.time()
+end
+
+-- Resolve a user-facing label through the addon locale layer; falls
+-- back to the key's tail so headless tests stay readable.
+local function L(key, fallback)
+    local Core = ns.Core
+    if Core and Core.L then
+        local s = Core.L(key)
+        if s and s ~= key then return s end
+    end
+    return fallback
+end
+
 -- DR category -> single-glyph badge. Glyphs, not words, so no locale
 -- key is needed and the badge column stays narrow.
 FH.DR_GLYPHS = {
@@ -58,34 +74,56 @@ end
 -- Pure model builders
 -- ============================================================
 
--- Trinket cell: READY until we observe a use, then a countdown.
--- Checks the PvP medallion and WotF; a target with both down is
--- reported on the longer timer.
+-- Trinket cell: "can this target break CC right now". The medallion
+-- (42292) and WotF (7744) are INDEPENDENT CC-breaks in TBC:
+--   - medallion unobserved or expired -> T+ (a WotF-only use does not
+--     consume the medallion — same semantics as Core's hasTrinket)
+--   - medallion down but WotF observed back up -> T+ (undead with a
+--     ready racial break)
+--   - otherwise -> red countdown to the FIRST CC-break coming back
 local function trinketModel(guid)
     local CT = ns.CooldownTracker
     local S  = ns.Spells
     if not CT or not S or not guid then return { ready = true } end
-    local worst = nil
-    for _, id in ipairs(S.FACTS_TRINKETS or {}) do
-        local rem = CT:GetRemaining(guid, id)
-        if rem and rem > 0 and (not worst or rem > worst) then worst = rem end
-    end
-    if worst then return { ready = false, remaining = worst } end
-    return { ready = true }
+    local medRem  = CT:GetRemaining(guid, S.PVP_TRINKET_EFFECT)
+    local wotfRem = CT:GetRemaining(guid, S.WILL_OF_THE_FORSAKEN)
+    if not medRem or medRem <= 0 then return { ready = true } end
+    if wotfRem and wotfRem <= 0 then return { ready = true } end
+    local soonest = medRem
+    if wotfRem and wotfRem > 0 and wotfRem < soonest then soonest = wotfRem end
+    return { ready = false, remaining = soonest }
 end
 
--- Downed-cooldown cell: scan an ordered spell-ID list, return the entry
--- with the SHORTEST remaining (the one coming back first is the one the
--- player must plan around). nil when nothing observed on cooldown —
--- the cell stays empty rather than guessing "ready".
-local function downedModel(guid, ids)
+-- Downed-cooldown cell: among this unit's OBSERVED cooldowns that
+-- belong to the given display list, return the one with the SHORTEST
+-- remaining (the one coming back first is the one the player must plan
+-- around). nil when nothing observed on cooldown — the cell stays empty
+-- rather than guessing "ready".
+--
+-- Iterates CT:ForUnit (typically 0-2 observed entries) instead of the
+-- full display catalog, so cost is O(observed), not O(catalog), on the
+-- repaint path.
+local setCache = {}
+local function setFor(ids)
+    local cached = setCache[ids]
+    if cached then return cached end
+    local s = {}
+    for _, id in ipairs(ids) do s[id] = true end
+    setCache[ids] = s
+    return s
+end
+
+local function downedModel(guid, ids, nowTs)
     local CT = ns.CooldownTracker
     if not CT or not guid or not ids then return nil end
+    local set = setFor(ids)
     local best = nil
-    for _, id in ipairs(ids) do
-        local rem = CT:GetRemaining(guid, id)
-        if rem and rem > 0 and (not best or rem < best.remaining) then
-            best = { spellID = id, remaining = rem }
+    for spellID, rec in pairs(CT:ForUnit(guid)) do
+        if set[spellID] and rec.ready then
+            local rem = rec.ready - nowTs
+            if rem > 0 and (not best or rem < best.remaining) then
+                best = { spellID = spellID, remaining = rem }
+            end
         end
     end
     return best
@@ -110,8 +148,9 @@ local function drModel(guid)
     return out
 end
 
-function FH:BuildRowModel(enemy)
+function FH:BuildRowModel(enemy, nowTs)
     if not enemy or enemy.alive == false or not enemy.class then return nil end
+    nowTs = nowTs or now()
     return {
         unit      = enemy.unit,
         guid      = enemy.guid,
@@ -119,8 +158,8 @@ function FH:BuildRowModel(enemy)
         class     = enemy.class,
         healthPct = enemy.healthPct or 100,
         trinket   = trinketModel(enemy.guid),
-        defensive = downedModel(enemy.guid, ns.Spells and ns.Spells.FACTS_DEFENSIVES),
-        interrupt = downedModel(enemy.guid, ns.Spells and ns.Spells.FACTS_INTERRUPTS),
+        defensive = downedModel(enemy.guid, ns.Spells and ns.Spells.FACTS_DEFENSIVES, nowTs),
+        interrupt = downedModel(enemy.guid, ns.Spells and ns.Spells.FACTS_INTERRUPTS, nowTs),
         dr        = drModel(enemy.guid),
     }
 end
@@ -131,16 +170,17 @@ end
 function FH:BuildModel(state)
     local rows = {}
     if not state or not state.enemies then return rows end
+    local nowTs = now()
     for i = 1, self.MAX_ROWS do
         local e = state.enemies["arena" .. i]
-        local m = e and self:BuildRowModel(e)
+        local m = e and self:BuildRowModel(e, nowTs)
         if m then table.insert(rows, m) end
     end
     if #rows == 0 then
         local extras = {}
         for key, e in pairs(state.enemies) do
             if type(key) == "string" and not key:find("^arena") then
-                local m = self:BuildRowModel(e)
+                local m = self:BuildRowModel(e, nowTs)
                 if m then table.insert(extras, m) end
             end
         end
@@ -165,11 +205,13 @@ function FH:FormatRow(m)
     if m.defensive then
         local name
         if type(GetSpellInfo) == "function" then name = GetSpellInfo(m.defensive.spellID) end
-        defText = (name or "DEF") .. " " .. (fmtSecs(m.defensive.remaining) or "")
+        defText = (name or L("FACTS_DEF_LABEL", "DEF")) .. " "
+            .. (fmtSecs(m.defensive.remaining) or "")
     end
     local intText = ""
     if m.interrupt then
-        intText = "KICK " .. (fmtSecs(m.interrupt.remaining) or "")
+        intText = L("FACTS_KICK_LABEL", "KICK") .. " "
+            .. (fmtSecs(m.interrupt.remaining) or "")
     end
     local drText = ""
     if #m.dr > 0 then
@@ -228,7 +270,12 @@ function FH:CreateFrame()
     local db = _G.ArenaCoachTBCDB or {}
     local fcfg = db.factsFrame or { point = "CENTER", x = 0, y = -40, scale = 1.0 }
 
-    local f = CreateFrame("Frame", "ArenaCoachTBCFactsHUD", UIParent)
+    -- BackdropTemplate is required on the modern (2.5.x+) client or the
+    -- frame has no SetBackdrop and renders as floating text over an
+    -- invisible mouse-blocking region. Older clients don't know the
+    -- template; pass it only when the mixin exists.
+    local template = (type(BackdropTemplateMixin) == "table") and "BackdropTemplate" or nil
+    local f = CreateFrame("Frame", "ArenaCoachTBCFactsHUD", UIParent, template)
     f:SetSize(FRAME_WIDTH, 12 + self.MAX_ROWS * ROW_HEIGHT)
     f:SetPoint(fcfg.point or "CENTER", UIParent, fcfg.point or "CENTER",
                fcfg.x or 0, fcfg.y or -40)
@@ -281,11 +328,20 @@ function FH:CreateFrame()
     return f
 end
 
+-- Prefer the client's RAID_CLASS_COLORS (tracks class-color addons and
+-- client updates); the local table covers headless tests and odd clients.
+local function classColor(class)
+    local cc = _G.RAID_CLASS_COLORS and _G.RAID_CLASS_COLORS[class]
+    if cc and cc.r then return cc.r, cc.g, cc.b end
+    local c = CLASS_COLORS[class] or {1, 1, 1}
+    return c[1], c[2], c[3]
+end
+
 local function paintRow(row, m)
     local txt = FH:FormatRow(m)
-    local c = CLASS_COLORS[m.class] or {1, 1, 1}
+    local r, g, b = classColor(m.class)
     row.name:SetText(txt.nameText)
-    row.name:SetTextColor(c[1], c[2], c[3])
+    row.name:SetTextColor(r, g, b)
     row.trinket:SetText(txt.trinketText)
     if m.trinket.ready then row.trinket:SetTextColor(0.4, 1.0, 0.4)
     else row.trinket:SetTextColor(1.0, 0.35, 0.35) end
@@ -303,6 +359,11 @@ end
 function FH:Repaint()
     local f = self.frame
     if not f or not self._lastState then return end
+    -- Never paint while hidden: the only legal entry points are Update
+    -- (which Shows first) and the ticker (which doesn't run hidden in
+    -- the real client). Guards stale paints from any other caller.
+    if f.IsShown and not f:IsShown() then return end
+    self._lastPaint = now()
     local rows = self:BuildModel(self._lastState)
     for i = 1, self.MAX_ROWS do
         local row = f.rows[i]
@@ -325,7 +386,15 @@ function FH:Update(state)
     local ctx = state and state.pvpContext
     if ctx == "none" or ctx == "world_idle" then f:Hide(); return end
     f:Show()
-    self:Repaint()
+    -- Core:Evaluate fires per impactful CLEU line (dozens/sec in a burst
+    -- window). Repainting that often defeats the 0.5s ticker design and
+    -- generates garbage in a client where per-frame cost matters — the
+    -- v2.2.5 city-lag shape. Rate-limit: the ticker owns the cadence;
+    -- Update only paints when the panel is overdue (first show, or the
+    -- ticker hasn't run yet).
+    if (now() - (self._lastPaint or 0)) >= self.REFRESH_INTERVAL then
+        self:Repaint()
+    end
 end
 
 function FH:Hide()
