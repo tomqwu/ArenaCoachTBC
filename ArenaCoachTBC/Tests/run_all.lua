@@ -34,6 +34,7 @@ local specs = {
     "EventBus_spec.lua",
     "CooldownTracker_spec.lua",
     "DRTracker_spec.lua",
+    "FactsHUD_spec.lua",
     "Chain_spec.lua",
     "OpponentProfile_spec.lua",
     "OpponentModellingE2E_spec.lua",

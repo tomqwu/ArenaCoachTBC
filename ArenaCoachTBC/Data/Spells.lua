@@ -301,6 +301,45 @@ S.MAJOR_DEFENSIVES = {
     [S.DETERRENCE]        = "Deterrence",
 }
 
+-- ============================================================
+-- Facts HUD display lists (v2.9)
+-- Ordered arrays consumed by FactsHUD. Every ID here must also have a
+-- duration in CooldownTracker.defaults or the countdown cell stays empty.
+-- ============================================================
+
+-- Trinket cell: CC-break cooldowns. Both tracked separately in TBC.
+S.FACTS_TRINKETS = {
+    S.PVP_TRINKET_EFFECT,      -- 42292, 2m
+    S.WILL_OF_THE_FORSAKEN,    -- 7744, 2m
+}
+
+-- Defensive cell: the big "can we kill them right now" cooldowns.
+-- Order = display priority when several are down at once (the model
+-- picks the one with the shortest remaining, so order only breaks ties).
+S.FACTS_DEFENSIVES = {
+    S.ICE_BLOCK,           -- mage, 5m
+    S.E_DIVINE_SHIELD,     -- paladin, 5m
+    S.E_BLESSING_PROTECT,  -- paladin, 5m
+    S.CLOAK_OF_SHADOWS,    -- rogue, 2m
+    S.EVASION,             -- rogue
+    S.VANISH,              -- rogue
+    S.DETERRENCE,          -- hunter, 5m
+    S.E_PAIN_SUPPRESSION,  -- priest, 2m
+    S.E_NATURES_SWIFT,     -- druid, 3m
+    S.E_BARKSKIN,          -- druid, 1m
+    S.SHAMANISTIC_RAGE,    -- shaman, 2m
+}
+
+-- Interrupt cell: when the enemy kick is down, every second of the
+-- countdown is a free-cast window for our healer / casters.
+S.FACTS_INTERRUPTS = {
+    S.KICK,          -- rogue, 10s
+    S.COUNTERSPELL,  -- mage, 24s
+    S.SPELL_LOCK,    -- felhunter, 24s
+    S.PUMMEL,        -- warrior, 10s
+    S.EARTH_SHOCK,   -- shaman, 6s (cheapest interrupt in TBC)
+}
+
 -- Spells that are purgeable buffs of high value to dispel from enemies
 S.PURGEABLE = {
     [S.BLESSING_FREEDOM]  = "Blessing of Freedom",

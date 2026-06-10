@@ -86,6 +86,16 @@ behaviour is what tests can't see.
 - [ ] For a committed fixture, run `lua5.1 tools/replay.lua --golden ArenaCoachTBC/Tests/Fixtures/<name>.golden.txt ArenaCoachTBC/Tests/Fixtures/<name>.lua`; use `--update-golden` only when the changed advice is intentional
 - [ ] Convert repeatable wrong-advice cases into `docs/arena-fixtures.md` acceptance snapshots or golden replays
 
+## Facts HUD (v2.9)
+
+- [ ] In a skirmish / duel near the arena vendor, the facts panel appears with one row per enemy (class-coloured name + HP%)
+- [ ] Enemy trinket use flips `T+` (green) to `T-2m` (red) and the countdown ticks down every second; the loud chord cue fires once (not twice for the cast+aura pair)
+- [ ] Enemy Ice Block / Divine Shield / BoP / CloS shows in the defensive column with a countdown; the short ding cue fires
+- [ ] After a stun chain, the DR column shows `S:1/2` then `S:1/4` then `S:IMM`, clearing ~17s after the last application
+- [ ] `/acc facts off` hides the panel immediately and persists across `/reload`; `/acc facts on` restores it
+- [ ] Dragging the panel persists its position across `/reload`; `/acc lock` prevents dragging
+- [ ] Panel hides in cities (context `none`) and shows again on arena entry
+
 ## Integration
 
 - [ ] WeakAuras trigger code from `docs/weakaura-pack.md` pasted into a hand-built WA reads the recommendation correctly via `_G.ArenaCoachTBC`. (Paste-ready import strings removed in v2.2.6 — see that CHANGELOG entry.)

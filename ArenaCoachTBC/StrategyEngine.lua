@@ -37,7 +37,6 @@ local SE = ns.StrategyEngine
 SE.weights = {
     role_healer          =  25,
     role_cloth_dps       =  15,
-    role_melee_overext   =  10,
     health_below_50      =  30,
     low_mana_healer      =  20,
     trinket_down         =  20,
@@ -60,11 +59,14 @@ SE.weights = {
     bg_healer_boost      =  10,  -- adds on top of role_healer for BG context
     -- penalties
     target_immune        = -100,
-    target_unreachable   =  -30,
-    target_los_blocked   =  -20,
     melee_locked_down    =  -20,
     our_healer_cc        =  -25,
     our_team_low_hp      =  -30,
+    -- v2.9: role_melee_overext / target_unreachable / target_los_blocked
+    -- removed. Their inputs (enemy.overextended / .unreachable /
+    -- .losBlocked) were never produced by Core — the client gives us no
+    -- positioning data — so the weights could not fire. Reintroduce only
+    -- together with a real signal source.
 }
 
 -- M14 (v2.1): aura IDs that indicate the enemy is carrying a BG flag.
@@ -486,8 +488,6 @@ local function scoreEnemy(enemy, state, comp)
         add(w.role_healer, "role_healer")
     elseif isCloth(enemy) then
         add(w.role_cloth_dps, "role_cloth_dps")
-    elseif enemy.overextended then
-        add(w.role_melee_overext, "role_melee_overext")
     end
 
     -- ----- vulnerability
@@ -500,15 +500,19 @@ local function scoreEnemy(enemy, state, comp)
     if enemy.hasTrinket == false then
         add(w.trinket_down, "trinket_down")
     end
-    if enemy.majorDefensiveDown then
-        add(w.major_defensive_down, "major_defensive_down")
-    end
-    -- Penalty when their major defensive (Ice Block / Divine Shield / BoP)
-    -- is about to come off CD - committing burst into a soon-immune target
-    -- is wasted effort.
+    -- Major-defensive timing, both directions, from observed cooldowns:
+    --   >= 15s out: their escape is unavailable -> bonus (kill window).
+    --   <  15s out: committing burst into a soon-immune target is wasted
+    --               effort -> penalty.
+    -- nil = never observed = unknown; neither applies. (v2.9: the bonus
+    -- branch used to read enemy.majorDefensiveDown, which nothing set.)
     local nextDef = nextMajorDefensiveCD(enemy)
-    if nextDef and nextDef < 15 then
-        add(w.kill_defensive_soon, "kill_defensive_soon")
+    if nextDef then
+        if nextDef >= 15 then
+            add(w.major_defensive_down, "major_defensive_down")
+        else
+            add(w.kill_defensive_soon, "kill_defensive_soon")
+        end
     end
     if not activeImmunity(enemy) then
         add(w.no_immunity, "no_immunity")
@@ -578,8 +582,6 @@ local function scoreEnemy(enemy, state, comp)
     if immunityName then
         add(w.target_immune, "target_immune")
     end
-    if enemy.unreachable then add(w.target_unreachable, "target_unreachable") end
-    if enemy.losBlocked   then add(w.target_los_blocked, "target_los_blocked") end
     if meleeLockedDown(state) then add(w.melee_locked_down, "melee_locked_down") end
     if ourHealerCCd(state)   then add(w.our_healer_cc, "our_healer_cc") end
     if teamAvgHP(state) < 45 then add(w.our_team_low_hp, "our_team_low_hp") end
@@ -701,7 +703,12 @@ function SE:BurstDecision(state, target, chain)
     local immunity = activeImmunity(target)
     local majorDefensive = activeMajorDefensive(target)
     local healingReduction, healingReductionEvidence = targetHasHealingReduction(target, state)
-    local requireMS = caps.hasMortalStrike == true or cfg.callBurstOnlyWhenMSActive == true
+    -- v2.9: require MS evidence only when the team can actually apply a
+    -- healing reduction (and the user hasn't opted out). The previous
+    -- `or cfg` made requireMS always true under the default config,
+    -- permanently blocking the burst gate (and kill windows, which
+    -- depend on it) for every comp without a healing-reduction source.
+    local requireMS = caps.hasMortalStrike == true and cfg.callBurstOnlyWhenMSActive ~= false
     local purgeName = purgeableBuffName(target)
     local hasPurgeAnswer = (caps.hasPurge == true or caps.hasDispelMagic == true)
         and obs.purgeReady ~= false
@@ -743,10 +750,16 @@ function SE:BurstDecision(state, target, chain)
         reason  = (purgeName and not hasPurgeAnswer) and "purgeable_defensive_no_answer" or nil,
         value   = purgeName,
     }
+    -- v2.9: the windfury requirement only applies when the team has an
+    -- enhancement shaman (caps.hasWindfury) and the user hasn't opted
+    -- out. Before, the default config blocked this gate forever for
+    -- shaman-less comps.
+    local requireWF = caps.hasWindfury == true and cfg.requireWindfuryNearby ~= false
     gates.windfury = {
-        allowed = (not cfg.requireWindfuryNearby) or obs.windfuryActive == true,
-        value   = obs.windfuryActive == true,
-        reason  = (cfg.requireWindfuryNearby and obs.windfuryActive ~= true) and "windfury_missing" or nil,
+        allowed  = (not requireWF) or obs.windfuryActive == true,
+        required = requireWF,
+        value    = obs.windfuryActive == true,
+        reason   = (requireWF and obs.windfuryActive ~= true) and "windfury_missing" or nil,
     }
     gates.melee_uptime = {
         allowed = not meleeLockedDown(state),

@@ -30,6 +30,7 @@ Patterns.lua
 StrategyEngine.lua
 ScreenEdgeGlow.lua
 Nameplate.lua
+FactsHUD.lua
 UI.lua
 Options.lua
 WeakAuraBridge.lua

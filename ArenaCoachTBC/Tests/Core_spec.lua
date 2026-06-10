@@ -756,6 +756,89 @@ H.it(g, "CLEU fires DR + cooldown trackers + re-evaluates", function()
     H.assertFalse(Core.state.enemies.arena1.hasTrinket)
 end)
 
+H.it(g, "v2.9: enemy trinket aura fires the ENEMY_TRINKET_USED cue in arena", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    H.setUnit("arena1", { class = "PRIEST", guid = "guid-cue-1", hp = 100, hpMax = 100 })
+    Core:RefreshArenaEnemies()
+    Core.state.pvpContext = "arena"
+    Core._lastCueTs = {}
+    local played = {}
+    local saved = H.ns.Sounds.PlayEvent
+    H.ns.Sounds.PlayEvent = function(self, key) table.insert(played, key); return true end
+    H._gameTime = 2000
+    H.fireCLEU(H._gameTime, "SPELL_AURA_APPLIED", false, "src", "Source",
+               nil, nil, "guid-cue-1", "Priest", nil, nil, 42292, "PvP Trinket")
+    EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
+    H.ns.Sounds.PlayEvent = saved
+    H.assertEq(played[1], "ENEMY_TRINKET_USED")
+    H.assertFalse(Core.state.enemies.arena1.hasTrinket)
+end)
+
+H.it(g, "v2.9: WotF cues but does NOT flip hasTrinket", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    H.setUnit("arena1", { class = "PRIEST", guid = "guid-cue-2", hp = 100, hpMax = 100 })
+    Core:RefreshArenaEnemies()
+    Core.state.pvpContext = "arena"
+    Core._lastCueTs = {}
+    local played = {}
+    local saved = H.ns.Sounds.PlayEvent
+    H.ns.Sounds.PlayEvent = function(self, key) table.insert(played, key); return true end
+    H._gameTime = 2100
+    H.fireCLEU(H._gameTime, "SPELL_AURA_APPLIED", false, "src", "Source",
+               nil, nil, "guid-cue-2", "Priest", nil, nil, 7744, "Will of the Forsaken")
+    EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
+    H.ns.Sounds.PlayEvent = saved
+    H.assertEq(played[1], "ENEMY_TRINKET_USED")
+    H.assertTrue(Core.state.enemies.arena1.hasTrinket,
+        "WotF is a racial - the medallion is still up")
+end)
+
+H.it(g, "v2.9: immunity aura fires ENEMY_DEFENSIVE_USED, deduped in-window", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    H.setUnit("arena1", { class = "MAGE", guid = "guid-cue-3", hp = 100, hpMax = 100 })
+    Core:RefreshArenaEnemies()
+    Core.state.pvpContext = "arena"
+    Core._lastCueTs = {}
+    local played = {}
+    local saved = H.ns.Sounds.PlayEvent
+    H.ns.Sounds.PlayEvent = function(self, key) table.insert(played, key); return true end
+    H._gameTime = 2200
+    local function block()
+        H.fireCLEU(H._gameTime, "SPELL_AURA_APPLIED", false, "guid-cue-3", "Mage",
+                   nil, nil, "guid-cue-3", "Mage", nil, nil, H.ns.Spells.ICE_BLOCK, "Ice Block")
+        EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
+    end
+    block()
+    block()  -- duplicate within the dedup window: no second cue
+    H.assertEq(#played, 1)
+    H.assertEq(played[1], "ENEMY_DEFENSIVE_USED")
+    H.advanceTime(5)
+    block()  -- window elapsed: cues again
+    H.ns.Sounds.PlayEvent = saved
+    H.assertEq(#played, 2)
+end)
+
+H.it(g, "v2.9: cues stay silent outside PvP contexts", function()
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    H.setUnit("arena1", { class = "PRIEST", guid = "guid-cue-4", hp = 100, hpMax = 100 })
+    Core:RefreshArenaEnemies()
+    Core.state.pvpContext = "none"
+    Core._lastCueTs = {}
+    local played = {}
+    local saved = H.ns.Sounds.PlayEvent
+    H.ns.Sounds.PlayEvent = function(self, key) table.insert(played, key); return true end
+    H._gameTime = 2300
+    H.fireCLEU(H._gameTime, "SPELL_AURA_APPLIED", false, "src", "Source",
+               nil, nil, "guid-cue-4", "Priest", nil, nil, 42292, "PvP Trinket")
+    EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
+    H.ns.Sounds.PlayEvent = saved
+    H.assertEq(#played, 0)
+end)
+
 H.it(g, "CLEU accepts legacy vararg SPELL and SWING payloads", function()
     setupRealisticArena3v3()
     Core:RefreshFriendlies()

@@ -39,12 +39,24 @@ Sounds.byCallout = {
 -- Mode-transition cues (v2.1.6). Played by UI:Apply when the recommended
 -- mode flips. Separate from callout cues above so users can have one set
 -- on and the other off later.
+-- v2.9: trimmed from 4 modes to the 2 that carry real urgency — every
+-- mode flip chirping made the cues meaningless (4 near-identical dings
+-- per fight teaches the ear to ignore all of them). KILL = "go",
+-- DEFEND = "survive". SWAP/OPEN/RESET are visible on the HUD without
+-- audio.
 Sounds.byMode = {
     KILL   = 8959,
-    SWAP   = 8454,
     DEFEND = 8458,
-    OPEN   = 1517,
-    -- RESET intentionally silent — would chirp constantly between fights
+}
+
+-- Observed-event cues (v2.9). These fire on *enemy actions seen in the
+-- combat log*, not on our advice — the GladiatorlosSA insight: "enemy
+-- trinket used" is worth more than any recommendation because it is a
+-- fact the player would otherwise have to catch in the combat-log
+-- scroll. Distinct sounds per event class.
+Sounds.byEvent = {
+    ENEMY_TRINKET_USED   = 12867,  -- loud chord: their CC-break is gone for 2m
+    ENEMY_DEFENSIVE_USED = 8454,   -- short ding: Ice Block / bubble / CloS just burned
 }
 
 function Sounds:PathFor(callout)
@@ -71,4 +83,8 @@ end
 
 function Sounds:PlayMode(mode)
     return play(self.byMode[mode])
+end
+
+function Sounds:PlayEvent(eventKey)
+    return play(self.byEvent[eventKey])
 end

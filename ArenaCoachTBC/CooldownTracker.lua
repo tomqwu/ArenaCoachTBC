@@ -56,6 +56,12 @@ CT.defaults = {
     [42292] = 120, -- PvP medallion
     -- Racial CC-breaks (not on the same cooldown as the trinket in TBC)
     [7744]  = 120, -- Will of the Forsaken (Undead)
+    -- Interrupts (v2.9 facts HUD: a downed kick is a free-cast window)
+    [1766]  = 10,  -- Kick (rogue)
+    [6554]  = 10,  -- Pummel (warrior)
+    [25454] = 6,   -- Earth Shock (shaman; rank 8, 6s shared shock CD)
+    -- Defensives missing from the original list (v2.9 facts HUD)
+    [30823] = 120, -- Shamanistic Rage (2m)
 }
 
 local function now()
