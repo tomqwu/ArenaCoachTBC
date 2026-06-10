@@ -25,7 +25,7 @@ git diff --check
 
 - Commit the release bump on `main`.
 - Push `main`.
-- Create and push the annotated stable tag, for example `v2.8.48`.
+- Create and push the annotated stable tag, for example `vX.Y.Z`.
 - Wait for the tag `Release` workflow to complete successfully. Stable tags must fail if package shape, release notes, golden replay, coverage, GitHub release upload, CurseForge upload, or Wago upload fails.
 
 ## Verify
@@ -41,7 +41,7 @@ Replace the local addon with the exact GitHub release zip. For this workstation 
 
 ```powershell
 $addonRoot = 'F:\World of Warcraft\_anniversary_\Interface\AddOns'
-$version = 'v2.8.48'
+$version = 'vX.Y.Z'
 $zip = Join-Path $env:TEMP "ArenaCoachTBC-$version.zip"
 $url = "https://github.com/tomqwu/ArenaCoachTBC/releases/download/$version/ArenaCoachTBC-$version.zip"
 Invoke-WebRequest -Uri $url -OutFile $zip

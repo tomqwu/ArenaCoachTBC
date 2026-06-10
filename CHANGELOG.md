@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Refreshed README, packaged addon README, CurseForge copy, architecture notes, manual smoke docs, release checklist, and WeakAura bridge docs for the current DBM-alert default HUD, optional Obsidian board, `_anniversary_` install path, target-specific burst windows, bridge API surface, and latest validation counts.
+
 ## [2.8.53] - 2026-06-09
 
 ### Changed

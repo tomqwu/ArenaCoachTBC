@@ -74,7 +74,7 @@ The central HUD updates as the fight changes:
 - **BURST READY** only when the burst gates pass
 - **Assignments** showing your own compact action first with a bright YOU marker, then teammate jobs such as Warrior MS, Shaman purge, Paladin HoJ, Priest dispel, or Druid Cyclone
 
-The text fades out if the fight state stops refreshing, so stale instructions do not sit on the screen after the situation has moved on. Empty RESET beats with no target stay hidden instead of repeatedly popping and fading. Before gates open, the integrated prototype-A board stays visible with waiting placeholders so the display reads as a real layout before target/cue/assignment data exists.
+The text fades out if the fight state stops refreshing, so stale instructions do not sit on the screen after the situation has moved on. Empty RESET beats with no target stay hidden instead of repeatedly popping and fading. The default live display is a compact DBM-style alert; the optional Obsidian board can stay visible with waiting placeholders before gates open when you want the larger review/tuning layout.
 
 ### In Battlegrounds
 
@@ -120,7 +120,7 @@ If burst is blocked, the decision records every failed gate for trace and WeakAu
 
 ### DBM-Style Player Assignments
 
-Each recommendation can include per-friendly assignments. The built-in HUD uses an integrated prototype-A board: a left status stack for current targets/pressure, a center action and target-health instrument, a bottom player-info assignment strip, and a right cue rail for icon/text reminders. The board follows the Obsidian Signal visual language: warm translucent obsidian reading plates, burnished brass rules and surveyor reticles, cyan intelligence accents, bone-white data, and restrained crimson for committed/urgent signal. It also includes a top drag strip, grip marker, signal/ruler accents, lower-right resize grip, internal dividers, subtle slot backgrounds, a target health bar, a mode-coloured center accent, and shadowed/highlighted text so users can see where to drag/resize it and where each module belongs without covering the fight with a dark panel. The zones remain visible with placeholders while waiting/pre-gates, then fill in as real combat data arrives; inactive target-health instruments hide during DEFEND/RESET so defensive advice stays clear. The bottom strip divides into 1, 2, 3, or 5 small fixed cards based on current player actions, alive friendlies, or bracket, so 2v2/3v3/5v5 jobs keep stable positions instead of becoming a paragraph block. Examples:
+Each recommendation can include per-friendly assignments. The default live HUD is a compact DBM-style alert/action stack: it puts the player's own job first, keeps the strategic target/context nearby, and uses slow bar-style decay so the last useful instruction remains readable without becoming a fixed dashboard. The optional Obsidian board remains available for review, tuning, screenshots, and users who prefer a cockpit layout. That board uses a left status stack for current targets/pressure, a center action and target-health instrument, a bottom player-first assignment strip, and a right cue rail for icon/text reminders. It follows the Obsidian Signal visual language: warm translucent obsidian reading plates, burnished brass rules and surveyor reticles, cyan intelligence accents, bone-white data, and restrained crimson for committed/urgent signal. The board has a top drag strip, grip marker, signal/ruler accents, lower-right resize grip, internal dividers, subtle slot backgrounds, a target health bar, a mode-coloured center accent, and shadowed/highlighted text so users can see where to drag/resize it and where each module belongs without covering the fight with a dark panel. The bottom strip divides into 1, 2, 3, or 5 small fixed cards based on current player actions, alive friendlies, or bracket, so 2v2/3v3/5v5 jobs keep stable positions instead of becoming a paragraph block. Examples:
 
 - Warrior: MS / Hamstring -> kill target
 - Shaman: Purge / shock -> kill target
@@ -219,14 +219,14 @@ ArenaCoachTBC currently ships:
 - English (`enUS`)
 - Simplified Chinese (`zhCN`)
 
-Both locales are parity-checked in CI. Current locale parity is **154 keys per locale**. Spell names are resolved by the WoW client through spell IDs, so they follow the language of your client where Blizzard provides localized spell data.
+Both locales are parity-checked in CI. Current locale parity is **168 keys per locale**. Spell names are resolved by the WoW client through spell IDs, so they follow the language of your client where Blizzard provides localized spell data.
 
 ## Project Quality
 
 The addon is developed as a pure Lua 5.1 project with headless tests for the strategy engine and WoW API stubs for UI/core behavior. Current local release validation:
 
-- **683 tests passing**
-- **99.66% coverage**
+- **748 tests passing**
+- **99.06% coverage**
 - Locale parity check
 - Lua syntax check
 - GitHub Actions on push and release tags

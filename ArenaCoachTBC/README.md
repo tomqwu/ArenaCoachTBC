@@ -30,8 +30,10 @@ The bottom assignment strip highlights your own job first with a `YOU` marker an
 
 1. Copy the `ArenaCoachTBC` folder into / 复制 `ArenaCoachTBC` 文件夹到：
    ```
-   <WoW>/_classic_/Interface/AddOns/
+   <WoW>/_anniversary_/Interface/AddOns/
    ```
+   Use `<WoW>/_classic_/Interface/AddOns/` for older Classic installs.
+   旧版 Classic 客户端使用 `<WoW>/_classic_/Interface/AddOns/`。
 2. Restart the client or `/reload`.
    重启客户端或在游戏内执行 `/reload`。
 3. If "Out of Date" appears at character select, enable "Load out of date AddOns". Edit `## Interface: 20505` in `ArenaCoachTBC.toc` to match your client to silence the warning.
@@ -55,7 +57,7 @@ The addon stores SavedVariables in `ArenaCoachTBCDB`.
 | `/acc glow on\|off` | toggle the optional thin mode-coloured edge cue | 切换可选的细边缘提示 |
 | `/acc nameplate on\|off` | toggle the KILL / SWAP target nameplate highlights (v2.2.0) | 切换击杀/换火目标的铭牌高亮（v2.2.0） |
 | `/acc test` | readable ~1-minute realistic 3v3 arena replay through the engine (OPEN → pressure/DEFEND → kill/reset) | 约 1 分钟真实 3v3 竞技场引擎回放（开局 → 承压/防御 → 击杀/重置） |
-| `/acc test hud` | visual HUD demo — paints the prototype-A modules (left status stack, center action, center player info, right cue rail, nameplate, audio cues, optional thin edge cue) | 视觉 HUD 演示——A 方案模块（左状态栈、中间行动提示、中间玩家分工、右提示轨、铭牌、音效、可选细边缘提示） |
+| `/acc test hud` | visual HUD demo — paints the selected display mode: live DBM alert, optional Obsidian board, or both, plus nameplate/audio/edge cues | 视觉 HUD 演示——按当前显示模式展示实战短警报、可选黑曜石面板或两者，并包含铭牌、音效、边缘提示 |
 | `/acc test bg` | battleground walk-through (flag carrier + low-HP straggler) | 战场演示（夺旗者 + 低血单位） |
 | `/acc test world` | world PvP walk-through (single-target focus) | 户外 PvP 演示（单目标聚焦） |
 | `/acc test print` | legacy chat-only summary of 5 sample comps | 仅文字摘要（旧行为） |
