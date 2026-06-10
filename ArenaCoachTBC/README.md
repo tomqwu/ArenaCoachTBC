@@ -230,7 +230,7 @@ The addon publishes its current recommendation and full state through the global
 | `GetEnemyByGUID(guid)` | one enemy / 单个敌方 |
 | `GetCombatPhase()` | "PRE" / "ACTIVE" / "POST" |
 | `GetBridgeSchemaVersion()` | typed bridge schema version / 结构化桥接 API 版本 |
-| `GetVersion()` | "2.8.53" |
+| `GetVersion()` | "2.8.54" |
 
 Typed signals have this stable shape. `kind="strategy"` describes the current plan, `kind="callout"` mirrors executable callout keys, and `kind="player_action"` owns the DBM-style instruction for one friendly player.
 

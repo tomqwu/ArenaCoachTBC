@@ -7,8 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.54] - 2026-06-09
+
 ### Changed
 - Refreshed README, packaged addon README, CurseForge copy, architecture notes, manual smoke docs, release checklist, and WeakAura bridge docs for the current DBM-alert default HUD, optional Obsidian board, `_anniversary_` install path, target-specific burst windows, bridge API surface, and latest validation counts.
+
+### Tests
+- Validated with the full release gate: 748 Lua 5.1 tests passing, 99.06% total coverage, golden replay matched, locale parity at 168 keys per locale, package-shape gate, release-gate check, standalone strategy smoke spec, and `git diff --check`.
 
 ## [2.8.53] - 2026-06-09
 
