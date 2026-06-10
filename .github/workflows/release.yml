@@ -98,7 +98,7 @@ jobs:
             echo "### How to test"
             echo ""
             echo "1. Download \`ArenaCoachTBC-${{ steps.v.outputs.tag }}.zip\` below."
-            echo "2. Extract into \`<WoW>/_classic_/Interface/AddOns/\`."
+            echo "2. Extract into \`<WoW>/_anniversary_/Interface/AddOns/\` for TBC Anniversary, or \`<WoW>/_classic_/Interface/AddOns/\` for older Classic installs."
             echo "3. \`/reload\` in-game, then \`/acc help\` to see commands."
             echo "4. \`/acc selftest\` for in-client validation."
             echo ""
