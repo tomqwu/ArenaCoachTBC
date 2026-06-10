@@ -2,7 +2,7 @@
 
 A real-time arena strategy coach for **World of Warcraft TBC Classic / TBC Anniversary**. Watches the fight, identifies the enemy comp (including spec), picks a kill target, plans CC chains, and emits a recommendation: `OPEN | KILL | SWAP | DEFEND | RESET`.
 
-> **v2.0 ships the engine-depth roadmap.** Your coach now learns your opponents. A team you've played 20 times that always trinkets Fear stops getting the generic "tremor for fear" callout — Tremor gets saved for HoJ instead. A mage that consistently Ice Blocks at 30% causes the burst gate to hold. None of this is hardcoded — it learns per-team from observed combat, no character names persisted.
+> **Current v2.8 line:** The coach learns opponent habits, gates advice through your actual roster capabilities, emits typed strategy signals for bars/WeakAuras, and only calls burst when the current target has a real kill window. A team you've played 20 times that always trinkets Fear stops getting generic fear advice; a mage that consistently Ice Blocks low causes the target-specific burst gate to hold. None of this is hardcoded — it learns per-team from observed combat, no character names persisted.
 
 > ⚠️ **Advice only.** The addon never casts spells, never targets enemies, never clicks protected buttons, never modifies secure macros. It emits visual + audio + text recommendations. That's it.
 
@@ -37,11 +37,12 @@ The 100+ enemy comp catalog in `Data/Strategies.lua` carries `ownVariants` so th
 
 ## Installation (one-time setup, ~2 min)
 
-1. **Download** the latest zip from the [Releases page](https://github.com/tomqwu/ArenaCoachTBC/releases) — or use the [CurseForge listing](https://www.curseforge.com/wow/addons/arenacoachtbc).
+1. **Download** the latest zip from the [Releases page](https://github.com/tomqwu/ArenaCoachTBC/releases) — or use the [CurseForge listing](https://www.curseforge.com/wow/addons/areanacoachtbc).
 2. **Extract the `ArenaCoachTBC/` folder** (the inner one containing `ArenaCoachTBC.toc`) into your WoW addons directory:
-   - **TBC Classic / Anniversary**: `<WoW install>/_classic_/Interface/AddOns/`
-   - **macOS**: typically `/Applications/World of Warcraft/_classic_/Interface/AddOns/`
-   - **Windows**: typically `C:\Program Files (x86)\World of Warcraft\_classic_\Interface\AddOns\`
+   - **TBC Anniversary**: `<WoW install>/_anniversary_/Interface/AddOns/`
+   - **TBC Classic**: `<WoW install>/_classic_/Interface/AddOns/`
+   - **macOS**: typically `/Applications/World of Warcraft/_anniversary_/Interface/AddOns/` or `_classic_`
+   - **Windows**: typically `F:\World of Warcraft\_anniversary_\Interface\AddOns\` or `C:\Program Files (x86)\World of Warcraft\_classic_\Interface\AddOns\`
 3. **Restart the client** (or `/reload` if already in). Your AddOns list should now have `ArenaCoachTBC` enabled.
 4. If you see "Out of Date" at character-select, enable **Load out of date AddOns**. Or bump `## Interface: 20505` in `ArenaCoachTBC.toc` to match your client.
 
@@ -58,7 +59,9 @@ The 100+ enemy comp catalog in `Data/Strategies.lua` carries `ownVariants` so th
 /acc selftest verbose  -- in-client validation
 ```
 
-After `/acc test` the addon replays a realistic 3v3 RMP arena over about a minute through the same engine scorer used in a match: gates closed (`OPEN`), combat start, enemy burst, healer CC, target-specific healer pressure (`DEFEND`), Disc Priest reveal, Pain Suppression/trinket state, a swap/kill window, then reset. The timed replay force-shows the HUD because it runs outside a real arena instance, and each scheduled beat repaints the board from a fresh `StrategyEngine:Evaluate` result. **If you see this replay, the addon is loaded and the decision pipeline is working.** Use `/acc unlock` to move the integrated prototype-A board — left status stack, center action/health instrument, bottom player-info assignment strip, and right cue rail — to a spot you can glance at without covering arena frames, cast bars, or your WeakAuras. Drag the lower-right grip to resize the board; width and height persist just like the position. The board follows the Obsidian Signal visual language: warm obsidian reading plates, burnished brass rules/reticles, bone-white data, cyan intelligence accents, and restrained crimson signal colour. Busy-scene readability wins over transparency: inactive health instruments hide in DEFEND/RESET, and side-rail headers are shortened so they do not wrap. The bottom strip divides into 1, 2, 3, or 5 fixed cards depending on the current fight shape, so 2v2/3v3/5v5 assignments keep stable small positions instead of becoming a paragraph. Use `/acc test hud` for the visual-only HUD tour; the waiting/pre-gate beats now show all four zones with placeholders so the layout is visible before combat data exists.
+After `/acc test` the addon replays a realistic 3v3 RMP arena over about a minute through the same engine scorer used in a match: gates closed (`OPEN`), combat start, enemy burst, healer CC, target-specific healer pressure (`DEFEND`), Disc Priest reveal, Pain Suppression/trinket state, a swap/kill window, then reset. The timed replay force-shows the current HUD mode because it runs outside a real arena instance, and each scheduled beat repaints from a fresh `StrategyEngine:Evaluate` result. **If you see this replay, the addon is loaded and the decision pipeline is working.**
+
+Use `/acc hud alert` for the default compact DBM-style live alert, `/acc hud board` for the larger Obsidian review board, or `/acc hud both` while comparing them. `/acc unlock` lets you move the alert and drag/resize the board; `/acc lock` freezes them again. The board keeps the left status stack, center action/health instrument, bottom player-first assignment strip, and right cue rail together, with 1/2/3/5 fixed assignment cards so 2v2/3v3/5v5 jobs stay readable instead of becoming a paragraph. `/acc test hud` runs a visual-only tour through the selected display mode.
 
 If `/acc off` was used earlier, `/acc test` and `/acc simulate <scenario>` turn the addon back on before replaying so chat events cannot advance while the HUD remains stuck on the first waiting state.
 
@@ -71,7 +74,7 @@ You don't run anything during a match. The addon auto-engages on `PLAYER_ENTERIN
 **What you'll see during a match:**
 
 1. **Pre-combat (arena gates closed)**: Mode = `OPEN` (yellow), target = the comp's default open target. Plan your opener.
-2. **Active**: Mode flips to `KILL` (red) / `SWAP` (orange) / `DEFEND` (blue). The integrated board shows a punchy center cue like `!! BURST !!`, `!! DANGER !!`, or `!! PINCH !!`; the left status stack shows current targets and friendly pressure; the right rail shows callout icons/text; the bottom assignment strip gives each advised player a compact card. The strip uses 1, 2, 3, or 5 cells, so a 3v3 team gets one stable cell per teammate and a 5v5 review gets five small cells without resizing into a text wall. If the recommendation stops refreshing, the HUD fades out instead of leaving stale text on screen.
+2. **Active**: Mode flips to `KILL` (red) / `SWAP` (orange) / `DEFEND` (blue). The default live surface is a compact DBM-style alert that puts the specific action first (`YOU: Purge Holyman`, `Tremor down - shaman refresh`, `BURST NOW`, `Kill Holyman`). Optional `/acc hud board` keeps the larger left/center/right/bottom review layout for tuning and screenshots. If the recommendation stops refreshing, the alert, board, nameplates, and edge cue fade/clear instead of leaving stale text on screen.
 3. **Burst window**: `BURST READY` pill in the stats row — every target-specific burst gate has passed (the current target is alive, not immune, not sitting in a major defensive, has Mortal Strike/Aimed Shot/Wound Poison when your roster can provide healing reduction, has a control/purge answer, meets kill probability, and no incoming pressure veto is active). Chain readiness is shown in the gate breakdown and only blocks burst when `strategy.requireChainForBurst` is enabled.
 4. **Defensive**: When your healer is being trained or enemy lust pops, mode flips to `DEFEND` (blue). The HUD plate and nameplate cues carry the warning without a big screen-edge flash; callouts shift to Pain Sup / BoP / peel reminders.
 
@@ -202,7 +205,7 @@ lua5.1 tools/check_locales.lua
 lua5.1 tools/replay.lua <path/to/ArenaCoachTBC.lua>
 ```
 
-CI runs syntax check → locale parity → tests → 99% coverage gate on every push and PR. The current headless suite has **683 tests** and the benchmark suite tracks agreement against hand-labelled scenarios.
+CI runs syntax check → locale parity → tests → 99% coverage gate on every push and PR. The current headless suite has **748 tests** and the latest local release validation reported **99.06%** total coverage.
 
 ---
 
@@ -216,7 +219,7 @@ MIT.
 
 **魔兽世界 TBC 怀旧服 / TBC 周年服**的实时竞技场战术教练。监视战斗、识别敌方阵容（包含天赋）、选定击杀目标、规划控制链，并实时输出建议：`OPEN | KILL | SWAP | DEFEND | RESET`。
 
-> **v2.0 引擎深度路线图已发布。** 你的教练现在能学习对手。打过 20 次的某支队伍，如果他们总是用饰品解除恐惧，则不再收到通用的"陷阱图腾解恐惧"提示——陷阱图腾会留给制裁之锤。如果某个法师习惯在 30% 血量冰块，爆发提示会被自动暂停。这些都不是写死的逻辑——它通过观察战斗按队伍学习，不会持久化任何玩家姓名。
+> **当前 v2.8 系列：** 教练会学习对手习惯、按己方真实能力过滤提示、输出可给 WeakAura/计时条使用的 typed signals，并且只有当前目标真的进入击杀窗口时才提示爆发。打过多次的队伍如果总是用徽章解恐惧，就不会继续收到泛用恐惧建议；习惯低血冰箱的法师会让当前目标爆发门禁暂停。这些都不是写死的逻辑——它通过观察战斗按队伍学习，不会持久化任何玩家姓名。
 
 > ⚠️ **仅提供建议。** 此插件不会自动施法、不会切换目标、不会点击受保护按钮、不会修改安全宏。它只输出视觉、音频、文字提示，仅此而已。
 
@@ -229,7 +232,7 @@ MIT.
 | **竞技场 2v2 / 3v3 / 5v5** | 完整引擎：阵容识别、天赋推断、连锁规划、对手档案、lookahead、爆发判断、全部视觉与音频警报。 |
 | **战场**（WSG/AB/AV/EotS） | 引擎自适应：稀疏铭牌探测敌人、受击 CLEU 兜底、夺旗者优先级（+200）、低血单位提升、战场专属提示（`CALL_FLAG_CARRIER_LOW`、`CALL_BG_DEFEND`）。队伍特征档案样本不足时（如临时组队）自动启用职业级先验。 |
 | **户外 PvP / 决斗** | 引擎简化：单目标聚焦、不会左右横跳、不做阵容匹配。低血量也会触发 `DEFEND`，即使你是单人非治疗职业。`DUEL_REQUESTED` 自动启动。 |
-| **竞技场专属警报**仅在竞技场触发 | 屏幕闪烁与语音提示只在 `IsActiveBattlefieldArena()` 为真时触发。战场中不会出现错误的红色闪屏。 |
+| **竞技场专属警报**仅在竞技场触发 | 语音提示只在 `IsActiveBattlefieldArena()` 为真时触发；实战路径不会使用全屏闪烁。 |
 
 ---
 
@@ -251,11 +254,12 @@ MIT.
 
 ## 安装（一次性配置，约 2 分钟）
 
-1. 从 [Releases 页面](https://github.com/tomqwu/ArenaCoachTBC/releases) **下载最新 zip**，或使用 [CurseForge 列表](https://www.curseforge.com/wow/addons/arenacoachtbc)。
+1. 从 [Releases 页面](https://github.com/tomqwu/ArenaCoachTBC/releases) **下载最新 zip**，或使用 [CurseForge 列表](https://www.curseforge.com/wow/addons/areanacoachtbc)。
 2. **解压并复制 `ArenaCoachTBC/` 文件夹**（含 `ArenaCoachTBC.toc` 的那个）到魔兽世界插件目录：
-   - **TBC Classic / 周年服**：`<WoW install>/_classic_/Interface/AddOns/`
-   - **macOS**：通常为 `/Applications/World of Warcraft/_classic_/Interface/AddOns/`
-   - **Windows**：通常为 `C:\Program Files (x86)\World of Warcraft\_classic_\Interface\AddOns\`
+   - **TBC 周年服**：`<WoW install>/_anniversary_/Interface/AddOns/`
+   - **TBC Classic**：`<WoW install>/_classic_/Interface/AddOns/`
+   - **macOS**：通常为 `/Applications/World of Warcraft/_anniversary_/Interface/AddOns/` 或 `_classic_`
+   - **Windows**：通常为 `F:\World of Warcraft\_anniversary_\Interface\AddOns\` 或 `C:\Program Files (x86)\World of Warcraft\_classic_\Interface\AddOns\`
 3. **重启客户端**（如已在游戏内，`/reload`）。插件列表中应出现已启用的 `ArenaCoachTBC`。
 4. 若角色选择界面提示 "Out of Date"，启用底部的"**载入过期插件**"。或在 `ArenaCoachTBC.toc` 中将 `## Interface: 20505` 改为与你客户端匹配的版本号。
 
@@ -272,7 +276,9 @@ MIT.
 /acc selftest verbose  -- 客户端内自检
 ```
 
-执行 `/acc test` 后，插件会用约 1 分钟通过真实决策引擎回放一局 3v3 RMP：铁门未开（`OPEN`）、开战、敌方爆发、治疗被控、治疗承压（`DEFEND`）、戒律牧确认、痛苦压制/徽章状态、换火击杀窗口，最后重置。**看到这个回放，说明插件已加载且决策链路可运行。** 把框拖到你比赛中实际会看的位置；右下角拖拽可缩放，位置和大小都会保存。底部分工条会按 1/2/3/5 个小格显示队友动作，避免 2v2、3v3、5v5 分工挤成一段文字。`/acc test hud` 保留旧的纯视觉 HUD 演示。
+执行 `/acc test` 后，插件会用约 1 分钟通过真实决策引擎回放一局 3v3 RMP：铁门未开（`OPEN`）、开战、敌方爆发、治疗被控、治疗承压（`DEFEND`）、戒律牧确认、痛苦压制/徽章状态、换火击杀窗口，最后重置。**看到这个回放，说明插件已加载且决策链路可运行。**
+
+使用 `/acc hud alert` 选择默认的 DBM 风格短警报，`/acc hud board` 打开较大的黑曜石复盘面板，`/acc hud both` 可同时显示两种界面。`/acc unlock` 可移动警报并拖拽/缩放面板；`/acc lock` 再次锁定。面板会把左侧状态、中央行动/血量、底部玩家优先分工、右侧提示轨作为一个整体保留，底部分工按 1/2/3/5 个固定小格显示，避免 2v2、3v3、5v5 分工挤成一段文字。`/acc test hud` 会按当前显示模式跑纯视觉演示。
 
 ---
 
@@ -283,9 +289,9 @@ MIT.
 **比赛中你会看到：**
 
 1. **战前（铁门未开）**：模式 = `OPEN`（黄色），目标 = 阵容默认起手目标。规划开场。
-2. **战斗中**：模式切换为 `KILL`（红）/ `SWAP`（橙）/ `DEFEND`（蓝）。大字显示击杀目标；信息行显示目标血量百分比和击杀概率；提示行显示功能性提示；连锁块显示标准 CC 序列；阵容徽章显示天赋是否已确认。
+2. **战斗中**：模式切换为 `KILL`（红）/ `SWAP`（橙）/ `DEFEND`（蓝）。默认实战界面是类似 DBM 的短警报，优先显示具体动作，例如 `你：驱散 Holyman`、`战栗图腾没了 - 萨满补`、`立刻爆发`、`击杀 Holyman`。可选 `/acc hud board` 保留较大的左/中/右/底复盘布局，用于调试和截图。推荐停止刷新时，警报、面板、铭牌与边缘提示会淡出/清理，不会把旧文字留在画面上。
 3. **爆发窗口**：信息行出现 `BURST READY` 标签——目标可被击杀、配置要求的 MS / 风怒已满足、近战能贴住、击杀概率 ≥ 阈值且没有敌方反压。连锁就绪会显示在门禁明细中，只有启用 `strategy.requireChainForBurst` 时才会硬性阻止爆发。
-4. **防御**：当你的治疗被集火或敌方爆发激活，模式切换为 `DEFEND`（蓝色）。屏幕边缘光晕转蓝；提示切换为痛苦压制 / 保护祝福 / 剥离。
+4. **防御**：当你的治疗被集火或敌方爆发激活，模式切换为 `DEFEND`（蓝色）。短警报和音效会提示痛苦压制 / 保护祝福 / 剥离等行动；可选边缘提示只是一条低透明度静态细线，不会全屏闪烁。
 
 ---
 
@@ -348,7 +354,7 @@ MIT.
 
 ## 用 WeakAuras 自定义显示
 
-内建 HUD（模式标签、目标信息行、屏幕边缘光晕、铭牌高亮、音效）已经涵盖绝大多数场景——不需要额外配置 WeakAura。如果你想在此之上自定义 HUD，插件通过 `_G.ArenaCoachTBC` 全局发布完整的实时状态。
+内建 HUD（DBM 风格短警报、玩家优先分工条、目标信息、铭牌高亮、音效，以及可选细边缘提示）已经涵盖绝大多数场景——不需要额外配置 WeakAura。如果你想在此之上自定义 HUD，插件通过 `_G.ArenaCoachTBC` 全局发布完整的实时状态。
 
 > **关于"可粘贴导入字符串"**：v2.0–v2.2.5 曾尝试在 README 中直接附带 WA 导入字符串。我们使用的 `node-weakauras-parser` 库生成的字符串可以正常解码，但通过不了 WA 导入校验的字节比对——粘贴后不会弹出 Import 按钮。连续 6 次补丁追查后确认该库不适用。如需使用这些模板，请在 `docs/weakaura-pack.md` 中查看每个（模式徽章、爆发开关、防御警报、提示流、阵容信息）的触发器源码——把 Lua 代码粘到你在游戏内自建的 Custom 触发器里即可，无需经过导入字符串环节。
 
@@ -361,6 +367,9 @@ _G.ArenaCoachTBC.GetPrimaryTargetName()
 _G.ArenaCoachTBC.IsBurstAllowed()      -- 爆发门禁是否通过
 _G.ArenaCoachTBC.GetBurstDecision()    -- 多门禁细分
 _G.ArenaCoachTBC.GetChain()            -- {id, label, expectedProb, steps, links}
+_G.ArenaCoachTBC.GetPlayerActions()    -- 友方分工
+_G.ArenaCoachTBC.GetPlayerAction()     -- unit="player" 的分工
+_G.ArenaCoachTBC.GetActionForUnit("party1")
 _G.ArenaCoachTBC.GetKillProb(guid)     -- 0..1
 _G.ArenaCoachTBC.GetCompConfidence()   -- 0..1
 _G.ArenaCoachTBC.GetCompSpecConfirmed()

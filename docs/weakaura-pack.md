@@ -21,13 +21,21 @@ The public bridge API (also in `ArenaCoachTBC/WeakAuraBridge.lua`) / 公开桥�
 
 | Getter | Returns |
 |---|---|
+| `_G.ArenaCoachTBC.GetRecommendation()` | full latest recommendation table |
 | `_G.ArenaCoachTBC.GetMode()` | `"OPEN"` / `"KILL"` / `"SWAP"` / `"DEFEND"` / `"RESET"` |
 | `_G.ArenaCoachTBC.GetPriority()` | `"LOW"` / `"MEDIUM"` / `"HIGH"` / `"URGENT"` |
+| `_G.ArenaCoachTBC.GetConfidence()` | target-score confidence, `0..1` |
+| `_G.ArenaCoachTBC.GetPrimaryTarget()` | enemy GUID |
 | `_G.ArenaCoachTBC.GetPrimaryTargetClass()` | `"WARRIOR"`, etc. |
 | `_G.ArenaCoachTBC.GetPrimaryTargetName()` | string |
+| `_G.ArenaCoachTBC.GetSecondaryTarget()` | enemy GUID |
 | `_G.ArenaCoachTBC.GetSecondaryTargetClass()` | string |
+| `_G.ArenaCoachTBC.GetSecondaryTargetName()` | string |
 | `_G.ArenaCoachTBC.GetReason()` | short string |
 | `_G.ArenaCoachTBC.GetCallouts()` | array of locale keys |
+| `_G.ArenaCoachTBC.GetPlayerActions()` | per-friendly assignment records |
+| `_G.ArenaCoachTBC.GetPlayerAction()` | assignment for `unit == "player"` |
+| `_G.ArenaCoachTBC.GetActionForUnit("party1")` | assignment for a specific unit token |
 | `_G.ArenaCoachTBC.GetSignals()` | typed `strategy`, `callout`, and `player_action` records |
 | `_G.ArenaCoachTBC.GetSignalsByKind("player_action")` | typed records filtered by kind |
 | `_G.ArenaCoachTBC.GetActiveSignals(now)` | non-expired typed records |
@@ -36,12 +44,33 @@ The public bridge API (also in `ArenaCoachTBC/WeakAuraBridge.lua`) / 公开桥�
 | `_G.ArenaCoachTBC.GetRejectedCallouts()` | rejected callout diagnostics |
 | `_G.ArenaCoachTBC.GetRejectedActions()` | rejected player-action diagnostics |
 | `_G.ArenaCoachTBC.GetBlockedSummary()` | compact rejected/burst blocker summary |
+| `_G.ArenaCoachTBC.IsBurstAllowed()` | bool |
+| `_G.ArenaCoachTBC.GetBurstBlocker()` | first burst gate blocker key |
+| `_G.ArenaCoachTBC.GetBurstDecision()` | full target-specific burst gate result |
 | `_G.ArenaCoachTBC.GetEnemyComp()` | comp id, e.g. `"RMP_3V3"` |
+| `_G.ArenaCoachTBC.GetEnemyCompLabel()` | localized/display label when present |
+| `_G.ArenaCoachTBC.GetCompConfidence()` | comp-match confidence, `0..1` |
+| `_G.ArenaCoachTBC.GetCompSpecConfirmed()` | bool |
+| `_G.ArenaCoachTBC.GetChain()` | selected CC chain table |
+| `_G.ArenaCoachTBC.GetChainId()` | selected chain id |
+| `_G.ArenaCoachTBC.GetChainExpectedProb()` | selected chain probability |
 | `_G.ArenaCoachTBC.GetOwnComp()` | archetype, e.g. `"MELEE_CLEAVE"` |
+| `_G.ArenaCoachTBC.GetOwnCompLabel()` | display label when present |
+| `_G.ArenaCoachTBC.GetCapabilities()` | inferred friendly capability table |
+| `_G.ArenaCoachTBC.HasCapability("hasBloodlust")` | bool |
+| `_G.ArenaCoachTBC.GetEnemies()` | current enemy state table |
+| `_G.ArenaCoachTBC.GetFriendlies()` | current friendly state table |
 | `_G.ArenaCoachTBC.GetBracket()` | `2` / `3` / `5` |
 | `_G.ArenaCoachTBC.GetCombatPhase()` | `"PRE"` / `"ACTIVE"` / `"POST"` |
-| `_G.ArenaCoachTBC.IsBurstAllowed()` | bool |
+| `_G.ArenaCoachTBC.GetPvPContext()` | `"arena"` / `"bg"` / `"world"` / `"world_idle"` / `"none"` |
+| `_G.ArenaCoachTBC.GetKillProb(guid)` | target kill probability, `0..1` |
+| `_G.ArenaCoachTBC.GetKillProbBreakdown(guid)` | kill-probability components |
+| `_G.ArenaCoachTBC.GetOpponentProfile()` | read-only opponent profile table |
+| `_G.ArenaCoachTBC.GetOpponentSignature()` | hashed opponent signature |
+| `_G.ArenaCoachTBC.GetTendencyMean("trinketsFear")` | opponent tendency posterior mean |
+| `_G.ArenaCoachTBC.L(key)` | addon locale lookup helper |
 | `_G.ArenaCoachTBC.GetBridgeSchemaVersion()` | typed bridge schema version |
+| `_G.ArenaCoachTBC.GetDebugState()` | debugging snapshot of last rec/state/version |
 | `_G.ArenaCoachTBC.GetVersion()` | semver string |
 
 Typed signals are the preferred source for custom bars/icons because they include `ownerUnit`, `targetGuid`, `targetName`, `requiredCaps`, `sourceEvidence`, `duration`, `expiresAt`, `priority`, `displayStyle`, and `reasonKey` without parsing localized text.

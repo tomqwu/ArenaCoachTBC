@@ -11,7 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-# Full test suite with coverage (193 tests, must stay >= 99% line coverage)
+# Full test suite with coverage (748 tests as of v2.8.53, must stay >= 99% line coverage)
 lua5.1 -lluacov ArenaCoachTBC/Tests/run_all.lua
 luacov && tail -n 20 luacov.report.out
 
@@ -28,7 +28,7 @@ lua5.1 tools/replay.lua <path/to/ArenaCoachTBC.lua>
 cd ArenaCoachTBC && for f in $(find . -name '*.lua'); do luac5.1 -p "$f" || echo "FAIL: $f"; done
 ```
 
-There is no npm / make build. To smoke-test in-client, copy `ArenaCoachTBC/` into `<WoW>/_classic_/Interface/AddOns/` and use `/acc help` or `/acc test`. The slash-command surface and manual smoke checklist live in `ArenaCoachTBC/README.md` and `docs/manual-smoke.md`.
+There is no npm / make build. To smoke-test in-client, copy `ArenaCoachTBC/` into `<WoW>/_anniversary_/Interface/AddOns/` for TBC Anniversary, or `<WoW>/_classic_/Interface/AddOns/` for older Classic installs, then use `/acc help` or `/acc test`. The slash-command surface and manual smoke checklist live in `ArenaCoachTBC/README.md` and `docs/manual-smoke.md`.
 
 CI (`.github/workflows/test.yml`) runs syntax check → locale parity → test suite → 99% coverage gate on every push/PR. Releases are driven by `.github/workflows/release.yml`: every push to `main` auto-publishes a `v{base}-dev.{run}` prerelease zip, and pushing a `vX.Y.Z` tag publishes a stable release plus CurseForge / Wago uploads.
 
