@@ -256,12 +256,17 @@ H.it(g, "ticker repaint runs through the OnUpdate accumulator", function()
     H.assertNotNil(handler)
     handler(FH.frame, FH.REFRESH_INTERVAL + 0.1)  -- must not error
 end)
-H.it(g, "FormatRow renders a downed kick with seconds countdown", function()
+H.it(g, "FormatRow renders the actual interrupt spell name + seconds countdown", function()
+    -- v2.10.1: interrupt cell shows GetSpellInfo(spellID), not always
+    -- the static "KICK" label — keeps it consistent with the defensive
+    -- cell and disambiguates Kick vs Counterspell vs Earth Shock.
     reset()
-    CT:MarkUsed("guid-fh-1", S.KICK)  -- 10s CD -> seconds formatting
+    CT:MarkUsed("guid-fh-1", S.KICK)
     local txt = FH:FormatRow(FH:BuildRowModel(freshEnemy({ class = "ROGUE" })))
-    H.assertEq(txt.intText:sub(1, 5), "KICK ")
-    H.assertNotNil(txt.intText:match("KICK %d+$"), "sub-minute CDs render as seconds")
+    -- Headless GetSpellInfo stub returns "Spell<id>" for any positive id.
+    H.assertEq(txt.intText:sub(1, 9), "Spell1766",
+        "interrupt label should be the live spell name, not the static KICK fallback")
+    H.assertNotNil(txt.intText:match(" %d+$"), "sub-minute CDs render as seconds")
 end)
 
 H.it(g, "v2.10: FormatRow exposes def + interrupt spellIDs for icon paint", function()
@@ -327,4 +332,40 @@ H.it(g, "drag handlers persist the frame position to db.factsFrame", function()
     -- locked frames must not start moving
     _G.ArenaCoachTBCDB.locked = true
     down(f, "LeftButton")
+end)
+
+H.it(g, "v2.10.1: frame has a header strip + DR legend so abbreviations aren't cryptic", function()
+    reset()
+    _G.ArenaCoachTBCDB = { factsHud = { enabled = true } }
+    FH.frame = nil
+    local f = FH:CreateFrame()
+    H.assertNotNil(f.header, "header strip should exist above the enemy rows")
+    H.assertNotNil(f.header.name)
+    H.assertNotNil(f.header.trinket)
+    H.assertNotNil(f.header.def)
+    H.assertNotNil(f.header.int)
+    H.assertNotNil(f.header.dr)
+    -- Legend text decodes the DR letter codes (S/F/D/P/R/C) AND the
+    -- 1/2, 1/4, IMM multiplier glyphs that v2.10 shows on each row.
+    H.assertNotNil(f.legend, "DR legend should exist at the bottom of the panel")
+    local legendText = f.legend._text or ""
+    H.assertNotNil(legendText:find("S=", 1, true), "legend names the STUN code")
+    H.assertNotNil(legendText:find("IMM", 1, true), "legend names the IMMUNE marker")
+end)
+
+H.it(g, "v2.10.1: long names truncate inside the name cell instead of wrapping", function()
+    -- Pre-v2.10.1 a 13-char name like 'Roadtoisekai' wrapped onto a
+    -- second visual line that collided with the row below. The fix is
+    -- SetWordWrap(false) on the name FontString.
+    reset()
+    _G.ArenaCoachTBCDB = { factsHud = { enabled = true } }
+    FH.frame = nil
+    local f = FH:CreateFrame()
+    local row = f.rows[1]
+    -- The mocked FontString tracks the last value passed to SetWordWrap.
+    -- We just need to confirm the call happened; the WoW client does the
+    -- actual truncation.
+    H.assertEq(row.name._wordWrap, false, "name cell must disable wordwrap")
+    H.assertEq(row.def._wordWrap, false, "def cell must disable wordwrap")
+    H.assertEq(row.int._wordWrap, false, "int cell must disable wordwrap")
 end)

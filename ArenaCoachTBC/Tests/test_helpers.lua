@@ -60,6 +60,9 @@ function mockMethods:SetShadowOffset(x, y)
 end
 function mockMethods:SetJustifyH()        end
 function mockMethods:SetJustifyV()        end
+function mockMethods:SetWordWrap(v)       self._wordWrap = v end
+function mockMethods:SetNonSpaceWrap(v)   self._nonSpaceWrap = v end
+function mockMethods:SetMaxLines(n)       self._maxLines = n end
 function mockMethods:SetWidth(w)          self._width = w end
 function mockMethods:SetHeight(h)         self._height = h end
 function mockMethods:SetColorTexture(r, g, b, a)

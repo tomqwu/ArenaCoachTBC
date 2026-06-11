@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Facts HUD layout broke on long names + Chinese spell names.** Player names like `Roadtoisekai` were wrapping into the trinket cell; defensive cell text like `寒冰屏障 5m` / `暗影斗篷 2m` was overflowing under the next row (Chinese characters render wider in the small font than the v2.10 76 px column allowed). Two root causes addressed:
+  - Every cell now calls `SetWordWrap(false)` + `SetNonSpaceWrap(false)` + `SetMaxLines(1)`, so long content truncates inside the column instead of wrapping to a second visual line that collides with the row below.
+  - Frame widened 396 → 510. Cell widths: Name 110 → 130, Trinket 42 → 56, Defensive 76 → 130 (now fits Chinese spell names + countdown), Interrupt 26 → 80 (same), DR 42 → 50.
+- **Interrupt cell always said "KICK" regardless of which interrupt was observed.** It now shows the actual `GetSpellInfo(spellID)` result — `Counterspell 24`, `Earth Shock 6`, `Pummel 10`, ... — consistent with the defensive cell.
+
+### Added
+- **Facts HUD column header strip** (always visible) so first-time users see `Name / Trinket / Defensive / Interrupt / DR` labels above the abbreviated row data.
+- **Facts HUD DR legend** (always visible at the bottom) decoding `S=Stun  F=Fear  D=Disorient  P=Incap  R=Root  C=Cyclone  ·  1/2=half  1/4=quarter  IMM=immune` (enUS) / `S=眩晕  F=恐惧  D=致盲  P=变形  R=定身  C=飓风  ·  1/2=半时长  1/4=四分之一  IMM=免疫` (zhCN). Stops users having to ask "what does R:1/4 mean".
+
 ## [2.10.0] - 2026-06-11
 
 ### Added

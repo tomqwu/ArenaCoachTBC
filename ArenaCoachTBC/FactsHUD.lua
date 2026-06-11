@@ -210,7 +210,9 @@ function FH:FormatRow(m)
     end
     local intText = ""
     if m.interrupt then
-        intText = L("FACTS_KICK_LABEL", "KICK") .. " "
+        local name
+        if type(GetSpellInfo) == "function" then name = GetSpellInfo(m.interrupt.spellID) end
+        intText = (name or L("FACTS_KICK_LABEL", "KICK")) .. " "
             .. (fmtSecs(m.interrupt.remaining) or "")
     end
     local drText = ""
@@ -237,7 +239,38 @@ end
 -- source of truth shared with UI alerts + nameplate paint.
 
 local ROW_HEIGHT = 18
-local FRAME_WIDTH = 396  -- v2.10: +36 for the def + interrupt spell icons
+-- v2.10.1: FRAME_WIDTH 396 -> 510 because:
+-- (a) long player names like "Roadtoisekai" were wrapping into the
+--     trinket cell when SetWidth's wordwrap default kicked in;
+-- (b) Chinese spell names from GetSpellInfo (e.g. "寒冰屏障 5m" /
+--     "暗影斗篷 2m") need ~130 px in the small font, not the 76 px the
+--     v2.10 layout left them. The defensive cell was overflowing into
+--     the next row vertically because of the wrap.
+-- Every FontString below now calls SetWordWrap(false) so long content
+-- truncates inside the cell instead of pushing into the next column.
+local FRAME_WIDTH = 510
+
+-- Column offsets — single source of truth so makeRow + header row stay
+-- aligned without manual arithmetic at each call site.
+local COL = {
+    NAME      = { x = 0,   w = 130 },
+    TRINKET   = { x = 132, w = 56  },
+    DEF_ICON  = { x = 190, w = 16  },
+    DEF_TEXT  = { x = 208, w = 130 },  -- fits "寒冰屏障 5m"
+    INT_ICON  = { x = 340, w = 16  },
+    INT_TEXT  = { x = 358, w = 80  },  -- fits "法术反制 24"
+    DR        = { x = 440, w = 50  },  -- fits "S:1/4 F:IMM"
+}
+
+-- Disable wrapping on every FontString cell. Long content truncates at
+-- the SetWidth boundary instead of wrapping to a second line that
+-- collides with the row below.
+local function lockWidth(fs)
+    if not fs then return end
+    if fs.SetWordWrap     then fs:SetWordWrap(false)     end
+    if fs.SetNonSpaceWrap then fs:SetNonSpaceWrap(false) end
+    if fs.SetMaxLines     then fs:SetMaxLines(1)         end
+end
 
 -- v2.10: small icon texture next to defensive + interrupt cells. Each
 -- column gets a 16px icon to the LEFT of its countdown text, so the row
@@ -257,30 +290,67 @@ local function makeIconButton(parent, anchorX)
     return b
 end
 
-local function makeRow(parent, index)
+local function makeCellText(parent, col, font)
+    local fs = parent:CreateFontString(nil, "OVERLAY", font or "GameFontNormal")
+    fs:SetPoint("LEFT", parent, "LEFT", col.x, 0)
+    fs:SetWidth(col.w)
+    fs:SetJustifyH("LEFT")
+    fs:SetJustifyV("MIDDLE")
+    lockWidth(fs)
+    return fs
+end
+
+local function makeRow(parent, index, yOffset)
     local r = CreateFrame("Frame", nil, parent)
     r:SetSize(FRAME_WIDTH - 20, ROW_HEIGHT)
-    r:SetPoint("TOPLEFT", parent, "TOPLEFT", 10, -(6 + (index - 1) * ROW_HEIGHT))
-    r.name = r:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    r.name:SetPoint("LEFT", r, "LEFT", 0, 0)
-    r.name:SetWidth(110); r.name:SetJustifyH("LEFT")
-    r.trinket = r:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    r.trinket:SetPoint("LEFT", r, "LEFT", 112, 0)
-    r.trinket:SetWidth(42); r.trinket:SetJustifyH("LEFT")
-    -- Defensive cell: icon (16px) then countdown text right of it.
-    r.defIcon = makeIconButton(r, 156)
-    r.def = r:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    r.def:SetPoint("LEFT", r, "LEFT", 156 + ICON_SIZE + 2, 0)
-    r.def:SetWidth(94 - ICON_SIZE - 2); r.def:SetJustifyH("LEFT")
-    -- Interrupt cell: same shape, narrower text column.
-    r.intIcon = makeIconButton(r, 252)
-    r.int = r:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    r.int:SetPoint("LEFT", r, "LEFT", 252 + ICON_SIZE + 2, 0)
-    r.int:SetWidth(44 - ICON_SIZE - 2); r.int:SetJustifyH("LEFT")
-    r.dr = r:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    r.dr:SetPoint("LEFT", r, "LEFT", 298, 0)
-    r.dr:SetWidth(42); r.dr:SetJustifyH("LEFT")
+    r:SetPoint("TOPLEFT", parent, "TOPLEFT", 10, -(yOffset + (index - 1) * ROW_HEIGHT))
+    r.name    = makeCellText(r, COL.NAME)
+    r.trinket = makeCellText(r, COL.TRINKET)
+    r.defIcon = makeIconButton(r, COL.DEF_ICON.x)
+    r.def     = makeCellText(r, COL.DEF_TEXT, "GameFontNormalSmall")
+    r.intIcon = makeIconButton(r, COL.INT_ICON.x)
+    r.int     = makeCellText(r, COL.INT_TEXT, "GameFontNormalSmall")
+    r.dr      = makeCellText(r, COL.DR, "GameFontNormalSmall")
     return r
+end
+
+-- Always-visible header strip across the top of the panel. Tells a
+-- first-time user what each column is ("Trinket" / "饰品", etc.) so the
+-- abbreviations below them aren't cryptic. Columns align with COL.
+local function makeHeader(parent, yOffset)
+    local h = CreateFrame("Frame", nil, parent)
+    h:SetSize(FRAME_WIDTH - 20, ROW_HEIGHT)
+    h:SetPoint("TOPLEFT", parent, "TOPLEFT", 10, -yOffset)
+    local function makeHead(col, key, fallback)
+        local fs = makeCellText(h, col, "GameFontNormalSmall")
+        fs:SetText(L(key, fallback))
+        fs:SetTextColor(0.75, 0.75, 0.55)
+        return fs
+    end
+    h.name    = makeHead(COL.NAME,      "FACTS_COL_NAME",    "Name")
+    h.trinket = makeHead(COL.TRINKET,   "FACTS_COL_TRINKET", "Trinket")
+    h.def     = makeHead({ x = COL.DEF_ICON.x, w = COL.DEF_TEXT.x + COL.DEF_TEXT.w - COL.DEF_ICON.x },
+                         "FACTS_COL_DEF",     "Defensive")
+    h.int     = makeHead({ x = COL.INT_ICON.x, w = COL.INT_TEXT.x + COL.INT_TEXT.w - COL.INT_ICON.x },
+                         "FACTS_COL_INT",     "Interrupt")
+    h.dr      = makeHead(COL.DR,        "FACTS_COL_DR",      "DR")
+    return h
+end
+
+-- Always-visible legend at the bottom of the panel. Decodes the DR
+-- letters + multiplier glyphs that v2.10 made compact but cryptic.
+-- New users can read this once and stop asking "什么是 R:1/4".
+local function makeLegend(parent, yOffset)
+    local fs = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    fs:SetPoint("TOPLEFT", parent, "TOPLEFT", 10, -yOffset)
+    fs:SetWidth(FRAME_WIDTH - 20)
+    fs:SetJustifyH("LEFT")
+    fs:SetJustifyV("MIDDLE")
+    fs:SetTextColor(0.6, 0.6, 0.5)
+    lockWidth(fs)
+    fs:SetText(L("FACTS_LEGEND",
+        "S=Stun  F=Fear  D=Disorient  P=Incap  R=Root  C=Cyclone  ·  1/2=half  1/4=quarter  IMM=immune"))
+    return fs
 end
 
 function FH:CreateFrame()
@@ -294,8 +364,11 @@ function FH:CreateFrame()
     -- invisible mouse-blocking region. Older clients don't know the
     -- template; pass it only when the mixin exists.
     local template = (type(BackdropTemplateMixin) == "table") and "BackdropTemplate" or nil
+    -- Frame size accounts for: 6 px top padding + header row + 2 px gap
+    -- + MAX_ROWS enemy rows + 2 px gap + legend row + 6 px bottom padding.
+    local frameHeight = 6 + ROW_HEIGHT + 2 + self.MAX_ROWS * ROW_HEIGHT + 2 + ROW_HEIGHT + 6
     local f = CreateFrame("Frame", "ArenaCoachTBCFactsHUD", UIParent, template)
-    f:SetSize(FRAME_WIDTH, 12 + self.MAX_ROWS * ROW_HEIGHT)
+    f:SetSize(FRAME_WIDTH, frameHeight)
     f:SetPoint(fcfg.point or "CENTER", UIParent, fcfg.point or "CENTER",
                fcfg.x or 0, fcfg.y or -40)
     f:SetScale(fcfg.scale or 1.0)
@@ -331,8 +404,14 @@ function FH:CreateFrame()
         end
     end)
 
+    -- Header strip (always visible), then enemy rows, then legend.
+    local headerY = 6
+    local rowsY   = headerY + ROW_HEIGHT + 2
+    local legendY = rowsY + self.MAX_ROWS * ROW_HEIGHT + 2
+    f.header = makeHeader(f, headerY)
     f.rows = {}
-    for i = 1, self.MAX_ROWS do f.rows[i] = makeRow(f, i) end
+    for i = 1, self.MAX_ROWS do f.rows[i] = makeRow(f, i, rowsY) end
+    f.legend = makeLegend(f, legendY)
     -- Low-frequency countdown repaint. Numbers must tick between combat
     -- events or a "T-45" reads as stale the moment it's painted.
     f._accum = 0
