@@ -225,6 +225,8 @@ function FH:FormatRow(m)
         defText     = defText,
         intText     = intText,
         drText      = drText,
+        defSpellID  = m.defensive and m.defensive.spellID or nil,
+        intSpellID  = m.interrupt and m.interrupt.spellID or nil,
     }
 end
 
@@ -235,7 +237,25 @@ end
 -- source of truth shared with UI alerts + nameplate paint.
 
 local ROW_HEIGHT = 18
-local FRAME_WIDTH = 360
+local FRAME_WIDTH = 396  -- v2.10: +36 for the def + interrupt spell icons
+
+-- v2.10: small icon texture next to defensive + interrupt cells. Each
+-- column gets a 16px icon to the LEFT of its countdown text, so the row
+-- reads "Pain Sup [icon] 2m" rather than a wall of CJK / English words.
+-- The icon is shown only when the model carries a spellID for that
+-- column; otherwise hidden so the row stays clean.
+local ICON_SIZE = 16
+
+local function makeIconButton(parent, anchorX)
+    local b = parent:CreateTexture(nil, "ARTWORK")
+    b:SetSize(ICON_SIZE, ICON_SIZE)
+    b:SetPoint("LEFT", parent, "LEFT", anchorX, 0)
+    -- TBC textures ship with grey border edges; trim them so the icon
+    -- reads cleanly at small sizes.
+    if b.SetTexCoord then b:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
+    b:Hide()
+    return b
+end
 
 local function makeRow(parent, index)
     local r = CreateFrame("Frame", nil, parent)
@@ -247,12 +267,16 @@ local function makeRow(parent, index)
     r.trinket = r:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     r.trinket:SetPoint("LEFT", r, "LEFT", 112, 0)
     r.trinket:SetWidth(42); r.trinket:SetJustifyH("LEFT")
+    -- Defensive cell: icon (16px) then countdown text right of it.
+    r.defIcon = makeIconButton(r, 156)
     r.def = r:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    r.def:SetPoint("LEFT", r, "LEFT", 156, 0)
-    r.def:SetWidth(94); r.def:SetJustifyH("LEFT")
+    r.def:SetPoint("LEFT", r, "LEFT", 156 + ICON_SIZE + 2, 0)
+    r.def:SetWidth(94 - ICON_SIZE - 2); r.def:SetJustifyH("LEFT")
+    -- Interrupt cell: same shape, narrower text column.
+    r.intIcon = makeIconButton(r, 252)
     r.int = r:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    r.int:SetPoint("LEFT", r, "LEFT", 252, 0)
-    r.int:SetWidth(44); r.int:SetJustifyH("LEFT")
+    r.int:SetPoint("LEFT", r, "LEFT", 252 + ICON_SIZE + 2, 0)
+    r.int:SetWidth(44 - ICON_SIZE - 2); r.int:SetJustifyH("LEFT")
     r.dr = r:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     r.dr:SetPoint("LEFT", r, "LEFT", 298, 0)
     r.dr:SetWidth(42); r.dr:SetJustifyH("LEFT")
@@ -338,8 +362,28 @@ local function paintRow(row, m)
     else row.trinket:SetTextColor(1.0, 0.35, 0.35) end
     row.def:SetText(txt.defText)
     row.def:SetTextColor(1.0, 0.55, 0.25)
+    -- Defensive icon: GetSpellTexture is the WoW API; nil-safe under
+    -- the headless test stub (which returns "" for any positive id).
+    local defTex = txt.defSpellID and type(GetSpellTexture) == "function"
+        and GetSpellTexture(txt.defSpellID) or nil
+    if row.defIcon then
+        if defTex and defTex ~= "" then
+            row.defIcon:SetTexture(defTex); row.defIcon:Show()
+        else
+            row.defIcon:Hide()
+        end
+    end
     row.int:SetText(txt.intText)
     row.int:SetTextColor(0.55, 0.85, 1.0)
+    local intTex = txt.intSpellID and type(GetSpellTexture) == "function"
+        and GetSpellTexture(txt.intSpellID) or nil
+    if row.intIcon then
+        if intTex and intTex ~= "" then
+            row.intIcon:SetTexture(intTex); row.intIcon:Show()
+        else
+            row.intIcon:Hide()
+        end
+    end
     row.dr:SetText(txt.drText)
     row.dr:SetTextColor(0.9, 0.75, 1.0)
     row:Show()

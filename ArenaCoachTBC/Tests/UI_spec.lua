@@ -213,6 +213,53 @@ H.it(g, "default alert mode shows DBM callout and hides the board", function()
     H.ns.Core.state.pvpContext = nil
 end)
 
+H.it(g, "v2.10: class:name on main wins even when a personal action is present", function()
+    -- Prior to this fix the personal action ("YOU: Refresh Tremor")
+    -- beat the class:name override, so the user kept seeing the
+    -- self-action even on KILL with a known target class. Per the user
+    -- requirement the alert middle line is ALWAYS Class: Name when a
+    -- target is known; the personal action moves to the sub-line.
+    _G.ArenaCoachTBCDB = {
+        enabled = true, locked = false, language = "auto",
+        frame = { point = "CENTER", x = 0, y = 120, scale = 1.0, displayMode = "both" },
+        alerts = { sound = false, screenFlash = false, edgeGlow = false, nameplate = false },
+        strategy = { aggression = "balanced" }, debug = false,
+    }
+    H.ns.Core = H.ns.Core or {}; H.ns.Core.state = H.ns.Core.state or {}
+    H.ns.Core.state.pvpContext = "arena"
+    H.ns.Core.state.bracket = 3
+    UI.frame = nil; UI.alertFrame = nil
+    UI.assignFrame = nil; UI.unitFrame = nil; UI.railFrame = nil
+    UI:CreateFrame()
+    UI._calloutLastShown = {}
+    H.advanceTime(5)
+    UI:Apply({
+        mode = "KILL",
+        primaryTargetName = "Holyman",
+        primaryTargetClass = "PRIEST",
+        primaryTargetHp = 0.42,
+        callouts = { "CALL_PURGE" },
+        priority = "HIGH",
+        playerActions = {
+            { unit = "player", name = "Totemkin", class = "SHAMAN",
+              actionKey = "ACTION_SHAMAN_TREMOR_REFRESH" },
+        },
+    })
+    H.assertTrue((UI.alertFrame.main._text or ""):find("Priest", 1, true) ~= nil,
+        "main line must show Class: Name even when there's a personal action")
+    H.assertTrue((UI.alertFrame.main._text or ""):find("Holyman", 1, true) ~= nil)
+    H.assertTrue((UI.alertFrame.main._text or ""):find("YOU:", 1, true) == nil,
+        "personal action must NOT win on the main line")
+    H.assertEq(UI.alertFrame.main._textColor and UI.alertFrame.main._textColor[1], 1.0,
+        "main colour is PRIEST white, not the personal-action colour")
+    -- Personal action and the team callout both demote to the sub-line.
+    local sub = UI.alertFrame.sub._text or ""
+    H.assertTrue(sub:find("YOU:", 1, true) ~= nil
+        or sub:find("Refresh Tremor", 1, true) ~= nil,
+        "personal action should appear in the sub-line")
+    H.ns.Core.state.pvpContext = nil
+end)
+
 H.it(g, "board display mode keeps the review board and suppresses alert", function()
     _G.ArenaCoachTBCDB = {
         enabled = true, locked = false, language = "auto",

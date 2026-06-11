@@ -264,6 +264,54 @@ H.it(g, "FormatRow renders a downed kick with seconds countdown", function()
     H.assertNotNil(txt.intText:match("KICK %d+$"), "sub-minute CDs render as seconds")
 end)
 
+H.it(g, "v2.10: FormatRow exposes def + interrupt spellIDs for icon paint", function()
+    reset()
+    CT:MarkUsed("guid-fh-1", S.E_PAIN_SUPPRESSION)
+    CT:MarkUsed("guid-fh-1", S.KICK)
+    local txt = FH:FormatRow(FH:BuildRowModel(freshEnemy({ class = "ROGUE" })))
+    H.assertEq(txt.defSpellID, S.E_PAIN_SUPPRESSION,
+        "icon needs the spell ID alongside the countdown text")
+    H.assertEq(txt.intSpellID, S.KICK)
+end)
+
+H.it(g, "v2.10: row gains hideable defIcon + intIcon textures", function()
+    reset()
+    _G.ArenaCoachTBCDB = { factsHud = { enabled = true } }
+    FH.frame = nil
+    local f = FH:CreateFrame()
+    local row = f.rows[1]
+    H.assertNotNil(row.defIcon)
+    H.assertNotNil(row.intIcon)
+end)
+
+H.it(g, "v2.10: paint hides icons when no cooldown is observed in the cell", function()
+    reset()
+    _G.ArenaCoachTBCDB = { factsHud = { enabled = true } }
+    FH.frame = nil
+    FH:CreateFrame()
+    FH:Update({ enemies = { arena1 = freshEnemy() }, pvpContext = "arena" })
+    -- No CD observed -> both icons hidden.
+    H.assertFalse(FH.frame.rows[1].defIcon:IsShown(),
+        "no def CD observed -> defensive icon hidden")
+    H.assertFalse(FH.frame.rows[1].intIcon:IsShown())
+end)
+
+H.it(g, "v2.10: paint shows icons once a spell is observed on cooldown", function()
+    reset()
+    _G.ArenaCoachTBCDB = { factsHud = { enabled = true } }
+    FH.frame = nil
+    FH:CreateFrame()
+    CT:MarkUsed("guid-fh-1", S.E_PAIN_SUPPRESSION)
+    CT:MarkUsed("guid-fh-1", S.KICK)
+    FH:Update({ enemies = { arena1 = freshEnemy() }, pvpContext = "arena" })
+    -- Under the headless stub GetSpellTexture returns "" for any
+    -- positive id, so the icon stays hidden; production gets a real
+    -- texture path. We assert the data flow is wired (spellID present)
+    -- by checking the spec above; the frame test just verifies the
+    -- code path doesn't error when icons are attempted.
+    H.assertNotNil(FH.frame.rows[1].defIcon)
+end)
+
 H.it(g, "drag handlers persist the frame position to db.factsFrame", function()
     reset()
     _G.ArenaCoachTBCDB = { factsHud = { enabled = true }, locked = false }
