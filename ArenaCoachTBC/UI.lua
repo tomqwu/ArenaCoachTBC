@@ -1748,6 +1748,29 @@ local function cleanReasonText(text)
     return text
 end
 
+-- v2.10: middle alert formatted as "Class: Name" (e.g. "Mage: Sam")
+-- with the foreground colour driven by the target's class — when you
+-- glance at the alert you see *who* is the focus, not just the mode.
+-- Mode urgency remains encoded by f.modeAccent and the kicker/sub
+-- lines, so we lose no information. Returns nil when class data is
+-- missing (callers fall back to mode-coloured target text).
+local function classTargetMain(class, name)
+    if not class or class == "" then return nil end
+    local Classes = ns.Classes
+    if not Classes or not Classes.DisplayName then return nil end
+    local display = Classes:DisplayName(class)
+    if name and name ~= "" then
+        return string.format("%s: %s", display, name)
+    end
+    return display
+end
+
+local function classTargetColor(class)
+    local Classes = ns.Classes
+    if not Classes or not Classes.Color then return nil end
+    return { Classes:Color(class) }
+end
+
 local function targetActionText(recommendation, mode, target, showTarget)
     if showTarget and target and target ~= "" then
         if mode == "OPEN" then return localeFormat("UI_ALERT_OPEN_TARGET", target) end
@@ -1863,9 +1886,17 @@ local function recommendationStatsText(recommendation, mode, showTarget, colored
     return table.concat(parts, "  ·  ")
 end
 
-local function alertContextText(recommendation, mode, target, showTarget, mainText, mainCalloutKey, statsText)
+local function alertContextText(recommendation, mode, target, showTarget, mainText, mainCalloutKey, statsText, mainActionText)
     local parts = {}
-    if mainCalloutKey and showTarget and target and target ~= "" then
+    -- v2.10: when the main line shows "Class: Name" (class colour), the
+    -- concrete callout / action belongs in the sub-line so the player
+    -- can still see what to do. mainActionText carries the resolved
+    -- main string; we surface it here when it differs from the
+    -- target-only fallback.
+    if mainActionText and mainActionText ~= mainText
+       and mainActionText ~= targetActionText(recommendation, mode, target, showTarget) then
+        table.insert(parts, mainActionText)
+    elseif mainCalloutKey and showTarget and target and target ~= "" then
         table.insert(parts, targetActionText(recommendation, mode, target, showTarget))
     end
     if recommendation and recommendation.reasonKey then
@@ -1901,7 +1932,7 @@ local function strategyTopText(recommendation, mode, target, showTarget)
         L("UI_MODULE_STRATEGY"), bracketText(), aggressionText(recommendation), plan)
 end
 
-function UI:_ApplyAlert(recommendation, mode, color, label, target, showTarget, detailText, mainActionText, contextText, strategyText)
+function UI:_ApplyAlert(recommendation, mode, color, label, target, showTarget, detailText, mainActionText, contextText, strategyText, mainColor)
     local af = self.alertFrame or (self.CreateAlertFrame and self:CreateAlertFrame())
     if not af then return end
     if not alertEnabled() then
@@ -1914,7 +1945,8 @@ function UI:_ApplyAlert(recommendation, mode, color, label, target, showTarget, 
         af.kicker:SetText(string.format("%s  ·  v%s", strategyText or L("UI_TITLE"), addonVersion()))
     end
     if af.main then
-        af.main:SetTextColor(color[1], color[2], color[3])
+        local mc = mainColor or color
+        af.main:SetTextColor(mc[1], mc[2], mc[3])
         af.main:SetText(mainActionText or targetActionText(recommendation, mode, target, showTarget))
     end
     if af.sub then
@@ -2045,6 +2077,23 @@ function UI:Apply(recommendation)
     local globalActionText, mainCalloutKey = primaryAlertText(recommendation, mode, target, showTarget)
     local selfActionText, _, selfActionRawText = personalActionText(recommendation)
     local mainActionText = selfActionText or globalActionText
+    -- v2.10: when we have a known primary-target class, the middle line
+    -- becomes "Class: Name" in the class colour. Mode (KILL/SWAP/OPEN)
+    -- is still legible via the kicker text and the f.modeAccent strip;
+    -- the big text now answers "who is the focus" at a glance. We only
+    -- override the team-level globalActionText path — when the player
+    -- has a personal action (selfActionText), that retains priority
+    -- because it's actionable for them, not informational.
+    local classMainText, classMainColor
+    if showTarget and recommendation.primaryTargetClass then
+        classMainText = classTargetMain(
+            recommendation.primaryTargetClass,
+            recommendation.primaryTargetName)
+        classMainColor = classTargetColor(recommendation.primaryTargetClass)
+        if classMainText and not selfActionText then
+            mainActionText = classMainText
+        end
+    end
     local suppressedCalloutKey = mainCalloutKey
     local strategyText = strategyTopText(recommendation, mode, target, showTarget)
     if f.metaText then
@@ -2121,6 +2170,14 @@ function UI:Apply(recommendation)
     if selfActionText and globalActionText
        and globalActionText ~= selfActionText
        and globalActionText ~= selfActionRawText then
+        table.insert(subParts, globalActionText)
+    end
+    -- v2.10: when the main line shows "Class: Name" (class colour), the
+    -- concrete action ("Purge Holyman", "BURST_NOW", "Kick Sam") moves
+    -- down here so the player still sees what to do. Skipped when the
+    -- main *is* the action (no class override happened).
+    if classMainText and mainActionText == classMainText
+       and globalActionText and globalActionText ~= classMainText then
         table.insert(subParts, globalActionText)
     end
 
@@ -2222,10 +2279,20 @@ function UI:Apply(recommendation)
     capLines(subParts, rawget(f, "_accCenterSubLines") or 1)
     local detailText = table.concat(subParts, "\n")
     f.subText:SetText(detailText)
+    -- v2.10: pass globalActionText (the team-level callout / target line)
+    -- so the alert sub can carry the concrete action when the main line
+    -- has been overridden to "Class: Name". When no override happens,
+    -- globalActionText IS the main line and alertContextText skips it.
     local contextText = alertContextText(recommendation, mode, target, showTarget,
-        mainActionText, mainCalloutKey, recommendationStatsText(recommendation, mode, showTarget, false))
+        mainActionText, mainCalloutKey,
+        recommendationStatsText(recommendation, mode, showTarget, false),
+        globalActionText)
+    -- Class colour wins on the main line when a target is known; the
+    -- mode colour stays the team-wide "tone" used by mode accents and
+    -- the alert frame's secondary affordances.
+    local mainColor = (classMainColor and not selfActionText) and classMainColor or color
     self:_ApplyAlert(recommendation, mode, color, label, target, showTarget,
-        detailText, mainActionText, contextText, strategyText)
+        detailText, mainActionText, contextText, strategyText, mainColor)
     local scaffold = layoutScaffoldActive(recommendation)
     local integratedUnitText = formatUnitStrip(recommendation, true)
     local integratedRailText = formatCueRail(recommendation, true)

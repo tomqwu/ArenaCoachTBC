@@ -231,13 +231,8 @@ end
 -- ============================================================
 -- Frame layer
 -- ============================================================
-local CLASS_COLORS = {
-    WARRIOR = {0.78, 0.61, 0.43}, PALADIN = {0.96, 0.55, 0.73},
-    HUNTER  = {0.67, 0.83, 0.45}, ROGUE   = {1.00, 0.96, 0.41},
-    PRIEST  = {1.00, 1.00, 1.00}, SHAMAN  = {0.00, 0.44, 0.87},
-    MAGE    = {0.41, 0.80, 0.94}, WARLOCK = {0.58, 0.51, 0.79},
-    DRUID   = {1.00, 0.49, 0.04},
-}
+-- v2.10: class colours live in Data/Classes.lua (Classes:Color). Single
+-- source of truth shared with UI alerts + nameplate paint.
 
 local ROW_HEIGHT = 18
 local FRAME_WIDTH = 360
@@ -328,18 +323,14 @@ function FH:CreateFrame()
     return f
 end
 
--- Prefer the client's RAID_CLASS_COLORS (tracks class-color addons and
--- client updates); the local table covers headless tests and odd clients.
-local function classColor(class)
-    local cc = _G.RAID_CLASS_COLORS and _G.RAID_CLASS_COLORS[class]
-    if cc and cc.r then return cc.r, cc.g, cc.b end
-    local c = CLASS_COLORS[class] or {1, 1, 1}
-    return c[1], c[2], c[3]
-end
-
 local function paintRow(row, m)
     local txt = FH:FormatRow(m)
-    local r, g, b = classColor(m.class)
+    local r, g, b
+    if ns.Classes and ns.Classes.Color then
+        r, g, b = ns.Classes:Color(m.class)
+    else
+        r, g, b = 1, 1, 1
+    end
     row.name:SetText(txt.nameText)
     row.name:SetTextColor(r, g, b)
     row.trinket:SetText(txt.trinketText)

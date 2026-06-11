@@ -95,3 +95,56 @@ H.it(g, "TokenToClass returns nil for nil/unknown", function()
     H.assertNil(C:TokenToClass(nil))
     H.assertNil(C:TokenToClass("notarealthing"))
 end)
+
+-- v2.10: shared class colours + display-name helpers
+H.it(g, "Color returns the documented RGB for each class", function()
+    -- Spot-check the four classes the user named explicitly. Tests
+    -- run headless so RAID_CLASS_COLORS is absent — the local table wins.
+    local r, g_, b = C:Color("MAGE")
+    H.assertTrue(b > 0.9, "mage should be blue-dominant: got " .. tostring(b))
+    r, g_, b = C:Color("PRIEST")
+    H.assertEq(r, 1.0) H.assertEq(g_, 1.0) H.assertEq(b, 1.0)
+    r, g_, b = C:Color("WARRIOR")
+    H.assertTrue(r > 0.7 and b < 0.5, "warrior should read as brown")
+    r, g_, b = C:Color("DRUID")
+    H.assertTrue(r > 0.9 and b < 0.1, "druid should be orange")
+end)
+
+H.it(g, "Color prefers the client's RAID_CLASS_COLORS when available", function()
+    local saved = _G.RAID_CLASS_COLORS
+    _G.RAID_CLASS_COLORS = { MAGE = { r = 0.1, g = 0.2, b = 0.3 } }
+    local r, g_, b = C:Color("MAGE")
+    H.assertEq(r, 0.1) H.assertEq(g_, 0.2) H.assertEq(b, 0.3)
+    _G.RAID_CLASS_COLORS = saved
+end)
+
+H.it(g, "Color returns a white fallback for nil/unknown", function()
+    local r, g_, b = C:Color(nil)
+    H.assertEq(r, 1) H.assertEq(g_, 1) H.assertEq(b, 1)
+    r, g_, b = C:Color("NOTACLASS")
+    H.assertEq(r, 1) H.assertEq(g_, 1) H.assertEq(b, 1)
+end)
+
+H.it(g, "ColorHex produces a 6-byte hex escape (e.g. ff112233)", function()
+    local hex = C:ColorHex("PRIEST")
+    H.assertEq(#hex, 8)
+    H.assertEq(hex:sub(1, 2), "ff")
+    -- Priest white -> ffffffff
+    H.assertEq(hex, "ffffffff")
+end)
+
+H.it(g, "DisplayName uses LOCALIZED_CLASS_NAMES_MALE when present", function()
+    local saved = _G.LOCALIZED_CLASS_NAMES_MALE
+    _G.LOCALIZED_CLASS_NAMES_MALE = { MAGE = "Magicien" }
+    H.assertEq(C:DisplayName("MAGE"), "Magicien")
+    _G.LOCALIZED_CLASS_NAMES_MALE = saved
+end)
+
+H.it(g, "DisplayName title-cases the class token as a last-ditch fallback", function()
+    local saved = _G.LOCALIZED_CLASS_NAMES_MALE
+    _G.LOCALIZED_CLASS_NAMES_MALE = nil
+    H.assertEq(C:DisplayName("MAGE"), "Mage")
+    H.assertEq(C:DisplayName("WARLOCK"), "Warlock")
+    H.assertEq(C:DisplayName(nil), "")
+    _G.LOCALIZED_CLASS_NAMES_MALE = saved
+end)

@@ -839,6 +839,118 @@ H.it(g, "v2.9: cues stay silent outside PvP contexts", function()
     H.assertEq(#played, 0)
 end)
 
+H.it(g, "v2.10: trinketsFear updates positively when fear is trinketed", function()
+    H.load("OpponentProfile.lua")
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    -- Friendly priest target whose GUID we'll feed CLEU events for.
+    H.setUnit("player", { class = "WARRIOR", guid = "guid-pl", hp = 100, hpMax = 100 })
+    H.setUnit("party1", { class = "PRIEST",  guid = "guid-pr", hp = 100, hpMax = 100 })
+    Core:RefreshFriendlies()
+    -- Resolve a profile under signature manually since arena units aren't wired.
+    local OP = H.ns.OpponentProfile
+    local sig = "TEST_SIG"
+    local profile = OP:Get(sig, _G.ArenaCoachTBCDB)
+    Core.state.opponentProfile = profile
+    Core.state.opponentSignature = sig
+    Core._pendingFears = {}
+    H._gameTime = 1000
+    -- Fear lands on the priest.
+    H.fireCLEU(H._gameTime, "SPELL_AURA_APPLIED", false,
+               "guid-lock", "Lock", nil, nil,
+               "guid-pr", "Priest", nil, nil, 6215, "Fear")
+    EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
+    -- 1.5s later, PvP trinket aura on the priest -> positive observation.
+    H.advanceTime(1.5)
+    H.fireCLEU(H._gameTime, "SPELL_AURA_APPLIED", false,
+               "guid-pr", "Priest", nil, nil,
+               "guid-pr", "Priest", nil, nil, 42292, "PvP Trinket")
+    EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
+    -- Evaluate may resolve a fresh profile from the live signature, so
+    -- read the live state rather than the local handle.
+    H.assertEq(Core.state.opponentProfile.tendencies.trinketsFear.alpha, 2,
+        "fear -> trinket should bump alpha by exactly 1 from the Beta(1,1) prior")
+end)
+
+H.it(g, "v2.10: trinketsFear updates negatively when fear runs to expiry", function()
+    H.load("OpponentProfile.lua")
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    H.setUnit("party1", { class = "PRIEST", guid = "guid-pr-x", hp = 100, hpMax = 100 })
+    Core:RefreshFriendlies()
+    local OP = H.ns.OpponentProfile
+    local sig = "TEST_SIG_NEG"
+    local profile = OP:Get(sig, _G.ArenaCoachTBCDB)
+    Core.state.opponentProfile = profile
+    Core._pendingFears = {}
+    H._gameTime = 2000
+    H.fireCLEU(H._gameTime, "SPELL_AURA_APPLIED", false,
+               "guid-lock", "Lock", nil, nil,
+               "guid-pr-x", "Priest", nil, nil, 6215, "Fear")
+    EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
+    H.advanceTime(2)  -- fear lasted long enough to count as not-trinketed
+    H.fireCLEU(H._gameTime, "SPELL_AURA_REMOVED", false,
+               "guid-lock", "Lock", nil, nil,
+               "guid-pr-x", "Priest", nil, nil, 6215, "Fear")
+    EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
+    H.assertEq(Core.state.opponentProfile.tendencies.trinketsFear.beta, 2,
+        "fear without trinket should bump beta")
+end)
+
+H.it(g, "v2.10: iceBlockBelow30 records the panic threshold", function()
+    H.load("OpponentProfile.lua")
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    H.setUnit("arena1", { class = "MAGE", guid = "guid-mg", hp = 100, hpMax = 100 })
+    Core:RefreshArenaEnemies()
+    Core.state.enemies.arena1.healthPct = 18  -- below 30
+    local OP = H.ns.OpponentProfile
+    local sig = "TEST_SIG_IB"
+    local profile = OP:Get(sig, _G.ArenaCoachTBCDB)
+    Core.state.opponentProfile = profile
+    H._gameTime = 3000
+    H.fireCLEU(H._gameTime, "SPELL_AURA_APPLIED", false,
+               "guid-mg", "Mage", nil, nil,
+               "guid-mg", "Mage", nil, nil, 27619, "Ice Block")
+    EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
+    H.assertEq(Core.state.opponentProfile.tendencies.iceBlockBelow30.alpha, 2)
+    -- And the inverse: above 30% is a negative observation.
+    Core.state.enemies.arena1.healthPct = 65
+    H.fireCLEU(H._gameTime, "SPELL_AURA_APPLIED", false,
+               "guid-mg", "Mage", nil, nil,
+               "guid-mg", "Mage", nil, nil, 27619, "Ice Block")
+    EB:Dispatch("COMBAT_LOG_EVENT_UNFILTERED")
+    H.assertEq(Core.state.opponentProfile.tendencies.iceBlockBelow30.beta, 2)
+end)
+
+H.it(g, "v2.10: trace + record default-on so the user accumulates data", function()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    H.assertTrue(_G.ArenaCoachTBCDB.trace.enabled)
+    H.assertTrue(_G.ArenaCoachTBCDB.record.enabled)
+end)
+
+H.it(g, "v2.10: post-match learning summary prints opinionated tendencies", function()
+    H.load("OpponentProfile.lua")
+    rebootForEvents()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    Core.state.enemies = {}  -- so profileFromState falls back to state
+    local OP = H.ns.OpponentProfile
+    local profile = OP:Get("TEST_SUM", _G.ArenaCoachTBCDB)
+    -- Force the threshold so the summary prints something.
+    profile.tendencies.trinketsFear.alpha = 8
+    profile.tendencies.trinketsFear.observations = 6
+    Core.state.opponentProfile = profile
+    Core.state.pvpContext = "arena"
+    local printed = {}
+    local origPrint = _G.print
+    _G.print = function(s) table.insert(printed, tostring(s)) end
+    Core:_PrintPostMatchLearning()
+    _G.print = origPrint
+    local joined = table.concat(printed, " | ")
+    H.assertTrue(joined:find("Learned", 1, true) ~= nil)
+    H.assertTrue(joined:find("trinketsFear", 1, true) ~= nil)
+end)
+
 H.it(g, "CLEU accepts legacy vararg SPELL and SWING payloads", function()
     setupRealisticArena3v3()
     Core:RefreshFriendlies()

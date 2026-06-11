@@ -149,3 +149,57 @@ function C:TokenToClass(token)
     if not token then return nil end
     return self.tokens[token:upper()]
 end
+
+-- ============================================================
+-- Class colours (v2.10 — shared by UI alerts, FactsHUD, nameplates)
+-- ============================================================
+-- Stable RGB defaults match the TBC client's RAID_CLASS_COLORS table.
+-- :Color() prefers the client's table when available so addon-driven
+-- recolour mods (e.g. !ClassColors) propagate everywhere we render.
+C.classColors = {
+    WARRIOR = { 0.78, 0.61, 0.43 },  -- brown
+    PALADIN = { 0.96, 0.55, 0.73 },  -- pink
+    HUNTER  = { 0.67, 0.83, 0.45 },  -- green
+    ROGUE   = { 1.00, 0.96, 0.41 },  -- yellow
+    PRIEST  = { 1.00, 1.00, 1.00 },  -- white
+    SHAMAN  = { 0.00, 0.44, 0.87 },  -- blue (Horde)
+    MAGE    = { 0.41, 0.80, 0.94 },  -- light blue
+    WARLOCK = { 0.58, 0.51, 0.79 },  -- purple
+    DRUID   = { 1.00, 0.49, 0.04 },  -- orange
+}
+
+function C:Color(class)
+    if not class then return 1, 1, 1 end
+    local up = class:upper()
+    local cc = _G.RAID_CLASS_COLORS and _G.RAID_CLASS_COLORS[up]
+    if cc and cc.r then return cc.r, cc.g, cc.b end
+    local c = self.classColors[up] or { 1, 1, 1 }
+    return c[1], c[2], c[3]
+end
+
+-- |cffRRGGBB|r escape for inline-coloured text. Used by alert kickers
+-- and chat output where SetTextColor isn't available per-character.
+function C:ColorHex(class)
+    local r, g, b = self:Color(class)
+    return string.format("ff%02x%02x%02x",
+        math.floor(r * 255 + 0.5),
+        math.floor(g * 255 + 0.5),
+        math.floor(b * 255 + 0.5))
+end
+
+-- Localised class display name. Falls back to the class token title-cased.
+-- The WoW client's LOCALIZED_CLASS_NAMES_MALE is the standard surface;
+-- accept either that or our own locale override (CLASS_<TOKEN>).
+function C:DisplayName(class)
+    if not class then return "" end
+    local up = class:upper()
+    local nm = _G.LOCALIZED_CLASS_NAMES_MALE and _G.LOCALIZED_CLASS_NAMES_MALE[up]
+    if nm and nm ~= "" then return nm end
+    -- Locale-managed override, when the addon ships a class label.
+    if ns.Core and ns.Core.L then
+        local key = "CLASS_" .. up
+        local s = ns.Core.L(key)
+        if s and s ~= key then return s end
+    end
+    return up:sub(1, 1) .. up:sub(2):lower()
+end

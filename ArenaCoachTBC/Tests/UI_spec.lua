@@ -186,14 +186,23 @@ H.it(g, "default alert mode shows DBM callout and hides the board", function()
     })
     H.assertTrue(UI.alertFrame:IsShown(), "default display should show the center alert")
     H.assertFalse(UI.frame:IsShown(), "default display should not keep the full board on screen")
-    H.assertTrue((UI.alertFrame.main._text or ""):find("Purge", 1, true) ~= nil,
-        "alert main text should name the concrete action")
+    -- v2.10: main line is "Class: Name" coloured by class. The concrete
+    -- action ("Purge Holyman") moves down to the sub-line so the user
+    -- still sees what to do.
+    H.assertTrue((UI.alertFrame.main._text or ""):find("Priest", 1, true) ~= nil,
+        "alert main text should lead with the class display name")
     H.assertTrue((UI.alertFrame.main._text or ""):find("Holyman", 1, true) ~= nil,
         "alert main text should include the target")
     H.assertTrue((UI.alertFrame.main._text or ""):find("KILL", 1, true) == nil,
         "alert main text should not promote abstract mode labels")
-    H.assertTrue((UI.alertFrame.sub._text or ""):find("Kill", 1, true) ~= nil,
-        "alert detail should carry supporting target context")
+    H.assertTrue((UI.alertFrame.main._text or ""):find("Purge", 1, true) == nil,
+        "concrete action belongs in the sub-line, not the main line")
+    H.assertTrue((UI.alertFrame.sub._text or ""):find("Purge", 1, true) ~= nil,
+        "alert detail should carry the concrete action")
+    -- And the main colour comes from PRIEST (white, 1/1/1) not KILL red.
+    H.assertEq(UI.alertFrame.main._textColor and UI.alertFrame.main._textColor[1], 1.0)
+    H.assertEq(UI.alertFrame.main._textColor and UI.alertFrame.main._textColor[2], 1.0)
+    H.assertEq(UI.alertFrame.main._textColor and UI.alertFrame.main._textColor[3], 1.0)
     local on = UI.alertFrame._scripts.OnUpdate
     H.assertNotNil(on)
     on(UI.alertFrame, UI.staleFadeStart + (UI.staleFadeSeconds / 2))

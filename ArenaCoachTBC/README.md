@@ -57,6 +57,7 @@ The addon stores SavedVariables in `ArenaCoachTBCDB`.
 | `/acc glow on\|off` | toggle the optional thin mode-coloured edge cue | 切换可选的细边缘提示 |
 | `/acc nameplate on\|off` | toggle the KILL / SWAP target nameplate highlights (v2.2.0) | 切换击杀/换火目标的铭牌高亮（v2.2.0） |
 | `/acc facts on\|off` | toggle the per-enemy facts rows: trinket / defensive / interrupt cooldowns + DR badges (v2.9) | 切换敌方事实信息行：饰品 / 保命技 / 打断冷却与递减标记（v2.9） |
+| `/acc learned` | print the Bayesian tendencies learned about the current opponent (v2.10) | 打印对当前对手已学习到的贝叶斯倾向（v2.10） |
 | `/acc test` | readable ~1-minute realistic 3v3 arena replay through the engine (OPEN → pressure/DEFEND → kill/reset) | 约 1 分钟真实 3v3 竞技场引擎回放（开局 → 承压/防御 → 击杀/重置） |
 | `/acc test hud` | visual HUD demo — paints the selected display mode: live DBM alert, optional Obsidian board, or both, plus nameplate/audio/edge cues | 视觉 HUD 演示——按当前显示模式展示实战短警报、可选黑曜石面板或两者，并包含铭牌、音效、边缘提示 |
 | `/acc test bg` | battleground walk-through (flag carrier + low-HP straggler) | 战场演示（夺旗者 + 低血单位） |

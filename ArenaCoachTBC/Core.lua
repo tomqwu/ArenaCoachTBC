@@ -69,13 +69,19 @@ local DEFAULTS = {
         -- pins a specific rating for testing.
         ratingAggression = "auto",
     },
+    -- v2.10: trace + record default-on. Both produce SavedVariables
+    -- ring buffers (200 trace entries, 1000 CLEU events) that the user
+    -- can post-mortem with /acc trace dump and tools/replay.lua. The
+    -- per-decision cost is one table insertion; the SavedVar growth is
+    -- bounded by the ring buffer caps. Either can still be toggled off
+    -- via /acc trace off / /acc record off.
     trace = {
-        enabled  = false,
+        enabled  = true,
         maxLines = 200,
         log      = {},
     },
     record = {
-        enabled   = false,
+        enabled   = true,
         maxEvents = 1000,
         events    = {},
     },
@@ -1020,6 +1026,111 @@ function Core:Evaluate()
 end
 
 -- ============================================================
+-- OpponentProfile live observation (v2.10)
+-- ============================================================
+-- Bridges classified CLEU events into Bayesian tendency updates. Two
+-- tracked tendencies fire from CLEU directly:
+--   - trinketsFear      : enemy fear (PSYCHIC_SCREAM/FEAR_LOCK/HOWL/
+--                         DEATH_COIL/INTIM_SHOUT) lands on a friendly,
+--                         then if the same friendly's PVP trinket
+--                         (42292) or WotF (7744) aura appears within
+--                         FEAR_TRINKET_WINDOW seconds, count it as a
+--                         positive observation; if the fear fully
+--                         resolves without an aura, count it negative.
+--   - iceBlockBelow30   : enemy mage applies Ice Block while their HP
+--                         is below 30% -> positive; while above 30% ->
+--                         (the panic threshold proper).
+--
+-- The kicksFirstHeal tendency lives in the friendly-cast path and is
+-- updated by onSpellSucceeded when our healer's first arena cast gets
+-- interrupted (kick / counterspell / spell lock).
+--
+-- The hook is intentionally conservative: a missing piece of context
+-- (no signature, no profile, no class) means no update, never a wrong
+-- update. Wrong updates poison the prior; no update just means the
+-- profile keeps its uniform default until we see enough good evidence.
+
+Core._pendingFears = Core._pendingFears or {}  -- friendlyGUID -> ts
+local FEAR_TRINKET_WINDOW = 6  -- seconds
+
+local FEAR_SPELL_IDS = {
+    [10890] = true,  -- Psychic Scream
+    [6215]  = true,  -- Fear (warlock)
+    [17928] = true,  -- Howl of Terror
+    [27223] = true,  -- Death Coil
+    [5246]  = true,  -- Intimidating Shout
+}
+
+-- Resolve the live opponent profile. The signature derived from the
+-- current enemy roster is the source of truth: OP:Get returns the same
+-- object identity for the same signature, so the hook and Evaluate
+-- update the same profile regardless of dispatch order. Falls back to
+-- state.opponentProfile only when no signature can be computed (e.g.
+-- early match before enemies are visible).
+local function profileFromState()
+    local OP = ns.OpponentProfile
+    local enemies = Core.state and Core.state.enemies
+    local db = _G.ArenaCoachTBCDB
+    if OP and enemies and db then
+        local sig = OP:Signature(enemies)
+        if sig then return OP:Get(sig, db) end
+    end
+    local prof = Core.state and Core.state.opponentProfile
+    if prof and prof.tendencies then return prof end
+    return nil
+end
+
+function Core:_ObserveTendencyFromCLEU(subEvent, sourceGUID, destGUID, spellID)
+    if not subEvent or not spellID then return end
+    local OP = ns.OpponentProfile
+    if not OP or not OP.UpdateBinary then return end
+    local profile = profileFromState()
+    if not profile then return end
+    local t = (type(GetTime) == "function") and GetTime() or 0
+
+    -- A fear landed on a friendly: start a trinket-watch window.
+    if subEvent == "SPELL_AURA_APPLIED" and FEAR_SPELL_IDS[spellID]
+       and self._friendlyGUIDs and self._friendlyGUIDs[destGUID] then
+        self._pendingFears[destGUID] = t
+        return
+    end
+
+    -- Trinket or WotF aura on a friendly inside the window: positive.
+    if subEvent == "SPELL_AURA_APPLIED" and (spellID == 42292 or spellID == 7744)
+       and self._friendlyGUIDs and self._friendlyGUIDs[destGUID]
+       and self._pendingFears[destGUID] then
+        if (t - self._pendingFears[destGUID]) <= FEAR_TRINKET_WINDOW then
+            OP:UpdateBinary(profile, "trinketsFear", true)
+        end
+        self._pendingFears[destGUID] = nil
+        return
+    end
+
+    -- Fear faded naturally (no trinket): negative observation.
+    if subEvent == "SPELL_AURA_REMOVED" and FEAR_SPELL_IDS[spellID]
+       and self._friendlyGUIDs and self._friendlyGUIDs[destGUID]
+       and self._pendingFears[destGUID] then
+        if (t - self._pendingFears[destGUID]) >= 1.5 then
+            OP:UpdateBinary(profile, "trinketsFear", false)
+        end
+        self._pendingFears[destGUID] = nil
+        return
+    end
+
+    -- Enemy mage Ice Block: low-HP -> positive, otherwise negative.
+    -- 27619 (cast) and 45438 (alt) both surface as AURA_APPLIED.
+    if subEvent == "SPELL_AURA_APPLIED" and (spellID == 27619 or spellID == 45438) then
+        for _, e in pairs(self.state.enemies or {}) do
+            if e.guid == sourceGUID and e.class == "MAGE" then
+                local hp = e.healthPct or 100
+                OP:UpdateBinary(profile, "iceBlockBelow30", hp < 30)
+                return
+            end
+        end
+    end
+end
+
+-- ============================================================
 -- Combat log parsing
 -- ============================================================
 local function parseCLEUVarargs(...)
@@ -1256,6 +1367,13 @@ local function onCLEU(_event, ...)
         end
     end
 
+    -- v2.10: live OpponentProfile observation hook. Each CLEU event we
+    -- can classify into a tendency update calls _ObserveTendency, which
+    -- is a no-op when the opponent signature isn't yet resolved (early
+    -- match) or when OpponentProfile is absent (headless tests without
+    -- the module loaded).
+    Core:_ObserveTendencyFromCLEU(subEvent, sourceGUID, destGUID, spellID)
+
     -- Re-evaluate cheaply on impactful events
     if subEvent == "SPELL_AURA_APPLIED" or subEvent == "SPELL_AURA_REMOVED"
        or subEvent == "UNIT_DIED" or subEvent == "SPELL_CAST_SUCCESS"
@@ -1284,6 +1402,7 @@ local function helpText()
     chatPrint(Core.L("HELP_HUD"))
     chatPrint(Core.L("HELP_WHATIF"))
     chatPrint(Core.L("HELP_FACTS"))
+    chatPrint(Core.L("HELP_LEARNED"))
     chatPrint(Core.L("HELP_HELP"))
 end
 
@@ -1419,6 +1538,15 @@ local function handleSlash(input)
         else db.factsHud.enabled = not (db.factsHud.enabled ~= false) end
         if db.factsHud.enabled == false and ns.FactsHUD then ns.FactsHUD:Hide() end
         chatPrint(string.format("facts HUD: %s", db.factsHud.enabled ~= false and "on" or "off"))
+    elseif cmd == "learned" then
+        -- v2.10: dump the Bayesian opponent profile for the current
+        -- signature. Always-on observation from CLEU keeps this populated.
+        Core:_PrintPostMatchLearning()
+        local OP = ns.OpponentProfile
+        local profile = profileFromState()
+        if not (OP and profile and profile.tendencies) then
+            chatPrint(Core.L("LEARNED_NONE"))
+        end
     else
         chatPrint(Core.L("DEBUG_UNKNOWN_CMD"))
     end
@@ -2323,8 +2451,37 @@ local function onRegenDisabled()
     Core:Evaluate()
 end
 
+-- v2.10: enumerate tendency posteriors and print any with enough
+-- observations to be opinionated. Called on the POST transition in
+-- arena; safe to call out of context (just no-ops).
+function Core:_PrintPostMatchLearning()
+    local OP = ns.OpponentProfile
+    local profile = profileFromState()
+    if not (OP and profile and profile.tendencies) then return end
+    local lines = {}
+    for key, rec in pairs(profile.tendencies) do
+        local n = (rec.observations or 0)
+        if n >= OP.MIN_SAMPLES_FOR_OPINION then
+            local mean = OP:Mean(profile, key)
+            table.insert(lines, string.format("  %s = %.0f%% (n=%d)",
+                key, mean * 100, n))
+        end
+    end
+    if #lines == 0 then return end
+    chatPrint(Core.L("LEARNED_HEADER"))
+    for _, line in ipairs(lines) do chatPrint(line) end
+end
+
 local function onRegenEnabled()
     Core.state.combatPhase = "POST"
+    -- v2.10: post-match learning summary — only in arena to avoid BG
+    -- chat spam. Prints what (if anything) the engine learned about
+    -- this opponent so the user has visible feedback that the profile
+    -- is accumulating. The Bayesian counts also persist via the next
+    -- /reload-safe SavedVariables write.
+    if Core.state.pvpContext == "arena" then
+        Core:_PrintPostMatchLearning()
+    end
 end
 
 local function onSpellSucceeded(_, unit, _, spellID)

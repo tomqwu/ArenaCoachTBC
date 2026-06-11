@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Class-keyed middle alert (`UI.lua`).** The big middle line on the DBM-style alert now reads `Class: Name` ("Mage: Sam", "Priest: Holyman", ...) colored to the target class (mage blue, priest white, warrior brown, druid orange, paladin pink, hunter green, rogue yellow, shaman blue, warlock purple). Mode urgency stays legible via the kicker text and `f.modeAccent` strip; concrete actions ("Purge Holyman", "BURST_NOW", "Kick Sam") move down to the sub-line. Personal player actions still take main-line priority. Shared `Classes:Color` / `Classes:DisplayName` / `Classes:ColorHex` helpers in `Data/Classes.lua` are the single source of truth — FactsHUD's local copy was replaced with the shared version.
+- **Always-on opponent profile learning.** `record` and `trace` SavedVariables default to `enabled = true` so the user accumulates a reviewable log every match. A new live observation hook in `Core.onCLEU` updates Bayesian tendencies as combat unfolds:
+  - `trinketsFear` — fear → trinket within 6s = positive; fear running to expiry without a trinket = negative.
+  - `iceBlockBelow30` — mage Ice Block at < 30% HP = positive; at higher HP = negative (the panic threshold).
+  The profile resolves from the live enemy signature so it always lands on the canonical object (`OpponentProfile:Get` returns the same identity for the same signature). At each `PLAYER_REGEN_ENABLED` in arena, a post-match summary prints the tendencies that have reached the opinionation threshold (≥ 5 observations).
+- `/acc learned` slash command dumps the current opponent's learned tendencies on demand (`HELP_LEARNED`, `LEARNED_HEADER`, `LEARNED_NONE` locale keys, enUS + zhCN).
+
 ## [2.9.0] - 2026-06-10
 
 ### Added
