@@ -57,6 +57,7 @@ The addon stores SavedVariables in `ArenaCoachTBCDB`.
 | `/acc glow on\|off` | toggle the optional thin mode-coloured edge cue | 切换可选的细边缘提示 |
 | `/acc nameplate on\|off` | toggle the KILL / SWAP target nameplate highlights (v2.2.0) | 切换击杀/换火目标的铭牌高亮（v2.2.0） |
 | `/acc facts on\|off` | toggle the per-enemy facts rows: trinket / defensive / interrupt cooldowns + DR badges (v2.9) | 切换敌方事实信息行：饰品 / 保命技 / 打断冷却与递减标记（v2.9） |
+| `/acc facts legend on\|off` | show / hide the DR-code legend at the bottom of the facts panel — takes effect after `/reload` (v2.10.1) | 显示 / 隐藏面板底部的递减代码图例——`/reload` 后生效（v2.10.1） |
 | `/acc learned` | print the Bayesian tendencies learned about the current opponent (v2.10) | 打印对当前对手已学习到的贝叶斯倾向（v2.10） |
 | `/acc test` | readable ~1-minute realistic 3v3 arena replay through the engine (OPEN → pressure/DEFEND → kill/reset) | 约 1 分钟真实 3v3 竞技场引擎回放（开局 → 承压/防御 → 击杀/重置） |
 | `/acc test hud` | visual HUD demo — paints the selected display mode: live DBM alert, optional Obsidian board, or both, plus nameplate/audio/edge cues | 视觉 HUD 演示——按当前显示模式展示实战短警报、可选黑曜石面板或两者，并包含铭牌、音效、边缘提示 |
@@ -88,6 +89,8 @@ A separate movable panel with one row per living enemy, showing the *observed fa
 
 All of it comes from the combat log via `CooldownTracker` / `DRTracker` — data the addon has tracked since v1 but never displayed. Cells stay empty until a use is actually observed; the HUD never guesses. Two audio cues accompany it: a loud chord when an enemy **burns their trinket**, a short ding when they **burn an immunity** (Ice Block / bubble / BoP / CloS). Toggle with `/acc facts off`.
 
+A header strip (`Name / Trinket / Defensive / Interrupt / DR`) labels the columns, and a legend at the bottom decodes the DR shorthand (`S=Stun F=Fear D=Disorient P=Incap R=Root C=Cyclone · 1/2 1/4 IMM`). Veterans can hide the legend with `/acc facts legend off` (takes effect after `/reload`).
+
 独立的可移动面板，每个存活敌人一行，显示玩家在战斗中无法靠脑子记住的*观测事实*——也就是高手挂冷却追踪插件要看的那一层：
 
 - **饰品** — `T+`（绿色，可解控）或 `T-45`（红色倒计时，徽章/亡灵意志已用）
@@ -96,6 +99,8 @@ All of it comes from the combat log via `CooldownTracker` / `DRTracker` — data
 - **递减标记** — 该敌人各控制类别的递减状态（`S:1/2`、`F:IMM` 等）
 
 数据全部来自战斗日志（`CooldownTracker` / `DRTracker`）——插件从 v1 起就在采集，只是从未展示。未观测到使用前单元格保持空白，绝不猜测。配套两个音效提示：敌方**交饰品**时播放响亮和弦，敌方**开无敌**（冰箱/圣盾/保护祝福/斗篷）时播放短促提示音。用 `/acc facts off` 关闭。
+
+面板顶部有列标题（`敌人 / 饰品 / 保命技 / 打断 / 递减`），底部有图例解释递减代码（`S=眩晕 F=恐惧 D=致盲 P=变形/闷棍 R=定身 C=飓风 · 1/2 1/4 IMM`）。老玩家可用 `/acc facts legend off` 隐藏图例（`/reload` 后生效）。
 
 ### Dynamic team detection / 动态队伍识别
 

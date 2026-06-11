@@ -52,8 +52,10 @@ local DEFAULTS = {
                  -- and conveys role/target identity, not just mode colour.
                  edgeGlow = false, nameplate = true },
     -- v2.9: per-enemy facts rows (trinket / defensive / interrupt CDs +
-    -- DR badges). Toggle via /acc facts off.
-    factsHud = { enabled = true },
+    -- DR badges). Toggle via /acc facts off. showLegend: the DR-code
+    -- legend strip at the panel bottom; /acc facts legend off hides it
+    -- for veterans (applies after /reload — the frame builds once).
+    factsHud = { enabled = true, showLegend = true },
     strategy = {
         aggression = "balanced",
         preferHealerOpen = true,
@@ -1530,14 +1532,24 @@ local function handleSlash(input)
         chatPrint(string.format("nameplate highlight: %s", db.alerts.nameplate and "on" or "off"))
     elseif cmd == "facts" then
         -- v2.9: toggle the per-enemy facts rows (trinket / defensive /
-        -- interrupt cooldowns + DR badges).
+        -- interrupt cooldowns + DR badges). v2.10.1: "legend on|off"
+        -- subcommand controls the DR-code legend strip (takes effect on
+        -- the next /reload — the frame is built once).
         db.factsHud = db.factsHud or {}
         local arg = (rest or ""):lower()
-        if arg == "off" then db.factsHud.enabled = false
-        elseif arg == "on" then db.factsHud.enabled = true
-        else db.factsHud.enabled = not (db.factsHud.enabled ~= false) end
-        if db.factsHud.enabled == false and ns.FactsHUD then ns.FactsHUD:Hide() end
-        chatPrint(string.format("facts HUD: %s", db.factsHud.enabled ~= false and "on" or "off"))
+        if arg == "legend on" then
+            db.factsHud.showLegend = true
+            chatPrint("facts legend: on (takes effect after /reload)")
+        elseif arg == "legend off" then
+            db.factsHud.showLegend = false
+            chatPrint("facts legend: off (takes effect after /reload)")
+        else
+            if arg == "off" then db.factsHud.enabled = false
+            elseif arg == "on" then db.factsHud.enabled = true
+            else db.factsHud.enabled = not (db.factsHud.enabled ~= false) end
+            if db.factsHud.enabled == false and ns.FactsHUD then ns.FactsHUD:Hide() end
+            chatPrint(string.format("facts HUD: %s", db.factsHud.enabled ~= false and "on" or "off"))
+        end
     elseif cmd == "learned" then
         -- v2.10: dump the Bayesian opponent profile for the current
         -- signature. Always-on observation from CLEU keeps this populated.

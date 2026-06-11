@@ -476,6 +476,52 @@ H.it(g, "/acc visual toggles update persisted settings", function()
     H.assertTrue(#captured >= 10)
 end)
 
+H.it(g, "/acc facts on/off/toggle + legend subcommand persist settings", function()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    startCapture()
+
+    SlashCmdList["ARENACOACH"]("facts off")
+    H.assertFalse(_G.ArenaCoachTBCDB.factsHud.enabled, "facts off disables")
+    SlashCmdList["ARENACOACH"]("facts on")
+    H.assertTrue(_G.ArenaCoachTBCDB.factsHud.enabled, "facts on enables")
+    SlashCmdList["ARENACOACH"]("facts")
+    H.assertFalse(_G.ArenaCoachTBCDB.factsHud.enabled, "bare facts toggles")
+
+    -- v2.10.1: the legend subcommand flips showLegend without touching
+    -- the enabled flag (the legend takes effect on the next /reload).
+    SlashCmdList["ARENACOACH"]("facts legend off")
+    H.assertFalse(_G.ArenaCoachTBCDB.factsHud.showLegend, "legend off persists")
+    H.assertFalse(_G.ArenaCoachTBCDB.factsHud.enabled, "legend toggle leaves enabled alone")
+    SlashCmdList["ARENACOACH"]("facts legend on")
+    H.assertTrue(_G.ArenaCoachTBCDB.factsHud.showLegend, "legend on persists")
+
+    stopCapture()
+    H.assertTrue(#captured >= 5, "every facts subcommand prints feedback")
+end)
+
+H.it(g, "/acc learned without a profile prints LEARNED_NONE", function()
+    _G.ArenaCoachTBCDB = nil; Core:InitDB()
+    -- Empty enemies -> no signature; opponentProfile may linger from
+    -- earlier specs in this process, so park it and restore after.
+    local savedEnemies = Core.state.enemies
+    local savedProfile = Core.state.opponentProfile
+    Core.state.enemies = {}
+    Core.state.opponentProfile = nil
+    startCapture()
+    local ok, err = pcall(function()
+        SlashCmdList["ARENACOACH"]("learned")
+    end)
+    stopCapture()
+    Core.state.enemies = savedEnemies
+    Core.state.opponentProfile = savedProfile
+    if not ok then error(err, 0) end
+    local sawNone = false
+    for _, line in ipairs(captured) do
+        if line:find(Core.L("LEARNED_NONE"), 1, true) then sawNone = true end
+    end
+    H.assertTrue(sawNone, "no enemies -> no profile -> LEARNED_NONE message")
+end)
+
 H.it(g, "/acc strategy valid sets aggression", function()
     _G.ArenaCoachTBCDB = nil; Core:InitDB()
     startCapture()

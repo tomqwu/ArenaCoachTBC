@@ -271,8 +271,13 @@ COL.INT_TEXT = { x = COL.INT_ICON.x + ICON_SIZE + ICON_GAP, w = 110 }
 COL.DR       = { x = COL.INT_TEXT.x + COL.INT_TEXT.w + COL_GAP, w = 70 }
 
 -- Frame width derives from the layout: last column edge + padding both
--- sides. With the widths above this lands at 580.
+-- sides. With the widths above this lands at 560.
 local FRAME_WIDTH = PADDING * 2 + COL.DR.x + COL.DR.w
+
+-- Exported for tests + tooling: the layout constants are the contract
+-- the frame is built from. Read-only by convention.
+FH.COL = COL
+FH.FRAME_WIDTH = FRAME_WIDTH
 
 -- Disable wrapping on every FontString cell. Long content truncates at
 -- the SetWidth boundary instead of wrapping to a second line that
@@ -310,8 +315,8 @@ end
 
 local function makeRow(parent, index, yOffset)
     local r = CreateFrame("Frame", nil, parent)
-    r:SetSize(FRAME_WIDTH - 20, ROW_HEIGHT)
-    r:SetPoint("TOPLEFT", parent, "TOPLEFT", 10, -(yOffset + (index - 1) * ROW_HEIGHT))
+    r:SetSize(FRAME_WIDTH - PADDING * 2, ROW_HEIGHT)
+    r:SetPoint("TOPLEFT", parent, "TOPLEFT", PADDING, -(yOffset + (index - 1) * ROW_HEIGHT))
     r.name    = makeCellText(r, COL.NAME)
     r.trinket = makeCellText(r, COL.TRINKET)
     r.defIcon = makeIconButton(r, COL.DEF_ICON.x)
@@ -327,8 +332,8 @@ end
 -- abbreviations below them aren't cryptic. Columns align with COL.
 local function makeHeader(parent, yOffset)
     local h = CreateFrame("Frame", nil, parent)
-    h:SetSize(FRAME_WIDTH - 20, ROW_HEIGHT)
-    h:SetPoint("TOPLEFT", parent, "TOPLEFT", 10, -yOffset)
+    h:SetSize(FRAME_WIDTH - PADDING * 2, ROW_HEIGHT)
+    h:SetPoint("TOPLEFT", parent, "TOPLEFT", PADDING, -yOffset)
     local function makeHead(col, key, fallback)
         local fs = makeCellText(h, col, "GameFontNormalSmall")
         fs:SetText(L(key, fallback))
