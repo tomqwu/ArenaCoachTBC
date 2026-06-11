@@ -2,7 +2,7 @@
 
 A real-time arena strategy coach for **World of Warcraft TBC Classic / TBC Anniversary**. Watches the fight, identifies the enemy comp (including spec), picks a kill target, plans CC chains, and emits a recommendation: `OPEN | KILL | SWAP | DEFEND | RESET`.
 
-> **Current v2.8 line:** The coach learns opponent habits, gates advice through your actual roster capabilities, emits typed strategy signals for bars/WeakAuras, and only calls burst when the current target has a real kill window. A team you've played 20 times that always trinkets Fear stops getting generic fear advice; a mage that consistently Ice Blocks low causes the target-specific burst gate to hold. None of this is hardcoded — it learns per-team from observed combat, no character names persisted.
+> **Current line (v2.10):** Class-keyed middle alert (`Mage: Sam` in mage blue, `Priest: Holyman` in priest white, etc.), always-on opponent profile learning (no `/acc record on` required), Facts HUD with per-enemy trinket / defensive / interrupt countdowns + DR badges + spell icons, and DBM-style live alerts with assignments. The engine gates advice through your actual roster capabilities, emits typed strategy signals for bars/WeakAuras, and only calls burst when the current target has a real kill window. None of the learning is hardcoded; profiles are local-only and keyed by team signature, no character names persisted. See `CHANGELOG.md` for the per-release detail and `ROADMAP-v2.md` for the engine-depth direction.
 
 > ⚠️ **Advice only.** The addon never casts spells, never targets enemies, never clicks protected buttons, never modifies secure macros. It emits visual + audio + text recommendations. That's it.
 
@@ -87,21 +87,27 @@ You don't run anything during a match. The addon auto-engages on `PLAYER_ENTERIN
 | `/acc help` | Print the command list |
 | `/acc toggle` | Show / hide the recommendation frame |
 | `/acc lock` / `/acc unlock` | Freeze / release the frame for dragging and resizing |
+| `/acc off` / `/acc on` (aliases `/acc disable` / `/acc enable`) | Master kill switch — stops the engine and hides every visual layer; persists across `/reload` |
+| `/acc hud alert\|board\|both` | Choose live DBM alert, full review board, or both surfaces (v2.8.32+) |
+| `/acc verbose on\|off` | Toggle multi-callout HUD (default: only the top callout shows) |
+| `/acc highcontrast on\|off` (alias `/acc hc`) | High-contrast skin (v2.5) |
 | `/acc test` | Realistic 3v3 arena replay through the engine (OPEN → pressure/DEFEND → kill/reset) |
-| `/acc test hud` | DBM-style visual HUD demo (mode flips, BURST_NOW, DEFEND cue) |
+| `/acc test hud` | DBM-style visual HUD demo (mode flips, BURST_NOW, DEFEND cue, Facts HUD) |
 | `/acc test bg` | BG-mode walk-through (flag carrier + low-HP straggler + CALL_BG_DEFEND) |
 | `/acc test world` | World PvP walk-through (single-target focus) |
-| `/acc test print` | Legacy chat-only summary |
+| `/acc test print` | Legacy chat-only summary of sample comps |
 | `/acc enemy <c1> <c2> ...` | Simulate a custom enemy comp |
 | `/acc reset` | Wipe SavedVariables + `/reload` |
 | `/acc strategy safe\|balanced\|greedy` | Manual aggression override |
 | `/acc glow [on\|off]` | Toggle the optional thin mode-coloured edge cue |
 | `/acc nameplate [on\|off]` | Toggle nameplate highlights for KILL / SWAP targets (v2.2+) |
+| `/acc facts [on\|off]` | Toggle the per-enemy Facts HUD: trinket / defensive / interrupt CDs + DR badges (v2.9) |
+| `/acc learned` | Print the Bayesian opponent tendencies learned about the current opponent (v2.10) |
 | `/acc debug` | Toggle debug print |
 | `/acc selftest [verbose]` | In-client validation suite |
 | `/acc simulate [key\|stop]` | Replay a scripted scenario |
-| `/acc trace [on\|off\|dump\|clear\|status]` | Decision-trace ring buffer |
-| `/acc record [on\|off\|dump\|clear\|status]` | CLEU recording for offline replay |
+| `/acc trace [on\|off\|dump\|clear\|status]` | Decision-trace ring buffer (default-on in v2.10) |
+| `/acc record [on\|off\|dump\|clear\|status]` | CLEU recording for offline replay (default-on in v2.10) |
 | `/acc whatif skip <i>` | Counterfactual replay (skip event #i) |
 | `/acc bugreport` | Sanitised error report for issues |
 
@@ -121,9 +127,11 @@ All settings persist in `ArenaCoachTBCDB` (SavedVariables). They're forward-comp
 | `strategy.requireChainForBurst` | `false` | Treat a positive CC chain as mandatory for `BURST_NOW`; off by default so BG/world and sparse catalog entries can still call obvious burst windows. |
 | `strategy.peelTriggerWindow` / `peelTriggerDamage` | `5` / `3` | Train detection sensitivity (damage events × window → DEFEND). |
 | `strategy.lookaheadEnabled` | `true` | Engage the M10 expectimax over chain × opponent response. |
-| `frame.compactMode` | `false` | Hides the friendly/enemy cooldown icon rows. |
 | `alerts.sound` / `alerts.screenFlash` | `true` / `false` | Voice cue toggle; `screenFlash` is retained for SavedVariables compatibility but no longer triggers full-screen flashing. |
 | `alerts.edgeGlow` / `alerts.nameplate` | `false` / `true` | Optional thin edge cue + default-on nameplate highlight. |
+| `factsHud.enabled` | `true` | Per-enemy Facts HUD (v2.9): trinket / defensive / interrupt CDs + DR badges + spell icons. |
+| `trace.enabled` / `record.enabled` | `true` / `true` | Default-on in v2.10 so the user accumulates reviewable logs every match (ring-buffer-capped). |
+| `bracket` | `3` (default) | Anniversary is a 2s/3s game; `Core:UpdateBracket` overwrites from the live arena queue. |
 
 ---
 
@@ -205,7 +213,7 @@ lua5.1 tools/check_locales.lua
 lua5.1 tools/replay.lua <path/to/ArenaCoachTBC.lua>
 ```
 
-CI runs syntax check → locale parity → tests → 99% coverage gate on every push and PR. The current headless suite has **748 tests** and the latest local release validation reported **99.06%** total coverage.
+CI runs syntax check → locale parity → tests → 99% coverage gate on every push and PR. The current headless test count and coverage percentage are published in `CHANGELOG.md` with each stable release.
 
 ---
 
@@ -302,8 +310,12 @@ MIT.
 | `/acc help` | 显示命令列表 |
 | `/acc toggle` | 显示 / 隐藏提示框 |
 | `/acc lock` / `/acc unlock` | 锁定 / 解锁框体拖动 |
+| `/acc off` / `/acc on`（别名 `/acc disable` / `/acc enable`） | 总开关——停止引擎并隐藏所有视觉层，`/reload` 后保持 |
+| `/acc hud alert\|board\|both` | 选择实战短警报、完整面板或两者同时显示（v2.8.32+） |
+| `/acc verbose on\|off` | 切换多提示 HUD（默认只显示最重要的一条） |
+| `/acc highcontrast on\|off`（别名 `/acc hc`） | 高对比皮肤（v2.5） |
 | `/acc test` | 真实 3v3 竞技场引擎回放（开局 → 承压/防御 → 击杀/重置） |
-| `/acc test hud` | DBM 风格视觉 HUD 演示（模式切换、爆发、防御警报） |
+| `/acc test hud` | DBM 风格视觉 HUD 演示（模式切换、爆发、防御警报、事实信息面板） |
 | `/acc test bg` | 战场模式演示（夺旗者 + 低血单位 + 战场防御提示） |
 | `/acc test world` | 户外 PvP 演示（单目标聚焦） |
 | `/acc test print` | 仅文字版本（旧行为） |
@@ -312,11 +324,13 @@ MIT.
 | `/acc strategy safe\|balanced\|greedy` | 手动调整侵略性 |
 | `/acc glow [on\|off]` | 切换可选的细边缘提示 |
 | `/acc nameplate [on\|off]` | 切换击杀/换火目标的铭牌高亮（v2.2+） |
+| `/acc facts [on\|off]` | 切换敌方事实信息面板：饰品 / 保命技 / 打断 CD + 递减徽章（v2.9） |
+| `/acc learned` | 打印当前对手已学习到的贝叶斯倾向（v2.10） |
 | `/acc debug` | 切换调试输出 |
 | `/acc selftest [verbose]` | 客户端内自检 |
 | `/acc simulate [key\|stop]` | 重放脚本化场景 |
-| `/acc trace [on\|off\|dump\|clear\|status]` | 决策追踪环缓冲 |
-| `/acc record [on\|off\|dump\|clear\|status]` | CLEU 录制（用于离线重放） |
+| `/acc trace [on\|off\|dump\|clear\|status]` | 决策追踪环缓冲（v2.10 起默认开启） |
+| `/acc record [on\|off\|dump\|clear\|status]` | CLEU 录制（用于离线重放，v2.10 起默认开启） |
 | `/acc whatif skip <i>` | 反事实重放（跳过事件 #i） |
 | `/acc bugreport` | 已脱敏的错误报告（贴到 GitHub） |
 
@@ -348,7 +362,7 @@ MIT.
 
 **图标行的鼠标悬停提示**也是如此——它们调用 `GameTooltip:SetSpellByID(spellID)`，所以提示就是暴雪标准的本地化弹窗（图标 + 名称 + 描述）。
 
-面向用户的**提示文案**（如 "陷阱图腾解恐惧"、"集火牧师"）通过插件本地化键管理：`Locales/enUS.lua` 为基准，含 112 个键；`Locales/zhCN.lua` 严格对齐。插件通过 `GetLocale()` 自动选择语言，可通过 `db.language` 覆盖。
+面向用户的**提示文案**（如 "陷阱图腾解恐惧"、"集火牧师"）通过插件本地化键管理：`Locales/enUS.lua` 为基准，`Locales/zhCN.lua` 严格对齐（每次发布的实际 key 数见 `CHANGELOG.md`）。插件通过 `GetLocale()` 自动选择语言，可通过 `db.language` 覆盖。
 
 ---
 
@@ -420,7 +434,7 @@ lua5.1 tools/check_locales.lua
 lua5.1 tools/replay.lua <path/to/ArenaCoachTBC.lua>
 ```
 
-CI 在每次推送和 PR 上运行：语法检查 → 本地化对齐 → 测试 → 99% 覆盖率门禁。v2.2.0 共 **613 个测试**、**99%+ 覆盖率**、对人工标注基准场景的 **81% 一致率**。
+CI 在每次推送和 PR 上运行：语法检查 → 本地化对齐 → 测试 → 99% 覆盖率门禁。当前测试数 / 覆盖率 / 黄金回放基线在每个稳定版的 `CHANGELOG.md` 中公布。
 
 ---
 

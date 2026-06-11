@@ -86,15 +86,27 @@ behaviour is what tests can't see.
 - [ ] For a committed fixture, run `lua5.1 tools/replay.lua --golden ArenaCoachTBC/Tests/Fixtures/<name>.golden.txt ArenaCoachTBC/Tests/Fixtures/<name>.lua`; use `--update-golden` only when the changed advice is intentional
 - [ ] Convert repeatable wrong-advice cases into `docs/arena-fixtures.md` acceptance snapshots or golden replays
 
-## Facts HUD (v2.9)
+## Facts HUD (v2.9, spell icons v2.10)
 
 - [ ] In a skirmish / duel near the arena vendor, the facts panel appears with one row per enemy (class-coloured name + HP%)
 - [ ] Enemy trinket use flips `T+` (green) to `T-2m` (red) and the countdown ticks down every second; the loud chord cue fires once (not twice for the cast+aura pair)
-- [ ] Enemy Ice Block / Divine Shield / BoP / CloS shows in the defensive column with a countdown; the short ding cue fires
+- [ ] Enemy Ice Block / Divine Shield / BoP / CloS shows in the defensive column with **a 16px spell icon to the left of the countdown** (v2.10); the short ding cue fires
+- [ ] Enemy Kick / Counterspell / Pummel / Earth Shock cast shows a downed-interrupt countdown with the same icon-left-of-text layout
 - [ ] After a stun chain, the DR column shows `S:1/2` then `S:1/4` then `S:IMM`, clearing ~17s after the last application
 - [ ] `/acc facts off` hides the panel immediately and persists across `/reload`; `/acc facts on` restores it
 - [ ] Dragging the panel persists its position across `/reload`; `/acc lock` prevents dragging
 - [ ] Panel hides in cities (context `none`) and shows again on arena entry
+
+## Class-keyed alert + always-on learning (v2.10)
+
+- [ ] On KILL / SWAP / OPEN with a known target, the middle alert line reads `Class: Name` (e.g. `Mage: Sam`, `Priest: Holyman`, `Warrior: Bob`) — never just the mode word
+- [ ] Middle alert text colour matches the target's class (mage light blue, priest white, warrior brown, druid orange, paladin pink, hunter green, rogue yellow, shaman blue, warlock purple)
+- [ ] Concrete actions (`Purge Holyman`, `BURST NOW`, `Kick Sam`) and personal actions (`YOU: Refresh Tremor` / `你: 准备起手`) demote to the alert sub-line; they don't beat the class:name override
+- [ ] After ~5 in-arena observations of an opponent comp fearing the team and then trinketing (or vice versa), `/acc learned` prints a `trinketsFear` line with the posterior probability and observation count
+- [ ] After ~5 observations of an enemy mage Ice Block firing at < 30% HP, `/acc learned` prints an `iceBlockBelow30` line
+- [ ] On `PLAYER_REGEN_ENABLED` after the arena ends, the chat window shows a `Learned this match:` summary listing any tendencies that crossed the 5-observation threshold (arena only)
+- [ ] `/acc trace dump` and `/acc record status` both return non-empty output without the user having explicitly enabled them (defaults are now on)
+- [ ] `/acc reset` followed by `/reload` clears `db.profiles` and zeroes the tendency counts for any signature
 
 ## Integration
 

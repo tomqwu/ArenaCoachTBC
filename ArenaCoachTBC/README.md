@@ -64,12 +64,14 @@ The addon stores SavedVariables in `ArenaCoachTBCDB`.
 | `/acc test world` | world PvP walk-through (single-target focus) | 户外 PvP 演示（单目标聚焦） |
 | `/acc test print` | legacy chat-only summary of 5 sample comps | 仅文字摘要（旧行为） |
 | `/acc enemy war mage priest druid pala` | simulate a custom enemy comp | 模拟自定义敌方阵容 |
+| `/acc verbose on\|off` | toggle multi-callout HUD (default: only the top callout) | 切换多提示 HUD（默认只显示最重要的一条） |
+| `/acc highcontrast on\|off` (alias `/acc hc`) | high-contrast skin | 高对比皮肤 |
 | `/acc debug` | toggle debug logging | 切换调试输出 |
 | `/acc reset` | wipe SavedVariables (requires `/reload`) | 清空存档（需 `/reload`） |
 | `/acc strategy safe \| balanced \| greedy` | conservative / default / aggressive burst+swap calls | 保守 / 默认 / 激进 模式 |
 | `/acc selftest [verbose]` | in-client validation suite | 客户端内自检 |
-| `/acc trace [on\|off\|dump\|clear\|status]` | decision-trace ring buffer | 决策追踪环缓冲 |
-| `/acc record [on\|off\|dump\|clear\|status]` | CLEU recording for offline replay | CLEU 录制（用于离线重放） |
+| `/acc trace [on\|off\|dump\|clear\|status]` | decision-trace ring buffer (default-on in v2.10) | 决策追踪环缓冲（v2.10 起默认开启） |
+| `/acc record [on\|off\|dump\|clear\|status]` | CLEU recording for offline replay (default-on in v2.10) | CLEU 录制（用于离线重放，v2.10 起默认开启） |
 | `/acc whatif skip <i>` | counterfactual replay (skip event #i) | 反事实重放（跳过事件 #i） |
 | `/acc bugreport` | sanitised error report for GitHub issues | 已脱敏的错误报告 |
 
