@@ -369,3 +369,58 @@ H.it(g, "v2.10.1: long names truncate inside the name cell instead of wrapping",
     H.assertEq(row.def._wordWrap, false, "def cell must disable wordwrap")
     H.assertEq(row.int._wordWrap, false, "int cell must disable wordwrap")
 end)
+
+H.it(g, "v2.10.1 review: GetSpellInfo nil falls back to the localized label", function()
+    reset()
+    CT:MarkUsed("guid-fh-1", S.COUNTERSPELL_CAST)
+    local saved = _G.GetSpellInfo
+    _G.GetSpellInfo = nil
+    local txt = FH:FormatRow(FH:BuildRowModel(freshEnemy()))
+    _G.GetSpellInfo = saved
+    -- enUS fallback is the generic "INT", not the rogue-specific "KICK":
+    -- a downed Counterspell must never read as a Kick.
+    H.assertEq(txt.intText:sub(1, 3), "INT",
+        "nil GetSpellInfo -> localized generic fallback")
+end)
+
+H.it(g, "v2.10.1 review: GetSpellInfo empty string also falls back (truthy-empty bug)", function()
+    -- The client returns "" (not nil) for not-yet-cached spell IDs.
+    -- An empty string is truthy in Lua, so a bare `or` fallback never
+    -- fired and the cell rendered as ' 24' with no label.
+    reset()
+    CT:MarkUsed("guid-fh-1", S.KICK)
+    local saved = _G.GetSpellInfo
+    _G.GetSpellInfo = function() return "" end
+    local txt = FH:FormatRow(FH:BuildRowModel(freshEnemy({ class = "ROGUE" })))
+    _G.GetSpellInfo = saved
+    H.assertEq(txt.intText:sub(1, 3), "INT",
+        "empty-string GetSpellInfo must hit the fallback, not render blank")
+end)
+
+H.it(g, "v2.10.1 review: FRAME_WIDTH derives from the COL layout", function()
+    -- The frame must always be wide enough for the last column. The
+    -- regression direction: someone widens a cell but forgets the frame.
+    reset()
+    _G.ArenaCoachTBCDB = { factsHud = { enabled = true } }
+    FH.frame = nil
+    local f = FH:CreateFrame()
+    local dr = f.rows[1].dr
+    -- dr cell x + width + right padding == frame width
+    H.assertTrue(f._width >= (dr._width or 0),
+        "frame must be at least as wide as its widest cell")
+end)
+
+H.it(g, "v2.10.1 review: legend can be hidden via db.factsHud.showLegend=false", function()
+    reset()
+    _G.ArenaCoachTBCDB = { factsHud = { enabled = true, showLegend = false } }
+    FH.frame = nil
+    local f = FH:CreateFrame()
+    -- rawget: the mock frame's lazy __index would auto-create a child
+    -- for any missing field, so plain f.legend can never be nil here.
+    H.assertNil(rawget(f, "legend"), "showLegend=false must skip legend creation")
+    -- And the default keeps it on:
+    _G.ArenaCoachTBCDB = { factsHud = { enabled = true } }
+    FH.frame = nil
+    f = FH:CreateFrame()
+    H.assertNotNil(rawget(f, "legend"))
+end)

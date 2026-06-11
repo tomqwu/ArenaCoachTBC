@@ -2200,3 +2200,70 @@ H.it(g, "arena quality: recommendation primaryTargetHp clamps hpPct to a fractio
     rec = SE:Evaluate(state)
     H.assertEq(rec.primaryTargetHp, 0.0, "hpPct below 0 must clamp before HUD rendering")
 end)
+
+H.it(g, "v2.10.1 review: CALL_SAVE_TREMOR_HOJ requires a living fear-class enemy", function()
+    -- Root cause of the circular Tremor bug: this profile-driven callout
+    -- lacked requireFearThreat, emitted against fear-less comps, and then
+    -- counted as fear evidence for every other Tremor decision.
+    H.load("OpponentProfile.lua")
+    local OP = H.ns.OpponentProfile
+    local mk = function(classes)
+        local state = SE:BuildTestState(classes)
+        state.combatPhase = "ACTIVE"
+        local profile = { tendencies = { trinketsFear = { alpha = 9, beta = 1, observations = 8 } } }
+        state.opponentProfile = profile
+        return state
+    end
+    -- Fear-less comp: callout suppressed.
+    local rec = SE:Evaluate(mk({"MAGE","DRUID"}))
+    for _, key in ipairs(rec.callouts or {}) do
+        H.assertNotEq(key, "CALL_SAVE_TREMOR_HOJ",
+            "no fear-class enemy -> profile Tremor advice must not emit")
+    end
+    -- Fear-capable comp: callout allowed (when roster has Tremor).
+    local rec2 = SE:Evaluate(mk({"WARLOCK","DRUID"}))
+    local found = false
+    for _, key in ipairs(rec2.callouts or {}) do
+        if key == "CALL_SAVE_TREMOR_HOJ" then found = true end
+    end
+    H.assertTrue(found, "warlock alive + tremor roster -> profile advice flows")
+end)
+
+H.it(g, "v2.10.1 review: dead fear class stops Tremor advice (structural gate)", function()
+    -- Stale-callout scenario: the priest died; lingering observations
+    -- must not keep recommending Tremor against the Mage+Druid leftovers.
+    local state = SE:BuildTestState({"PRIEST","MAGE","DRUID"})
+    state.combatPhase = "ACTIVE"
+    state.observations = { tremorActive = false }
+    for _, e in pairs(state.enemies) do
+        if e.class == "PRIEST" then e.alive = false end
+    end
+    local rec = SE:Evaluate(state)
+    for _, key in ipairs(rec.callouts or {}) do
+        H.assertNotEq(key, "CALL_TREMOR_DOWN",
+            "dead priest -> no Tremor refresh advice")
+    end
+end)
+
+H.it(g, "v2.10.1 review: mixed-case enemy class still counts as fear-capable", function()
+    -- hasFearClassEnemy normalizes via classToken; an enemy stored as
+    -- "Warlock" (mixed case) must not silently downgrade the shaman label.
+    local state = SE:BuildTestState({"MAGE","DRUID"})
+    state.combatPhase = "ACTIVE"
+    state.observations = { healerUnderPressure = true }
+    state.friendlies = {
+        player = { unit = "player", class = "SHAMAN", spec = "ENHANCEMENT", alive = true, healthPct = 100 },
+        party1 = { unit = "party1", name = "Sweetshammy", class = "DRUID", spec = "RESTORATION", alive = true, healthPct = 40 },
+    }
+    -- Inject a mixed-case warlock the way a BG nameplate scan might.
+    state.enemies.extra = { unit = "nameplate9", guid = "guid-mixed", name = "Mixed",
+                            class = "Warlock", alive = true, healthPct = 100 }
+    state.enemyClassList = nil  -- force re-derive
+    local rec = SE:Evaluate(state)
+    local player
+    for _, a in ipairs(rec.playerActions or {}) do
+        if a.unit == "player" then player = a end
+    end
+    H.assertEq(player.actionKey, "ACTION_SHAMAN_DEFEND",
+        "mixed-case Warlock must still count as a fear class")
+end)

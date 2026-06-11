@@ -981,12 +981,15 @@ local FEAR_THREAT_CLASSES = {
     WARRIOR = true,
 }
 
-local FEAR_THREAT_CALLOUTS = {
-    CALL_TREMOR_DOWN           = true,
-    CALL_TREMOR_FEAR           = true,
-    CALL_SAVE_TREMOR_HOJ       = true,
-    CALL_PATTERN_FEAR_INTO_POLY = true,
-}
+-- v2.10.1: the old FEAR_THREAT_CALLOUTS table is gone. It let callouts
+-- count as evidence of fear threat — but the Tremor callouts were
+-- listed there themselves, so a profile-driven CALL_SAVE_TREMOR_HOJ
+-- emitted against a fear-less comp would legitimize ITSELF as fear
+-- evidence for every other Tremor decision (the circular bug behind
+-- "why recommend Tremor against Mage+Druid"). Fear threat is now
+-- purely structural: a living enemy whose class can cast a fear.
+-- Pattern/profile signals don't override structure — a dead priest
+-- can't fear, no matter what the profile learned.
 
 local function ownCapsFor(state)
     return inferOwnCaps(state)
@@ -1062,22 +1065,21 @@ local function hasTremorSupport(state)
     return false
 end
 
--- "Can any living enemy class actually cast a Fear?" — purely structural,
--- ignores callouts. Used by buildPlayerActions to pick a Tremor-mentioning
--- shaman action label only when the threat truly exists. hasFearThreat
--- below augments this with callout evidence (profile / pattern signals)
--- so the gate fires on learned tendencies even before a fear lands.
+-- "Can any living enemy class actually cast a Fear?" — purely
+-- structural. classToken normalizes mixed-case class fields the same
+-- way hasEnemyClass does, so an enemy stored as "Warlock" still counts.
 local function hasFearClassEnemy(state)
     for _, e in pairs((state and state.enemies) or {}) do
-        if isAlive(e) and FEAR_THREAT_CLASSES[e.class] then return true end
+        if isAlive(e) and FEAR_THREAT_CLASSES[classToken(e)] then return true end
     end
     return false
 end
 
-local function hasFearThreat(state, callouts)
-    for _, key in ipairs(callouts or {}) do
-        if FEAR_THREAT_CALLOUTS[key] then return true end
-    end
+-- Kept as a named alias: every fear-gated decision (callout
+-- requirements, shouldRefreshTremor, the shaman DEFEND label) now
+-- shares the one structural definition. The callouts parameter is
+-- retained for call-site compatibility but intentionally unused.
+local function hasFearThreat(state, _callouts)
     return hasFearClassEnemy(state)
 end
 
@@ -1095,7 +1097,7 @@ local CALLOUT_REQUIREMENTS = {
 
     CALL_TREMOR_DOWN     = { cap = "hasTremor", requireFearThreat = true },
     CALL_TREMOR_FEAR     = { cap = "hasTremor", requireFearThreat = true },
-    CALL_SAVE_TREMOR_HOJ = { cap = "hasTremor" },
+    CALL_SAVE_TREMOR_HOJ = { cap = "hasTremor", requireFearThreat = true },
     CALL_PATTERN_FEAR_INTO_POLY = {
         anyCaps = { "hasTremor", "hasDispelMagic", "hasCleanse" },
         enemyClass = "MAGE",
