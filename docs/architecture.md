@@ -126,7 +126,7 @@ Three thresholds shift on this axis: SWAP score-gap (0/10/20), defensive HP gate
 
 ### Sounds.lua (M12, audio fix v2.1.6)
 
-Maps callout keys + mode names to numeric SoundKit IDs that ship with the WoW client itself (RaidWarning 8959, RaidBossEmote 8458, PvPVictory 12867, queue ding 8454). `UI:Apply` fires a one-shot cue per new top callout AND per mode transition (gated by `db.alerts.sound`, arena-only).
+Maps callout keys + mode names + observed events to numeric SoundKit IDs that ship with the WoW client itself (RaidWarning 8959, RaidBossEmote 8458, PvPVictory 12867, queue ding 8454, quest-close pop 3093). `UI:Apply` fires a one-shot cue per new top callout and on KILL/DEFEND mode transitions (v2.9: SWAP/OPEN flips are silent — four near-identical dings per fight taught the ear to ignore all of them). `Core:_PlayEventCue` fires `byEvent` cues for observed enemy actions — `ENEMY_TRINKET_USED` (12867) and `ENEMY_DEFENSIVE_USED` (3093) — deduped per guid+spell in a 3s window. All audio is gated by `db.alerts.sound` and arena-only.
 
 Pre-v2.1.6 this module referenced `Sound/Voice/*.ogg` paths that were never bundled in the addon zip, so every `PlaySoundFile` invocation silently failed and audio cues did not work in any earlier release.
 

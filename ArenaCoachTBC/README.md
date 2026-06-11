@@ -56,6 +56,7 @@ The addon stores SavedVariables in `ArenaCoachTBCDB`.
 | `/acc off` / `/acc on` (aliases `/acc disable` / `/acc enable`) | **master switch.** Stops the engine + hides every visual layer. Persists across `/reload`. | **主开关**。停止引擎并隐藏所有视觉层，`/reload` 后保持。 |
 | `/acc glow on\|off` | toggle the optional thin mode-coloured edge cue | 切换可选的细边缘提示 |
 | `/acc nameplate on\|off` | toggle the KILL / SWAP target nameplate highlights (v2.2.0) | 切换击杀/换火目标的铭牌高亮（v2.2.0） |
+| `/acc facts on\|off` | toggle the per-enemy facts rows: trinket / defensive / interrupt cooldowns + DR badges (v2.9) | 切换敌方事实信息行：饰品 / 保命技 / 打断冷却与递减标记（v2.9） |
 | `/acc test` | readable ~1-minute realistic 3v3 arena replay through the engine (OPEN → pressure/DEFEND → kill/reset) | 约 1 分钟真实 3v3 竞技场引擎回放（开局 → 承压/防御 → 击杀/重置） |
 | `/acc test hud` | visual HUD demo — paints the selected display mode: live DBM alert, optional Obsidian board, or both, plus nameplate/audio/edge cues | 视觉 HUD 演示——按当前显示模式展示实战短警报、可选黑曜石面板或两者，并包含铭牌、音效、边缘提示 |
 | `/acc test bg` | battleground walk-through (flag carrier + low-HP straggler) | 战场演示（夺旗者 + 低血单位） |
@@ -74,6 +75,26 @@ The addon stores SavedVariables in `ArenaCoachTBCDB`.
 ---
 
 ## How it Works / 工作原理
+
+### Facts HUD (v2.9) / 事实信息面板（v2.9）
+
+A separate movable panel with one row per living enemy, showing the *observed facts* a player cannot track in their head mid-fight — the layer serious arena players run cooldown trackers for:
+
+- **Trinket** — `T+` (green, CC-break available) or `T-45` (red countdown after a medallion / WotF use)
+- **Defensive** — the downed big cooldown coming back soonest (Ice Block, Divine Shield, BoP, Cloak of Shadows, Pain Suppression, ...)
+- **Interrupt** — a downed kick with its countdown: every second is a free-cast window for your healer / casters
+- **DR badges** — per-category diminishing returns on that enemy (`S:1/2`, `F:IMM`, ...)
+
+All of it comes from the combat log via `CooldownTracker` / `DRTracker` — data the addon has tracked since v1 but never displayed. Cells stay empty until a use is actually observed; the HUD never guesses. Two audio cues accompany it: a loud chord when an enemy **burns their trinket**, a short ding when they **burn an immunity** (Ice Block / bubble / BoP / CloS). Toggle with `/acc facts off`.
+
+独立的可移动面板，每个存活敌人一行，显示玩家在战斗中无法靠脑子记住的*观测事实*——也就是高手挂冷却追踪插件要看的那一层：
+
+- **饰品** — `T+`（绿色，可解控）或 `T-45`（红色倒计时，徽章/亡灵意志已用）
+- **保命技** — 最先转好的已用大招倒计时（寒冰屏障、圣盾术、保护祝福、暗影斗篷、痛苦压制等）
+- **打断** — 已用的打断技及其倒计时：每一秒都是治疗/法系的安全施法窗口
+- **递减标记** — 该敌人各控制类别的递减状态（`S:1/2`、`F:IMM` 等）
+
+数据全部来自战斗日志（`CooldownTracker` / `DRTracker`）——插件从 v1 起就在采集，只是从未展示。未观测到使用前单元格保持空白，绝不猜测。配套两个音效提示：敌方**交饰品**时播放响亮和弦，敌方**开无敌**（冰箱/圣盾/保护祝福/斗篷）时播放短促提示音。用 `/acc facts off` 关闭。
 
 ### Dynamic team detection / 动态队伍识别
 
@@ -163,10 +184,9 @@ Scoring weights are exposed as a flat table / 打分权重以扁平表暴露：
 SE.weights = {
     role_healer          =  25,
     role_cloth_dps       =  15,
-    role_melee_overext   =  10,
     health_below_50      =  30,
     trinket_down         =  20,
-    major_defensive_down =  15,
+    major_defensive_down =  15,  -- target's OWN class immunity observed >= 15s from ready
     no_immunity          =  10,
     purgeable_defensive  =  10,
     ms_active            =  25,
@@ -176,8 +196,6 @@ SE.weights = {
     priest_can_dispel    =  10,
     off_healer_cc        =  15,
     target_immune        = -100,
-    target_unreachable   =  -30,
-    target_los_blocked   =  -20,
     melee_locked_down    =  -20,
     our_healer_cc        =  -25,
     our_team_low_hp      =  -30,

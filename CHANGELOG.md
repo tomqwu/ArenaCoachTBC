@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Facts HUD (`FactsHUD.lua`).** Per-enemy rows showing observed facts: trinket CC-break status with countdown (medallion 42292 + WotF 7744 tracked separately), the downed major defensive coming back soonest (Ice Block / Divine Shield / BoP / CloS / Pain Suppression / NS / Barkskin / Evasion / Vanish / Deterrence / Shamanistic Rage), downed interrupts (Kick / Counterspell / Spell Lock / Pummel / Earth Shock — a visible free-cast window), and DR badges per CC category (`S:1/2`, `F:IMM`). All data comes from `CooldownTracker` / `DRTracker`, which had tracked it since v1 without displaying any of it. Cells stay empty until a use is observed — the HUD never guesses. Movable, position persists under `db.factsFrame`, toggle via `/acc facts on|off` (`db.factsHud.enabled`), hidden outside PvP contexts. 0.5s repaint ticker so countdowns tick between combat events.
+- **Observed-event audio cues (`Sounds.byEvent`).** `ENEMY_TRINKET_USED` (loud chord) when an enemy burns the PvP medallion or WotF; `ENEMY_DEFENSIVE_USED` (short ding) when an enemy burns an immunity. Fired from the combat log, deduped per guid+spell in a 3s window, gated on `alerts.sound` + arena-only (the same gate as every other audio cue — BG team fights would chirp continuously). These are facts, not advice — the GladiatorlosSA layer the addon was missing.
+- `FACTS_DEFENSIVES` / `FACTS_INTERRUPTS` display lists and a `CLASS_SELF_IMMUNITY` map in `Data/Spells.lua`. **Every rank** of multi-rank spells is registered (Kick r1-r5 incl. 38768, Pummel r1-r2, Earth Shock r1-r8, Counterspell cast ID 2139, Divine Shield r1-r2 incl. 1020, BoP r1-r3, Evasion r1-r2, Vanish r1-r3, Ice Block alt 45438) — CLEU carries the rank actually cast and the trackers match IDs exactly, so without rank coverage a level-70 kick or bubble was invisible.
+
+### Fixed
+- **Burst gate no longer permanently blocked for comps without a warrior + enhancement shaman.** `BurstDecision`'s `ms_active` gate required target healing-reduction whenever `callBurstOnlyWhenMSActive` was set (default on) — even for teams with no Mortal Strike source — and the `windfury` gate never consulted `caps.hasWindfury` at all. Both requirements are now capability-gated: they apply only when the team actually has the capability (and the user hasn't opted out via config). Kill windows, which open only when the burst gate allows, were dead for most real 2v2/3v3 comps because of this.
+- **`major_defensive_down` scoring weight now fires — narrowly.** It read `enemy.majorDefensiveDown`, which no production code ever set. The bonus now derives from observed cooldowns of the target's **own class immunity** (`CLASS_SELF_IMMUNITY`: Ice Block / Divine Shield / Cloak of Shadows) seen >= 15s from ready, and never fires while the target is actively immune. Cross-target spells like BoP are excluded — a paladin who BoP'd a teammate has not burned their own escape. The broad `kill_defensive_soon` penalty (< 15s on ANY observed immunity) is unchanged.
+
+### Removed
+- Dead positional scoring weights `role_melee_overext`, `target_unreachable`, `target_los_blocked`. Their inputs (`enemy.overextended` / `.unreachable` / `.losBlocked`) were never produced — the client exposes no positioning data — so they could not fire. Reintroduce only together with a real signal source.
+- Mode-flip audio cues for SWAP / OPEN (`Sounds.byMode`). Four near-identical dings per fight teach the ear to ignore all of them; KILL ("go") and DEFEND ("survive") remain.
+
+### Changed
+- Default bracket is now 3 (was 5) — Anniversary arena is a 2s/3s game; `UpdateBracket` still overwrites from the live arena queue. Bracket weight overrides now apply **in arena only**: BGs report teamSize 0 and would otherwise inherit whatever boot default is set, silently retuning BG scoring.
+
 ## [2.8.55] - 2026-06-09
 
 ### Fixed

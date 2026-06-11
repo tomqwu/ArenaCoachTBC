@@ -51,6 +51,9 @@ local DEFAULTS = {
                  -- default-on — it's anchored to the actual kill target
                  -- and conveys role/target identity, not just mode colour.
                  edgeGlow = false, nameplate = true },
+    -- v2.9: per-enemy facts rows (trinket / defensive / interrupt CDs +
+    -- DR badges). Toggle via /acc facts off.
+    factsHud = { enabled = true },
     strategy = {
         aggression = "balanced",
         preferHealerOpen = true,
@@ -291,7 +294,8 @@ Core.state = {
     config         = nil,    -- bound to SavedVariables on init
     enemyClassList = {},
     combatPhase    = "PRE",  -- PRE, ACTIVE, POST
-    bracket        = 5,      -- 2 | 3 | 5; engine uses for comp filter + weights
+    bracket        = 3,      -- 2 | 3 | 5; v2.9 default 3 — Anniversary is a
+                             -- 2s/3s game; UpdateBracket overwrites on queue
     lastPrimaryGUID = nil,
 }
 
@@ -457,9 +461,12 @@ end
 
 -- Read the current arena bracket from the WoW battlefield API.
 -- Returns 2/3/5 if in an arena queue or active arena; falls back to the
--- previously known bracket (default 5) when no battlefield is active.
+-- previously known bracket (default 3) when no battlefield is active.
+-- Note: only arena queues report teamSize > 0 — BG / world contexts run
+-- on the default, which is why the engine only applies bracket weight
+-- overrides in arena (see scoreEnemy).
 function Core:UpdateBracket()
-    local prev = self.state.bracket or 5
+    local prev = self.state.bracket or 3
     if type(GetMaxBattlefieldID) ~= "function" or type(GetBattlefieldStatus) ~= "function" then
         return prev
     end
@@ -1002,6 +1009,7 @@ function Core:Evaluate()
     if not rec then return end
     self.state.lastPrimaryGUID = rec.primaryTarget
     if ns.UI then ns.UI:Apply(rec) end
+    if ns.FactsHUD then ns.FactsHUD:Update(self.state) end
     if ns.WeakAuraBridge then ns.WeakAuraBridge:Publish(rec, self.state) end
     appendTrace(rec, self.state)
     Core.DebugPrint(string.format(
@@ -1055,6 +1063,41 @@ local function readCombatLogPayload(...)
         end
     end
     return parseCLEUVarargs(...)
+end
+
+-- ============================================================
+-- Observed-event audio cues (v2.9)
+-- ============================================================
+-- Fires a Sounds.byEvent cue for high-value *observed* enemy actions
+-- (trinket burned, immunity defensive burned). Deduped per guid+spell
+-- within a short window because the same use can surface as both a
+-- cast and an aura-applied CLEU line.
+Core._lastCueTs = {}
+local CUE_DEDUP_WINDOW = 3  -- seconds
+
+function Core:_PlayEventCue(eventKey, guid, spellID)
+    local db = _G.ArenaCoachTBCDB
+    if not (db and db.alerts and db.alerts.sound) then return false end
+    -- Arena only — the same gate every other audio cue uses. In BG /
+    -- world the enemy table holds every hostile seen on any nameplate;
+    -- dozens of trinkets and immunities popping in an AV team fight
+    -- would chirp continuously and train the ear to ignore all audio.
+    local ctx = self.state.pvpContext
+    if ctx ~= "arena" then return false end
+    local key = eventKey .. ":" .. tostring(guid) .. ":" .. tostring(spellID)
+    local t = (type(GetTime) == "function") and GetTime() or 0
+    if (t - (self._lastCueTs[key] or -CUE_DEDUP_WINDOW)) < CUE_DEDUP_WINDOW then
+        return false
+    end
+    -- Opportunistic prune: entries older than the dedup window are dead
+    -- weight; without this the table grows one key per enemy guid+spell
+    -- for the whole session.
+    for k, ts in pairs(self._lastCueTs) do
+        if (t - ts) > (CUE_DEDUP_WINDOW * 10) then self._lastCueTs[k] = nil end
+    end
+    self._lastCueTs[key] = t
+    if ns.Sounds and ns.Sounds.PlayEvent then ns.Sounds:PlayEvent(eventKey) end
+    return true
 end
 
 local function onCLEU(_event, ...)
@@ -1146,11 +1189,15 @@ local function onCLEU(_event, ...)
         end
     end
 
-    -- Trinket tracking
-    if subEvent == "SPELL_AURA_APPLIED" and spellID == 42292 then
-        -- mark target's trinket gone
+    -- Trinket tracking. hasTrinket only flips on the medallion (42292) —
+    -- WotF (7744) is a separate racial and doesn't consume the trinket —
+    -- but BOTH are CC-breaks burning, so both fire the audio cue.
+    if subEvent == "SPELL_AURA_APPLIED" and (spellID == 42292 or spellID == 7744) then
         for _, e in pairs(Core.state.enemies or {}) do
-            if e.guid == destGUID then e.hasTrinket = false end
+            if e.guid == destGUID then
+                if spellID == 42292 then e.hasTrinket = false end
+                Core:_PlayEventCue("ENEMY_TRINKET_USED", destGUID, spellID)
+            end
         end
     end
 
@@ -1192,7 +1239,16 @@ local function onCLEU(_event, ...)
     -- Immunity / major defensives book-keeping on auras
     if subEvent == "SPELL_AURA_APPLIED" or subEvent == "SPELL_AURA_REFRESH" then
         for _, e in pairs(Core.state.enemies or {}) do
-            if e.guid == destGUID then e.importantBuffs[spellID] = true end
+            if e.guid == destGUID then
+                e.importantBuffs[spellID] = true
+                -- v2.9: audio cue when an enemy burns an immunity
+                -- (Ice Block / Divine Shield / BoP / CloS) — the moment
+                -- the player should stop damage or re-target.
+                if subEvent == "SPELL_AURA_APPLIED" and ns.Spells
+                   and ns.Spells.IMMUNITY_BUFFS and ns.Spells.IMMUNITY_BUFFS[spellID] then
+                    Core:_PlayEventCue("ENEMY_DEFENSIVE_USED", destGUID, spellID)
+                end
+            end
         end
     elseif subEvent == "SPELL_AURA_REMOVED" then
         for _, e in pairs(Core.state.enemies or {}) do
@@ -1227,6 +1283,7 @@ local function helpText()
     chatPrint(Core.L("HELP_BUGREPORT"))
     chatPrint(Core.L("HELP_HUD"))
     chatPrint(Core.L("HELP_WHATIF"))
+    chatPrint(Core.L("HELP_FACTS"))
     chatPrint(Core.L("HELP_HELP"))
 end
 
@@ -1327,6 +1384,7 @@ local function handleSlash(input)
         if ns.UI and ns.UI.Hide then ns.UI:Hide() end
         if ns.ScreenEdgeGlow then ns.ScreenEdgeGlow:Hide() end
         if ns.Nameplate then ns.Nameplate:ClearAll() end
+        if ns.FactsHUD then ns.FactsHUD:Hide() end
         chatPrint("ArenaCoachTBC disabled. /acc on to re-enable.")
     elseif cmd == "on" or cmd == "enable" then
         db.enabled = true
@@ -1351,6 +1409,16 @@ local function handleSlash(input)
         else db.alerts.nameplate = not db.alerts.nameplate end
         if not db.alerts.nameplate and ns.Nameplate then ns.Nameplate:ClearAll() end
         chatPrint(string.format("nameplate highlight: %s", db.alerts.nameplate and "on" or "off"))
+    elseif cmd == "facts" then
+        -- v2.9: toggle the per-enemy facts rows (trinket / defensive /
+        -- interrupt cooldowns + DR badges).
+        db.factsHud = db.factsHud or {}
+        local arg = (rest or ""):lower()
+        if arg == "off" then db.factsHud.enabled = false
+        elseif arg == "on" then db.factsHud.enabled = true
+        else db.factsHud.enabled = not (db.factsHud.enabled ~= false) end
+        if db.factsHud.enabled == false and ns.FactsHUD then ns.FactsHUD:Hide() end
+        chatPrint(string.format("facts HUD: %s", db.factsHud.enabled ~= false and "on" or "off"))
     else
         chatPrint(Core.L("DEBUG_UNKNOWN_CMD"))
     end
@@ -1448,7 +1516,7 @@ function Core:ReplayRecord(events, modifier, opts)
         observations   = {},
         enemyClassList = {},
         combatPhase    = initial.combatPhase or "ACTIVE",
-        bracket        = initial.bracket or 5,
+        bracket        = initial.bracket or 3,
         pvpContext     = initial.pvpContext,
         config         = { strategy = {} },
     }

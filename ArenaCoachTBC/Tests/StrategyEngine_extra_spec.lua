@@ -702,31 +702,157 @@ H.it(g, "purgeable buff increases score", function()
     H.assertNotNil(mage._contrib)
 end)
 
-H.it(g, "major defensive penalty when down", function()
-    local state = SE:BuildTestState({"PRIEST","MAGE"})
-    local priest = findEnemyByClass(state, "PRIEST")
-    priest.majorDefensiveDown = true
+H.it(g, "major_defensive_down fires from an observed cooldown >= 15s out (v2.9)", function()
+    -- v2.9: the bonus derives from CooldownTracker observations, not the
+    -- never-set enemy.majorDefensiveDown field.
+    H.load("CooldownTracker.lua")
+    local CT = H.ns.CooldownTracker
+    CT:Clear()
+    local state = SE:BuildTestState({"MAGE","PRIEST"})
+    local mage = findEnemyByClass(state, "MAGE")
+    CT:MarkUsed(mage.guid, H.ns.Spells.ICE_BLOCK)  -- 5m CD just spent
     SE:Evaluate(state)
-    H.assertNotNil(priest._score)
+    local found = false
+    for _, c in ipairs(mage._contrib or {}) do
+        if c.key == "major_defensive_down" then found = true end
+    end
+    H.assertTrue(found, "expected major_defensive_down contribution")
+    CT:Clear()
 end)
 
-H.it(g, "unreachable / losBlocked penalties applied", function()
-    local state = SE:BuildTestState({"PRIEST","MAGE"})
-    local priest = findEnemyByClass(state, "PRIEST")
-    priest.unreachable = true
+H.it(g, "kill_defensive_soon penalty when observed CD nearly back (v2.9)", function()
+    H.load("CooldownTracker.lua")
+    local CT = H.ns.CooldownTracker
+    CT:Clear()
+    local state = SE:BuildTestState({"MAGE","PRIEST"})
+    local mage = findEnemyByClass(state, "MAGE")
+    -- Ice Block used 295s ago on a 300s CD -> back in 5s -> penalty.
+    local t = (type(GetTime) == "function") and GetTime() or os.time()
+    CT:_record(mage.guid, H.ns.Spells.ICE_BLOCK, 300, t - 295)
     SE:Evaluate(state)
-    H.assertTrue(priest._score < 50)
-    local state2 = SE:BuildTestState({"PRIEST","MAGE"})
-    findEnemyByClass(state2, "PRIEST").losBlocked = true
+    local found = false
+    for _, c in ipairs(mage._contrib or {}) do
+        if c.key == "kill_defensive_soon" then found = true end
+    end
+    H.assertTrue(found, "expected kill_defensive_soon contribution")
+    CT:Clear()
+end)
+
+H.it(g, "v2.9: BoP burned on a teammate does NOT grant the kill-window bonus", function()
+    -- BoP lands on the protected teammate's GUID and says nothing about
+    -- the paladin's own Divine Shield. The bonus must key on the
+    -- target's OWN class immunity only.
+    H.load("CooldownTracker.lua")
+    local CT = H.ns.CooldownTracker
+    CT:Clear()
+    local state = SE:BuildTestState({"PALADIN","PRIEST"})
+    local pala = findEnemyByClass(state, "PALADIN")
+    -- The paladin cast BoP (recorded against the caster on CAST_SUCCESS)
+    -- but Divine Shield was never observed.
+    CT:MarkUsed(pala.guid, H.ns.Spells.E_BLESSING_PROTECT)
+    SE:Evaluate(state)
+    for _, c in ipairs(pala._contrib or {}) do
+        H.assertNotEq(c.key, "major_defensive_down",
+            "BoP down must not read as 'their escape is down'")
+    end
+    -- But an observed Divine Shield rank 2 does open the window.
+    CT:Clear()
+    CT:MarkUsed(pala.guid, H.ns.Spells.DIVINE_SHIELD_R2)
+    local state2 = SE:BuildTestState({"PALADIN","PRIEST"})
+    local pala2 = findEnemyByClass(state2, "PALADIN")
     SE:Evaluate(state2)
-    H.assertNotNil(findEnemyByClass(state2, "PRIEST")._score)
+    local found = false
+    for _, c in ipairs(pala2._contrib or {}) do
+        if c.key == "major_defensive_down" then found = true end
+    end
+    H.assertTrue(found, "own bubble down >= 15s = kill window")
+    CT:Clear()
 end)
 
-H.it(g, "overextended melee gets bonus role weight", function()
-    local state = SE:BuildTestState({"WARRIOR","ROGUE"})
-    findEnemyByClass(state, "WARRIOR").overextended = true
+H.it(g, "v2.9: bracket weight overrides apply in arena only", function()
+    -- BGs report teamSize 0, so state.bracket is just the boot default
+    -- there; applying 3v3 overrides would silently retune BG scoring.
+    local arena = SE:BuildTestState({"PRIEST","MAGE"})
+    arena.combatPhase = "ACTIVE"
+    arena.pvpContext = "arena"
+    arena.bracket = 2
+    SE:Evaluate(arena)
+    local arenaScore = findEnemyByClass(arena, "PRIEST")._score
+
+    local bg = SE:BuildTestState({"PRIEST","MAGE"})
+    bg.combatPhase = "ACTIVE"
+    bg.pvpContext = "bg"
+    bg.bracket = 2  -- stale boot value; must be ignored outside arena
+    SE:Evaluate(bg)
+    local bgPriest = findEnemyByClass(bg, "PRIEST")
+    local w = SE:GetWeights(nil)
+    local w2 = SE:GetWeights(2)
+    H.assertTrue(w2.role_healer > w.role_healer, "precondition: 2s overweights healers")
+    -- The BG row gets base role_healer (25), not the 2v2 override (40):
+    local healerPts
+    for _, c in ipairs(bgPriest._contrib or {}) do
+        if c.key == "role_healer" then healerPts = c.pts end
+    end
+    H.assertEq(healerPts, w.role_healer, "BG must use base weights")
+end)
+
+H.it(g, "v2.9 regression: positional pseudo-weights stay deleted", function()
+    -- These weights read fields (overextended / unreachable / losBlocked)
+    -- that no production code ever set — the client exposes no positioning
+    -- data. Setting the fields must not change the score, and the weights
+    -- must not exist.
+    H.assertNil(SE.weights.role_melee_overext)
+    H.assertNil(SE.weights.target_unreachable)
+    H.assertNil(SE.weights.target_los_blocked)
+    local state = SE:BuildTestState({"PRIEST","MAGE"})
     SE:Evaluate(state)
-    H.assertNotNil(findEnemyByClass(state, "WARRIOR")._score)
+    local before = findEnemyByClass(state, "PRIEST")._score
+    local state2 = SE:BuildTestState({"PRIEST","MAGE"})
+    local p2 = findEnemyByClass(state2, "PRIEST")
+    p2.unreachable = true; p2.losBlocked = true; p2.overextended = true
+    SE:Evaluate(state2)
+    H.assertEq(p2._score, before, "dead fields must not affect scoring")
+end)
+
+H.it(g, "v2.9: MS burst requirement self-disables when the team has no MS", function()
+    -- A rogue/priest 2v2 has no Mortal Strike. With the pre-v2.9 gate
+    -- (`hasMS or cfg`), the default config blocked BURST_NOW forever for
+    -- such teams. The requirement must only apply when OwnComps reports
+    -- hasMortalStrike.
+    local state = SE:BuildTestState({ "PRIEST", "MAGE" }, {
+        observations = { hojReady = true },
+        config = { strategy = {} },  -- defaults: nothing opted out
+    })
+    state.friendlies = {
+        player = { unit = "player", class = "ROGUE",  spec = "SUBTLETY",   alive = true, healthPct = 100 },
+        party1 = { unit = "party1", class = "PRIEST", spec = "DISCIPLINE", alive = true, healthPct = 100 },
+    }
+    state.combatPhase = "ACTIVE"
+    state.aggression = "greedy"
+    local target = findEnemyByClass(state, "PRIEST")
+    target.healthPct = 5
+    target.hasTrinket = false
+    local out = SE:BurstDecision(state, target, nil)
+    H.assertFalse(out.gates.ms_active.required or false,
+        "no MS on the team -> requirement off")
+    H.assertNotEq(out.blockedBy, "no_ms")
+    H.assertNotEq(out.blockedBy, "no_windfury")
+end)
+
+H.it(g, "v2.9: windfury requirement self-disables when the team has no shaman", function()
+    local state = SE:BuildTestState({ "PRIEST", "MAGE" }, {
+        observations = { hojReady = true, windfuryActive = false },
+        config = { strategy = { requireWindfuryNearby = true } },
+    })
+    state.friendlies = {
+        player = { unit = "player", class = "ROGUE",  spec = "SUBTLETY",   alive = true, healthPct = 100 },
+        party1 = { unit = "party1", class = "PRIEST", spec = "DISCIPLINE", alive = true, healthPct = 100 },
+    }
+    state.combatPhase = "ACTIVE"
+    local target = findEnemyByClass(state, "PRIEST")
+    local out = SE:BurstDecision(state, target, nil)
+    H.assertTrue(out.gates.windfury.allowed,
+        "windfury gate must not block a shaman-less team")
 end)
 
 H.it(g, "DefaultFriendlies returns 5 players in spec'd comp", function()

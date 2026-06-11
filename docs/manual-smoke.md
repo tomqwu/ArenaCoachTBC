@@ -63,7 +63,7 @@ behaviour is what tests can't see.
 - [ ] Optional edge cue is thin, static, low-alpha, and dark on RESET; it must not pulse or flash around the screen
 - [ ] DEFEND/URGENT does not create a full-screen red flash; use HUD colour, nameplate, arcade cue, and sound cues instead
 - [ ] Nameplate of the kill target gets a red border; swap target gets orange (when in SWAP mode)
-- [ ] Audio cue fires on mode flip (KILL/SWAP/DEFEND/OPEN play distinct WoW SoundKit IDs); arena-only
+- [ ] Audio cue fires on KILL and DEFEND mode flips only (v2.9: SWAP/OPEN flips are intentionally silent); arena-only
 - [ ] URGENT callouts stay readable without a full-screen flash, even if an old SavedVariables file has `alerts.screenFlash = true`
 - [ ] Standing in Stormwind / Orgrimmar for 30 s: no frame-rate drop (city-lag fix, v2.2.5)
 - [ ] While PvP-flagged outside instances, hitting or being hit by an ordinary creature does not show the HUD; a real hostile player or duel still does
@@ -85,6 +85,16 @@ behaviour is what tests can't see.
 - [ ] Replay the addon recording with `lua5.1 tools/replay.lua <path/to/ArenaCoachTBC.lua>` and compare the redacted timeline with the screenshot or clip
 - [ ] For a committed fixture, run `lua5.1 tools/replay.lua --golden ArenaCoachTBC/Tests/Fixtures/<name>.golden.txt ArenaCoachTBC/Tests/Fixtures/<name>.lua`; use `--update-golden` only when the changed advice is intentional
 - [ ] Convert repeatable wrong-advice cases into `docs/arena-fixtures.md` acceptance snapshots or golden replays
+
+## Facts HUD (v2.9)
+
+- [ ] In a skirmish / duel near the arena vendor, the facts panel appears with one row per enemy (class-coloured name + HP%)
+- [ ] Enemy trinket use flips `T+` (green) to `T-2m` (red) and the countdown ticks down every second; the loud chord cue fires once (not twice for the cast+aura pair)
+- [ ] Enemy Ice Block / Divine Shield / BoP / CloS shows in the defensive column with a countdown; the short ding cue fires
+- [ ] After a stun chain, the DR column shows `S:1/2` then `S:1/4` then `S:IMM`, clearing ~17s after the last application
+- [ ] `/acc facts off` hides the panel immediately and persists across `/reload`; `/acc facts on` restores it
+- [ ] Dragging the panel persists its position across `/reload`; `/acc lock` prevents dragging
+- [ ] Panel hides in cities (context `none`) and shows again on arena entry
 
 ## Integration
 

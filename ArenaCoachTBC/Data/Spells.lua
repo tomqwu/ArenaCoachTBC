@@ -273,6 +273,63 @@ S.CATEGORIES = {
     [S.E_CYCLONE]         = "CYCLONE",
 }
 
+-- ============================================================
+-- Ranked spell IDs (v2.9)
+-- CLEU carries the spell ID of the rank actually cast, and
+-- CooldownTracker matches IDs exactly — so multi-rank spells need every
+-- rank listed or a level-70 cast is invisible to the trackers.
+-- ============================================================
+
+-- Kick ranks 2-5. Rank 1 is S.KICK = 1766.
+-- Source: https://www.wowhead.com/tbc/spell=38768 (rank 5, TBC)
+S.KICK_R2            = 1767
+S.KICK_R3            = 1768
+S.KICK_R4            = 1769
+S.KICK_R5            = 38768  -- the rank every level-70 rogue casts
+
+-- Pummel rank 1. Rank 2 is S.PUMMEL = 6554.
+-- Source: https://www.wowhead.com/tbc/spell=6552
+S.PUMMEL_R1          = 6552
+
+-- Earth Shock ranks 1-7. Rank 8 is S.EARTH_SHOCK = 25454. Interrupt
+-- shamans deliberately downrank to rank 1 (8042) for mana efficiency.
+-- Source: https://www.wowhead.com/tbc/spell=8042
+S.EARTH_SHOCK_R1     = 8042
+S.EARTH_SHOCK_R2     = 8044
+S.EARTH_SHOCK_R3     = 8045
+S.EARTH_SHOCK_R4     = 8046
+S.EARTH_SHOCK_R5     = 10412
+S.EARTH_SHOCK_R6     = 10413
+S.EARTH_SHOCK_R7     = 10414
+
+-- Counterspell cast ID. S.COUNTERSPELL = 27090 is the silenced-debuff
+-- variant; the cast event carries 2139 (single rank in TBC).
+-- Source: https://www.wowhead.com/tbc/spell=2139
+S.COUNTERSPELL_CAST  = 2139
+
+-- Divine Shield rank 2. Rank 1 is S.DIVINE_SHIELD = 642 — a level-70
+-- paladin bubbles with 1020, so cue + tracker must know both.
+-- Source: https://www.wowhead.com/tbc/spell=1020
+S.DIVINE_SHIELD_R2   = 1020
+
+-- Blessing of Protection ranks 1-2. Rank 3 is S.BLESSING_PROTECT = 10278.
+-- Source: https://www.wowhead.com/tbc/spell=1022
+S.BLESSING_PROTECT_R1 = 1022
+S.BLESSING_PROTECT_R2 = 5599
+
+-- Evasion rank 1. Rank 2 is S.EVASION = 26669.
+-- Source: https://www.wowhead.com/tbc/spell=5277
+S.EVASION_R1         = 5277
+
+-- Vanish ranks 1-2. Rank 3 is S.VANISH = 26889.
+-- Source: https://www.wowhead.com/tbc/spell=1856
+S.VANISH_R1          = 1856
+S.VANISH_R2          = 1857
+
+-- Ice Block alternate ID seen on TBC-era clients alongside 27619.
+-- Source: https://www.wowhead.com/tbc/spell=45438
+S.ICE_BLOCK_ALT      = 45438
+
 -- Racials that act as fear/CC breaks. Distinct from S.PVP_TRINKET_EFFECT.
 -- Engine consumers should check both when reasoning about "can this enemy break a fear right now".
 S.CC_BREAK_RACIALS = {
@@ -283,10 +340,14 @@ S.CC_BREAK_RACIALS = {
 -- (used to suppress kill recommendation)
 S.IMMUNITY_BUFFS = {
     [S.ICE_BLOCK]         = "Ice Block",
+    [S.ICE_BLOCK_ALT]     = "Ice Block",
     [S.DIVINE_SHIELD]     = "Divine Shield",
     [S.E_DIVINE_SHIELD]   = "Divine Shield",
+    [S.DIVINE_SHIELD_R2]  = "Divine Shield",
     [S.BLESSING_PROTECT]  = "Blessing of Protection",
     [S.E_BLESSING_PROTECT]= "Blessing of Protection",
+    [S.BLESSING_PROTECT_R1] = "Blessing of Protection",
+    [S.BLESSING_PROTECT_R2] = "Blessing of Protection",
     [S.CLOAK_OF_SHADOWS]  = "Cloak of Shadows",
 }
 
@@ -299,6 +360,62 @@ S.MAJOR_DEFENSIVES = {
     [S.EVASION]           = "Evasion",
     [S.SHAMANISTIC_RAGE]  = "Shamanistic Rage",
     [S.DETERRENCE]        = "Deterrence",
+}
+
+-- ============================================================
+-- Facts HUD display lists (v2.9)
+-- Ordered arrays consumed by FactsHUD. Every ID here must also have a
+-- duration in CooldownTracker.defaults or the countdown cell stays empty.
+-- ============================================================
+
+-- Defensive cell: the big "can we kill them right now" cooldowns.
+-- Order = display priority when several are down at once (the model
+-- picks the one with the shortest remaining, so order only breaks ties).
+S.FACTS_DEFENSIVES = {
+    S.ICE_BLOCK,           -- mage, 5m
+    S.ICE_BLOCK_ALT,
+    S.E_DIVINE_SHIELD,     -- paladin, 5m
+    S.DIVINE_SHIELD_R2,
+    S.E_BLESSING_PROTECT,  -- paladin, 5m
+    S.BLESSING_PROTECT_R1,
+    S.BLESSING_PROTECT_R2,
+    S.CLOAK_OF_SHADOWS,    -- rogue, 2m
+    S.EVASION,             -- rogue
+    S.EVASION_R1,
+    S.VANISH,              -- rogue
+    S.VANISH_R1,
+    S.VANISH_R2,
+    S.DETERRENCE,          -- hunter, 5m
+    S.E_PAIN_SUPPRESSION,  -- priest, 2m
+    S.E_NATURES_SWIFT,     -- druid, 3m
+    S.E_BARKSKIN,          -- druid, 1m
+    S.SHAMANISTIC_RAGE,    -- shaman, 2m
+}
+
+-- Interrupt cell: when the enemy kick is down, every second of the
+-- countdown is a free-cast window for our healer / casters.
+S.FACTS_INTERRUPTS = {
+    S.KICK,              -- rogue, 10s (+ ranks below)
+    S.KICK_R2, S.KICK_R3, S.KICK_R4, S.KICK_R5,
+    S.COUNTERSPELL,      -- mage silenced-debuff variant
+    S.COUNTERSPELL_CAST, -- mage cast event, 24s
+    S.SPELL_LOCK,        -- felhunter, 24s
+    S.PUMMEL,            -- warrior, 10s
+    S.PUMMEL_R1,
+    S.EARTH_SHOCK,       -- shaman, 6s (cheapest interrupt in TBC)
+    S.EARTH_SHOCK_R1, S.EARTH_SHOCK_R2, S.EARTH_SHOCK_R3,
+    S.EARTH_SHOCK_R4, S.EARTH_SHOCK_R5, S.EARTH_SHOCK_R6,
+    S.EARTH_SHOCK_R7,
+}
+
+-- The target's OWN full-damage immunity per class — the cooldown whose
+-- absence actually opens a kill window. BoP is excluded: it is castable
+-- on others, and the aura lands on the protected teammate's GUID, so a
+-- BoP observation says nothing about the paladin's own escape.
+S.CLASS_SELF_IMMUNITY = {
+    MAGE    = { S.ICE_BLOCK, S.ICE_BLOCK_ALT },
+    PALADIN = { S.E_DIVINE_SHIELD, S.DIVINE_SHIELD_R2 },
+    ROGUE   = { S.CLOAK_OF_SHADOWS },
 }
 
 -- Spells that are purgeable buffs of high value to dispel from enemies

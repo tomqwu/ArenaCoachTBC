@@ -116,8 +116,8 @@ All settings persist in `ArenaCoachTBCDB` (SavedVariables). They're forward-comp
 | Key | Default | Description |
 |---|---|---|
 | `strategy.ratingAggression` | `"auto"` | `"auto"` reads `GetPersonalRatedInfo()` and tunes thresholds. Or pin: `"greedy"` / `"balanced"` / `"safe"` / a number. |
-| `strategy.callBurstOnlyWhenMSActive` | `true` | Require Mortal Strike debuff on the target before `BURST_NOW`. |
-| `strategy.requireWindfuryNearby` | `true` | Require Windfury Totem before burst. |
+| `strategy.callBurstOnlyWhenMSActive` | `true` | Require the healing-reduction debuff on the target before `BURST_NOW` — applies only when your team can deliver one (v2.9: capability-gated; comps without an MS source are never blocked by it). |
+| `strategy.requireWindfuryNearby` | `true` | Require Windfury Totem before burst — applies only when your team has an Enhancement shaman (v2.9: capability-gated). |
 | `strategy.requireChainForBurst` | `false` | Treat a positive CC chain as mandatory for `BURST_NOW`; off by default so BG/world and sparse catalog entries can still call obvious burst windows. |
 | `strategy.peelTriggerWindow` / `peelTriggerDamage` | `5` / `3` | Train detection sensitivity (damage events × window → DEFEND). |
 | `strategy.lookaheadEnabled` | `true` | Engage the M10 expectimax over chain × opponent response. |
@@ -331,8 +331,8 @@ MIT.
 | 配置项 | 默认 | 说明 |
 |---|---|---|
 | `strategy.ratingAggression` | `"auto"` | `"auto"` 自动读取战场分数。也可锁定为 `"greedy"` / `"balanced"` / `"safe"` 或具体分数。 |
-| `strategy.callBurstOnlyWhenMSActive` | `true` | 必须 MS 减疗已挂在目标上才允许爆发。 |
-| `strategy.requireWindfuryNearby` | `true` | 必须风怒图腾就位才允许爆发。 |
+| `strategy.callBurstOnlyWhenMSActive` | `true` | 必须减疗已挂在目标上才允许爆发——仅当队伍能提供减疗时生效（v2.9：按能力门控；无减疗来源的阵容不会被它卡住）。 |
+| `strategy.requireWindfuryNearby` | `true` | 必须风怒图腾就位才允许爆发——仅当队伍有增强萨时生效（v2.9：按能力门控）。 |
 | `strategy.requireChainForBurst` | `false` | 将正收益控制链设为 `BURST_NOW` 的硬性条件；默认关闭，以便战场、户外和缺少链模板的阵容仍能提示明显爆发窗口。 |
 | `strategy.peelTriggerWindow` / `peelTriggerDamage` | `5` / `3` | 集火检测灵敏度（伤害事件 × 时间窗 → DEFEND）。 |
 | `strategy.lookaheadEnabled` | `true` | 启用 M10 lookahead（连锁 × 对手反应期望值最大化）。 |
