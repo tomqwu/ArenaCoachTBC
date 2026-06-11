@@ -94,6 +94,9 @@ behaviour is what tests can't see.
 - [ ] Enemy Kick / Counterspell / Pummel / Earth Shock cast shows a downed-interrupt countdown with the same icon-left-of-text layout
 - [ ] After a stun chain, the DR column shows `S:1/2` then `S:1/4` then `S:IMM`, clearing ~17s after the last application
 - [ ] `/acc facts off` hides the panel immediately and persists across `/reload`; `/acc facts on` restores it
+- [ ] The header strip (`Name / Trinket / Defensive / Interrupt / DR`) is visible above the rows; the DR legend is visible at the bottom and wraps to at most 2 lines
+- [ ] Long player names (12+ chars) and Chinese spell names truncate inside their column instead of wrapping into the next cell or under the next row
+- [ ] `/acc facts legend off` + `/reload` removes the legend and shrinks the panel; `/acc facts legend on` + `/reload` restores it
 - [ ] Dragging the panel persists its position across `/reload`; `/acc lock` prevents dragging
 - [ ] Panel hides in cities (context `none`) and shows again on arena entry
 

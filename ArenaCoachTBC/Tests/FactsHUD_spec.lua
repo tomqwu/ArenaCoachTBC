@@ -256,12 +256,17 @@ H.it(g, "ticker repaint runs through the OnUpdate accumulator", function()
     H.assertNotNil(handler)
     handler(FH.frame, FH.REFRESH_INTERVAL + 0.1)  -- must not error
 end)
-H.it(g, "FormatRow renders a downed kick with seconds countdown", function()
+H.it(g, "FormatRow renders the actual interrupt spell name + seconds countdown", function()
+    -- v2.10.1: interrupt cell shows GetSpellInfo(spellID), not always
+    -- the static "KICK" label — keeps it consistent with the defensive
+    -- cell and disambiguates Kick vs Counterspell vs Earth Shock.
     reset()
-    CT:MarkUsed("guid-fh-1", S.KICK)  -- 10s CD -> seconds formatting
+    CT:MarkUsed("guid-fh-1", S.KICK)
     local txt = FH:FormatRow(FH:BuildRowModel(freshEnemy({ class = "ROGUE" })))
-    H.assertEq(txt.intText:sub(1, 5), "KICK ")
-    H.assertNotNil(txt.intText:match("KICK %d+$"), "sub-minute CDs render as seconds")
+    -- Headless GetSpellInfo stub returns "Spell<id>" for any positive id.
+    H.assertEq(txt.intText:sub(1, 9), "Spell1766",
+        "interrupt label should be the live spell name, not the static KICK fallback")
+    H.assertNotNil(txt.intText:match(" %d+$"), "sub-minute CDs render as seconds")
 end)
 
 H.it(g, "v2.10: FormatRow exposes def + interrupt spellIDs for icon paint", function()
@@ -312,6 +317,47 @@ H.it(g, "v2.10: paint shows icons once a spell is observed on cooldown", functio
     H.assertNotNil(FH.frame.rows[1].defIcon)
 end)
 
+H.it(g, "v2.10: paint sets + shows icons when GetSpellTexture returns a real path", function()
+    reset()
+    _G.ArenaCoachTBCDB = { factsHud = { enabled = true } }
+    FH.frame = nil
+    FH:CreateFrame()
+    CT:MarkUsed("guid-fh-1", S.E_PAIN_SUPPRESSION)
+    CT:MarkUsed("guid-fh-1", S.KICK)
+    -- The default stub returns "" (the not-yet-cached client shape);
+    -- swap in a real-looking texture path to exercise the Show branch.
+    -- pcall-wrapped so a failing assertion can't leak the override into
+    -- later specs.
+    local saved = _G.GetSpellTexture
+    _G.GetSpellTexture = function(id) return id and "Interface\\Icons\\Mock" or nil end
+    local ok, err = pcall(function()
+        FH._lastPaint = 0  -- defeat the ticker rate-limit so Update paints now
+        FH:Update({ enemies = { arena1 = freshEnemy() }, pvpContext = "arena" })
+        H.assertTrue(FH.frame.rows[1].defIcon:IsShown(),
+            "real texture path -> defensive icon shown")
+        H.assertTrue(FH.frame.rows[1].intIcon:IsShown(),
+            "real texture path -> interrupt icon shown")
+    end)
+    _G.GetSpellTexture = saved
+    if not ok then error(err, 0) end
+end)
+
+H.it(g, "FormatRow omits the countdown when a cell has no remaining time", function()
+    -- formatSpellCell's no-countdown exit: a hand-built model slot with
+    -- remaining <= 0 renders the bare spell name (downedModel never
+    -- emits these, but FormatRow is pure + exported, so the contract
+    -- is testable directly).
+    local txt = FH:FormatRow({
+        name = "Evilmage", healthPct = 50, class = "MAGE",
+        trinket = { ready = true },
+        defensive = { spellID = S.ICE_BLOCK, remaining = 0 },
+        interrupt = nil,
+        dr = {},
+    })
+    H.assertEq(txt.defText, "Spell" .. tostring(S.ICE_BLOCK),
+        "no remaining -> bare spell name without a countdown suffix")
+end)
+
 H.it(g, "drag handlers persist the frame position to db.factsFrame", function()
     reset()
     _G.ArenaCoachTBCDB = { factsHud = { enabled = true }, locked = false }
@@ -327,4 +373,109 @@ H.it(g, "drag handlers persist the frame position to db.factsFrame", function()
     -- locked frames must not start moving
     _G.ArenaCoachTBCDB.locked = true
     down(f, "LeftButton")
+end)
+
+H.it(g, "v2.10.1: frame has a header strip + DR legend so abbreviations aren't cryptic", function()
+    reset()
+    _G.ArenaCoachTBCDB = { factsHud = { enabled = true } }
+    FH.frame = nil
+    local f = FH:CreateFrame()
+    -- rawget everywhere: the mock frame's lazy __index fabricates a
+    -- child for ANY missing field, so plain assertNotNil is vacuous.
+    local header = rawget(f, "header")
+    H.assertNotNil(header, "header strip should exist above the enemy rows")
+    H.assertNotNil(rawget(header, "name"))
+    H.assertNotNil(rawget(header, "trinket"))
+    H.assertNotNil(rawget(header, "def"))
+    H.assertNotNil(rawget(header, "int"))
+    H.assertNotNil(rawget(header, "dr"))
+    -- Legend text decodes the DR letter codes (S/F/D/P/R/C) AND the
+    -- 1/2, 1/4, IMM multiplier glyphs that v2.10 shows on each row.
+    H.assertNotNil(f.legend, "DR legend should exist at the bottom of the panel")
+    local legendText = f.legend._text or ""
+    H.assertNotNil(legendText:find("S=", 1, true), "legend names the STUN code")
+    H.assertNotNil(legendText:find("IMM", 1, true), "legend names the IMMUNE marker")
+end)
+
+H.it(g, "v2.10.1: long names truncate inside the name cell instead of wrapping", function()
+    -- Pre-v2.10.1 a 13-char name like 'Roadtoisekai' wrapped onto a
+    -- second visual line that collided with the row below. The fix is
+    -- SetWordWrap(false) on the name FontString.
+    reset()
+    _G.ArenaCoachTBCDB = { factsHud = { enabled = true } }
+    FH.frame = nil
+    local f = FH:CreateFrame()
+    local row = f.rows[1]
+    -- The mocked FontString tracks the last value passed to SetWordWrap.
+    -- We just need to confirm the call happened; the WoW client does the
+    -- actual truncation.
+    H.assertEq(row.name._wordWrap, false, "name cell must disable wordwrap")
+    H.assertEq(row.def._wordWrap, false, "def cell must disable wordwrap")
+    H.assertEq(row.int._wordWrap, false, "int cell must disable wordwrap")
+end)
+
+H.it(g, "v2.10.1 review: GetSpellInfo nil falls back to the localized label", function()
+    reset()
+    CT:MarkUsed("guid-fh-1", S.COUNTERSPELL_CAST)
+    local saved = _G.GetSpellInfo
+    _G.GetSpellInfo = nil
+    -- pcall so an assertion/throw can't leak the stub into later specs
+    -- (the whole suite runs in one Lua process).
+    local ok, err = pcall(function()
+        local txt = FH:FormatRow(FH:BuildRowModel(freshEnemy()))
+        -- enUS fallback is the generic "INT", not the rogue-specific
+        -- "KICK": a downed Counterspell must never read as a Kick.
+        H.assertEq(txt.intText:sub(1, 3), "INT",
+            "nil GetSpellInfo -> localized generic fallback")
+    end)
+    _G.GetSpellInfo = saved
+    if not ok then error(err, 0) end
+end)
+
+H.it(g, "v2.10.1 review: GetSpellInfo empty string also falls back (truthy-empty bug)", function()
+    -- The client returns "" (not nil) for not-yet-cached spell IDs.
+    -- An empty string is truthy in Lua, so a bare `or` fallback never
+    -- fired and the cell rendered as ' 24' with no label.
+    reset()
+    CT:MarkUsed("guid-fh-1", S.KICK)
+    local saved = _G.GetSpellInfo
+    _G.GetSpellInfo = function() return "" end
+    local ok, err = pcall(function()
+        local txt = FH:FormatRow(FH:BuildRowModel(freshEnemy({ class = "ROGUE" })))
+        H.assertEq(txt.intText:sub(1, 3), "INT",
+            "empty-string GetSpellInfo must hit the fallback, not render blank")
+    end)
+    _G.GetSpellInfo = saved
+    if not ok then error(err, 0) end
+end)
+
+H.it(g, "v2.10.1 review: FRAME_WIDTH spans the last column edge", function()
+    -- Non-vacuous version: compare against the column LAYOUT (x + w),
+    -- not a cell's width. Regression direction: revert FRAME_WIDTH to a
+    -- hardcoded constant, widen a column, frame no longer spans it.
+    H.assertNotNil(FH.COL, "layout table must be exported for tooling")
+    H.assertNotNil(FH.FRAME_WIDTH)
+    local lastEdge = FH.COL.DR.x + FH.COL.DR.w
+    H.assertTrue(FH.FRAME_WIDTH >= lastEdge,
+        string.format("frame %d must span the last column edge %d",
+            FH.FRAME_WIDTH, lastEdge))
+    -- And the icon-derived text offsets stay in sync with ICON_SIZE:
+    H.assertTrue(FH.COL.DEF_TEXT.x > FH.COL.DEF_ICON.x,
+        "def text must start right of its icon")
+    H.assertTrue(FH.COL.INT_TEXT.x > FH.COL.INT_ICON.x)
+end)
+
+H.it(g, "v2.10.1 review: legend can be hidden via db.factsHud.showLegend=false", function()
+    reset()
+    _G.ArenaCoachTBCDB = { factsHud = { enabled = true, showLegend = false } }
+    FH.frame = nil
+    local f = FH:CreateFrame()
+    -- rawget: the mock frame's lazy __index would auto-create a child
+    -- for any missing field, so plain f.legend can never be nil here.
+    H.assertNil(rawget(f, "legend"), "showLegend=false must skip legend creation")
+    -- And the default keeps it on:
+    _G.ArenaCoachTBCDB = { factsHud = { enabled = true } }
+    FH.frame = nil
+    f = FH:CreateFrame()
+    H.assertNotNil(rawget(f, "legend"))
 end)
