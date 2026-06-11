@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.9.0] - 2026-06-10
+
 ### Added
 - **Facts HUD (`FactsHUD.lua`).** Per-enemy rows showing observed facts: trinket CC-break status with countdown (medallion 42292 + WotF 7744 tracked separately), the downed major defensive coming back soonest (Ice Block / Divine Shield / BoP / CloS / Pain Suppression / NS / Barkskin / Evasion / Vanish / Deterrence / Shamanistic Rage), downed interrupts (Kick / Counterspell / Spell Lock / Pummel / Earth Shock — a visible free-cast window), and DR badges per CC category (`S:1/2`, `F:IMM`). All data comes from `CooldownTracker` / `DRTracker`, which had tracked it since v1 without displaying any of it. Cells stay empty until a use is observed — the HUD never guesses. Movable, position persists under `db.factsFrame`, toggle via `/acc facts on|off` (`db.factsHud.enabled`), hidden outside PvP contexts. 0.5s repaint ticker so countdowns tick between combat events.
 - **Observed-event audio cues (`Sounds.byEvent`).** `ENEMY_TRINKET_USED` (loud chord) when an enemy burns the PvP medallion or WotF; `ENEMY_DEFENSIVE_USED` (short ding) when an enemy burns an immunity. Fired from the combat log, deduped per guid+spell in a 3s window, gated on `alerts.sound` + arena-only (the same gate as every other audio cue — BG team fights would chirp continuously). These are facts, not advice — the GladiatorlosSA layer the addon was missing.
@@ -22,6 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Default bracket is now 3 (was 5) — Anniversary arena is a 2s/3s game; `UpdateBracket` still overwrites from the live arena queue. Bracket weight overrides now apply **in arena only**: BGs report teamSize 0 and would otherwise inherit whatever boot default is set, silently retuning BG scoring.
+
+### Tests
+- Validated with the full release gate: 783 Lua 5.1 tests passing, 99.05% total coverage, golden replay matched, locale parity at 171 keys per locale, package-shape gate, release-gate check, standalone strategy smoke spec, and `git diff --check`.
 
 ## [2.8.55] - 2026-06-09
 
