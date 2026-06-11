@@ -164,6 +164,7 @@ ns.locales.zhCN = {
     ACTION_SHAMAN_PURGE     = "净化 / 地震打断",
     ACTION_SHAMAN_BLOODLUST = "现在开嗜血",
     ACTION_SHAMAN_DEFEND    = "接地 / 战栗保护",
+    ACTION_SHAMAN_DEFEND_GROUNDING = "接地图腾保护",
     ACTION_SHAMAN_TREMOR_REFRESH = "补战栗图腾",
     ACTION_PALADIN_HOJ      = "制裁击杀目标",
     ACTION_PALADIN_DEFEND   = "保护 / 自由",

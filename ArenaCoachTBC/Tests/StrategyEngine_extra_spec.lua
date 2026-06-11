@@ -2051,8 +2051,57 @@ H.it(g, "DEFEND actions do not target an Enhancement shaman as healer", function
     local rec = SE:Evaluate(state)
     H.assertEq(rec.mode, "DEFEND")
     local player = findAction(rec.playerActions, "player")
-    H.assertEq(player.actionKey, "ACTION_SHAMAN_DEFEND")
+    -- v2.10.1: neither rogue nor mage can fear, so the shaman action
+    -- label should be the Grounding-only variant (not Tremor).
+    H.assertEq(player.actionKey, "ACTION_SHAMAN_DEFEND_GROUNDING")
     H.assertNil(player.targetName, "Enhancement shaman should not be selected as the defensive healer target")
+end)
+
+H.it(g, "v2.10.1: shaman DEFEND uses Tremor-mentioning label when a Priest is alive", function()
+    local state = SE:BuildTestState({"ROGUE","PRIEST"})
+    state.combatPhase = "ACTIVE"
+    state.observations = { healerUnderPressure = true }
+    state.friendlies = {
+        player = { unit = "player", class = "SHAMAN", spec = "ENHANCEMENT", alive = true, healthPct = 100 },
+        party1 = { unit = "party1", name = "Sweetshammy", class = "DRUID", spec = "RESTORATION", alive = true, healthPct = 40 },
+    }
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.mode, "DEFEND")
+    local player = findAction(rec.playerActions, "player")
+    -- Priest CAN fear (Psychic Scream) — full Grounding/Tremor advice is correct.
+    H.assertEq(player.actionKey, "ACTION_SHAMAN_DEFEND")
+end)
+
+H.it(g, "v2.10.1: shaman DEFEND drops Tremor wording when no enemy class can fear", function()
+    -- User-reported bug: against a Mage+Druid 2v2, the action read
+    -- "接地 / 战栗保护 -> Sweetshamy" — Tremor protection is useless when
+    -- nobody can fear. Both branches now pick the right label.
+    local state = SE:BuildTestState({"MAGE","DRUID"})
+    state.combatPhase = "ACTIVE"
+    state.observations = { healerUnderPressure = true }
+    state.friendlies = {
+        player = { unit = "player", class = "SHAMAN", spec = "ENHANCEMENT", alive = true, healthPct = 100 },
+        party1 = { unit = "party1", name = "Sweetshammy", class = "DRUID", spec = "RESTORATION", alive = true, healthPct = 40 },
+    }
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.mode, "DEFEND")
+    local player = findAction(rec.playerActions, "player")
+    H.assertEq(player.actionKey, "ACTION_SHAMAN_DEFEND_GROUNDING",
+        "no fear-class enemy -> Grounding-only label, not Tremor")
+end)
+
+H.it(g, "v2.10.1: Warlock alive -> Tremor wording (fear-capable class)", function()
+    local state = SE:BuildTestState({"WARLOCK","DRUID"})
+    state.combatPhase = "ACTIVE"
+    state.observations = { healerUnderPressure = true }
+    state.friendlies = {
+        player = { unit = "player", class = "SHAMAN", spec = "ENHANCEMENT", alive = true, healthPct = 100 },
+        party1 = { unit = "party1", name = "Sweetshammy", class = "DRUID", spec = "RESTORATION", alive = true, healthPct = 40 },
+    }
+    local rec = SE:Evaluate(state)
+    H.assertEq(rec.mode, "DEFEND")
+    local player = findAction(rec.playerActions, "player")
+    H.assertEq(player.actionKey, "ACTION_SHAMAN_DEFEND")
 end)
 
 H.it(g, "BG mode: PRE phase also skips OPEN (same as world)", function()

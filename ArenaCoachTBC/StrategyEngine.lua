@@ -1062,14 +1062,23 @@ local function hasTremorSupport(state)
     return false
 end
 
-local function hasFearThreat(state, callouts)
-    for _, key in ipairs(callouts or {}) do
-        if FEAR_THREAT_CALLOUTS[key] then return true end
-    end
+-- "Can any living enemy class actually cast a Fear?" — purely structural,
+-- ignores callouts. Used by buildPlayerActions to pick a Tremor-mentioning
+-- shaman action label only when the threat truly exists. hasFearThreat
+-- below augments this with callout evidence (profile / pattern signals)
+-- so the gate fires on learned tendencies even before a fear lands.
+local function hasFearClassEnemy(state)
     for _, e in pairs((state and state.enemies) or {}) do
         if isAlive(e) and FEAR_THREAT_CLASSES[e.class] then return true end
     end
     return false
+end
+
+local function hasFearThreat(state, callouts)
+    for _, key in ipairs(callouts or {}) do
+        if FEAR_THREAT_CALLOUTS[key] then return true end
+    end
+    return hasFearClassEnemy(state)
 end
 
 local function shouldRefreshTremor(state, callouts)
@@ -1495,7 +1504,16 @@ local function buildPlayerActions(state, mode, primaryTarget, secondTarget, burs
             elseif class == "PRIEST" then key = "ACTION_PRIEST_DEFEND"
             elseif class == "PALADIN" then key = "ACTION_PALADIN_DEFEND"
             elseif class == "DRUID" then key = "ACTION_DRUID_DEFEND"
-            elseif class == "SHAMAN" then key = "ACTION_SHAMAN_DEFEND"
+            elseif class == "SHAMAN" then
+                -- v2.10.1: pick the action label by what the enemy can
+                -- actually do. Fear-class enemy (Priest/Warlock/Warrior)
+                -- → "Grounding / Tremor". Otherwise → Grounding only;
+                -- Tremor advice is irrelevant when nobody can fear.
+                if hasFearClassEnemy(state) then
+                    key = "ACTION_SHAMAN_DEFEND"
+                else
+                    key = "ACTION_SHAMAN_DEFEND_GROUNDING"
+                end
             else key = "ACTION_DPS_PEEL" end
         elseif mode == "OPEN" then
             if tremorRefresh and class == "SHAMAN" then

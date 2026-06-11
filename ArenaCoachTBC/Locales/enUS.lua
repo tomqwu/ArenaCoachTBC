@@ -164,6 +164,7 @@ ns.locales.enUS = {
     ACTION_SHAMAN_PURGE     = "Purge / shock",
     ACTION_SHAMAN_BLOODLUST = "Bloodlust now",
     ACTION_SHAMAN_DEFEND    = "Ground / Tremor peel",
+    ACTION_SHAMAN_DEFEND_GROUNDING = "Grounding peel",
     ACTION_SHAMAN_TREMOR_REFRESH = "Refresh Tremor Totem",
     ACTION_PALADIN_HOJ      = "HoJ kill target",
     ACTION_PALADIN_DEFEND   = "BoP / Freedom",
