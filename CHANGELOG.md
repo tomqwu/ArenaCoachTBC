@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.10.0] - 2026-06-11
+
 ### Added
 - **Class-keyed middle alert (`UI.lua`).** The big middle line on the DBM-style alert now ALWAYS reads `Class: Name` ("Mage: Sam", "Priest: Holyman", ...) colored to the target class (mage blue, priest white, warrior brown, druid orange, paladin pink, hunter green, rogue yellow, shaman blue, warlock purple). Mode urgency stays legible via the kicker text and `f.modeAccent` strip; concrete actions ("Purge Holyman", "BURST_NOW", "Kick Sam") AND personal player actions ("YOU: Refresh Tremor") both demote to the sub-line so the player still sees what to do. Shared `Classes:Color` / `Classes:DisplayName` / `Classes:ColorHex` helpers in `Data/Classes.lua` are the single source of truth — FactsHUD's local copy was replaced with the shared version.
 - **Spell icons on Facts HUD rows.** Defensive + interrupt cells now show a 16px spell icon next to the countdown text via `GetSpellTexture(spellID)`, so a row reads `[Pain Sup icon] 2m` instead of just text. Icons hide when no cooldown is observed in the cell. FRAME_WIDTH grew from 360 to 396 to accommodate the two icon columns.
@@ -15,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `iceBlockBelow30` — mage Ice Block at < 30% HP = positive; at higher HP = negative (the panic threshold).
   The profile resolves from the live enemy signature so it always lands on the canonical object (`OpponentProfile:Get` returns the same identity for the same signature). At each `PLAYER_REGEN_ENABLED` in arena, a post-match summary prints the tendencies that have reached the opinionation threshold (≥ 5 observations).
 - `/acc learned` slash command dumps the current opponent's learned tendencies on demand (`HELP_LEARNED`, `LEARNED_HEADER`, `LEARNED_NONE` locale keys, enUS + zhCN).
+
+### Tests
+- Validated with the full release gate: 799 Lua 5.1 tests passing, 99.01% total coverage, golden replay matched, locale parity at 174 keys per locale, package-shape gate, release-gate check, standalone strategy smoke spec, and `git diff --check`.
 
 ## [2.9.0] - 2026-06-10
 
