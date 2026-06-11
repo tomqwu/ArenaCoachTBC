@@ -1,8 +1,8 @@
-# ArenaCoachTBC architecture (v2.8) / 架构 (v2.8)
+# ArenaCoachTBC architecture (current through v2.10) / 架构（截至 v2.10）
 
-This document explains the engine modules introduced across the M7–M12 milestones (v2.0), the visual + lifecycle additions in v2.1/v2.2, and the v2.8 strategy/testability pass: DBM-style live alerts, optional Obsidian board, central advice requirements, typed signals, WeakAura bridge helpers, and target-specific burst windows.
+This document explains the engine modules introduced across the M7–M12 milestones (v2.0), the visual + lifecycle additions in v2.1/v2.2, the v2.8 strategy/testability pass (DBM-style live alerts, optional Obsidian board, central advice requirements, typed signals, WeakAura bridge helpers, target-specific burst windows), the v2.9 Facts HUD + observed-event audio, and the v2.10 class-keyed alert + always-on opponent profile learning.
 
-本文档说明 M7–M12 各里程碑（v2.0）引入的引擎模块，v2.1/v2.2 的视觉与生命周期新增，以及 v2.8 的策略/可测试性强化：DBM 风格实战短警报、可选黑曜石面板、中央提示门禁、typed signals、WeakAura 桥接辅助，以及按当前目标判断的爆发窗口。
+本文档说明 M7–M12 各里程碑（v2.0）引入的引擎模块，v2.1/v2.2 的视觉与生命周期新增，v2.8 的策略/可测试性强化（DBM 风格实战短警报、可选黑曜石面板、中央提示门禁、typed signals、WeakAura 桥接辅助、按当前目标判断的爆发窗口），v2.9 的事实信息面板与观测事件音效，以及 v2.10 的按职业着色警报与全程对手学习。
 
 ---
 
@@ -15,21 +15,23 @@ The addon is split along a **WoW-coupled vs. pure** axis. WoW events arrive at `
 ```
         +--------------------+
 WoW --> | Core.lua (CLEU)    | -- builds state --> StrategyEngine:Evaluate(state)
-        | Trackers           |
-        +--------------------+
+        | Trackers           |       hooks: _ObserveTendencyFromCLEU (v2.10)
+        +--------------------+              _PlayEventCue (v2.9)
               |
               v
         +--------------------+        rec.chain / rec.burstDecision /
         |  Pure engine       | -----> rec.profileContrib /
-        |  StrategyEngine    |        rec.compConfidence / ...
-        +--------------------+
+        |  StrategyEngine    |        rec.compConfidence / rec.signals[] /
+        +--------------------+        rec.primaryTargetClass / ...
               |       \
               v        \
-        Chain.lua       OpponentProfile.lua
+        Chain.lua       OpponentProfile.lua  (live-updated via CLEU hook v2.10)
         Patterns.lua    Lookahead.lua
-                         Sounds.lua  (UI side)
+        ReplayReport.lua (v2.8 golden-replay reports)
+                         Sounds.lua          (UI side; byMode + byEvent)
                          ScreenEdgeGlow.lua  (UI side, v2.2.0)
                          Nameplate.lua       (UI side, v2.2.0)
+                         FactsHUD.lua        (UI side, v2.9 + icons v2.10)
 ```
 
 ---
@@ -183,6 +185,41 @@ Iterates `nameplate1..nameplate40` to resolve the current frame for a given enem
 BG/world enemy state is intentionally opportunistic. `Core:RefreshEnemiesNonArena()` scans all `nameplate1..nameplate40` slots without stopping at the first gap because nameplate unit IDs can be sparse. v2.8.29 tightens CLEU fallback stubs so only `Player-...` GUID sources can refresh the world-PvP hostile timer or create a non-arena enemy stub; ordinary `Creature-...` mob combat stays `world_idle` and does not wake the HUD. World PvP defensive mode uses healer-capable friendlies when present and falls back to the lowest alive friendly in solo play, so a low-HP non-healer player still gets `DEFEND` instead of a forced `KILL`.
 
 BG/world 的敌人发现是机会式的。`Core:RefreshEnemiesNonArena()` 会扫描所有 `nameplate1..nameplate40`，不会因为 `nameplate1` 不存在就停止。v2.8.29 收紧了 CLEU 兜底：只有 `Player-...` GUID 来源会刷新户外 PvP 敌对计时或创建非竞技场敌人；普通 `Creature-...` 野怪战斗保持 `world_idle`，不会唤醒 HUD。
+
+### FactsHUD.lua (v2.9, spell icons v2.10)
+
+Per-enemy *observed facts* display — the layer serious arena players run a separate cooldown tracker addon for. One row per living enemy:
+
+| Cell | Shows |
+|---|---|
+| Name + HP% | class-coloured (via shared `Classes:Color`) |
+| Trinket | `T+` (CC-break up) / `T-45` (red countdown after a medallion / WotF use). Medallion + WotF tracked separately because they're independent CC-breaks in TBC. |
+| Defensive | downed major defensive coming back soonest (Ice Block, Divine Shield, BoP, Cloak of Shadows, Pain Suppression, NS, Barkskin, Evasion, Vanish, Deterrence, Shamanistic Rage). v2.10: 16px spell icon to the left of the countdown via `GetSpellTexture(spellID)`. |
+| Interrupt | downed kick + countdown — a visible free-cast window for the healer. Same icon treatment in v2.10. |
+| DR | per-category badges: `S:1/2`, `F:IMM`, ... |
+
+`BuildRowModel` / `BuildModel` / `FormatRow` are pure (no frame access) so the display logic is fully unit-testable headless. The frame layer below only paints models. Countdown text repaints on a 0.5s OnUpdate accumulator; `Update` (called from `Core:Evaluate`) is rate-limited to that cadence so AoE-heavy CLEU spam can't drive 30+ repaints/sec. Hides outside PvP contexts. Toggle via `/acc facts on|off` (`db.factsHud.enabled`).
+
+每个存活敌人一行的*事实信息*面板，serious 玩家原本要靠单独的冷却追踪插件看的内容：饰品/保命技/打断冷却计时 + 递减徽章。所有数据来自 `CooldownTracker` / `DRTracker`（这两个模块从 v1 就在采集，只是从未展示）。单元格在观察到使用前保持空白，从不猜测。v2.10 在保命技 / 打断列加入 16px 法术图标。0.5s 重绘节流，事件爆发时不会卡顿。
+
+### Always-on opponent learning (v2.10, in Core.lua)
+
+`Core:_ObserveTendencyFromCLEU` is invoked on every CLEU event and classifies high-value lines into `OpponentProfile` Bayesian updates. The profile is resolved from the **live enemy signature** so the hook and `Evaluate` both write to the same canonical object (`OP:Get` is signature-keyed). Current tendency hooks:
+
+- `trinketsFear` — fear lands on a friendly → start a 6s watch window. PvP trinket / WotF aura on the same friendly inside the window = positive; fear running to expiry without an aura = negative.
+- `iceBlockBelow30` — enemy mage Ice Block at < 30% HP = positive; at higher HP = negative (the panic threshold proper).
+
+`_PrintPostMatchLearning` fires on the `PLAYER_REGEN_ENABLED` → `combatPhase=POST` transition (arena only) and prints any tendency with ≥ 5 observations. `/acc learned` exposes the same dump on demand. `record` and `trace` default to `enabled = true` so users accumulate reviewable logs every match.
+
+每个战斗日志事件都经过 `_ObserveTendencyFromCLEU`，把高价值事件分类为 Bayesian 更新。Profile 通过当前敌人签名解析，所以 hook 和 `Evaluate` 写的是同一个对象。出战斗（`combatPhase=POST`）时打印观察次数 ≥ 5 的倾向摘要。`/acc learned` 可随时手动查看。
+
+### Class-keyed middle alert (v2.10, in UI.lua)
+
+When the engine has a known primary-target class, the DBM-style alert's middle line **always** reads `Class: Name` ("Mage: Sam", "Priest: Holyman", ...) coloured to the target class. Mode urgency (KILL / SWAP / OPEN / DEFEND) stays legible via the kicker text + `f.modeAccent` strip. Concrete actions ("Purge Holyman", "BURST_NOW") **and** personal player actions ("YOU: Refresh Tremor") demote to the sub-line so the player still sees what to do. The override is unconditional per user requirement.
+
+Class colours, display names, and `|cffRRGGBB|r` hex escapes live in `Data/Classes.lua` (`Classes:Color` / `:DisplayName` / `:ColorHex`). Single source of truth shared with FactsHUD + nameplates. `RAID_CLASS_COLORS` from the client is preferred when present so addons like !ClassColors propagate.
+
+当引擎已知主目标的职业时，中央警报的大字行**始终**显示 `职业: 姓名`（按职业着色）。模式紧迫度（击杀/换火/起手/防御）仍由顶部 kicker 文字和 `f.modeAccent` 色条传达；具体动作和个人动作都下移到副行。覆盖是无条件的（按用户要求）。
 
 ### Auto-hide gate + master switch (v2.2.5)
 

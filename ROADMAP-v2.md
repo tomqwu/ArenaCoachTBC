@@ -281,11 +281,59 @@ Engine was effectively dormant outside arena (`Core:RefreshArenaEnemies` hardcod
 
 - Bug fix: `/acc test` was only painting text, not the v2.2.0 visual layers — `_forceShow` bypassed the v2.2.5 auto-hide gate but the visual-layer gate still required `inPvP`. Now `_forceShow` short-circuits both.
 - Dead code: deleted `makeIcon()` + `spellIcon()` from `UI.lua` (38 lines orphaned since v2.2.1).
-- Docs + roadmap refresh (this commit).
+- Docs + roadmap refresh.
 
-### Themes implicit across v2.1-v2.3
+### v2.4 — Quiet HUD
+
+- `/acc verbose` toggle. Default HUD shows only the top callout instead of concatenating every callout with `|` separators — the v2.4 thesis is that text noise drives the player to ignore the whole frame.
+
+### v2.5 — Polish + perf budget
+
+- Per-callout cooldown so repeated `CALL_*` strings don't spam the sub-line within a window.
+- High-contrast skin (`/acc highcontrast` / `/acc hc`).
+- `Tests/Performance_spec.lua` gates `StrategyEngine:Evaluate` at < 5 ms / call and the 100-arena memory delta at < 200 KB so a regression on the hot path fails CI.
+
+### v2.6 — Wiki + demo
+
+- LuaJIT CI matrix (the Anniversary client uses pure 5.1 but the packager artifacts get exercised under LuaJIT).
+- README demo gif + screenshots; CurseForge description polished.
+
+### v2.7 — Outnumbered + lifecycle
+
+- **v2.7.0**: callout icons + edge glow flipped to default-off after user feedback called the pulsing band more distraction than information. Nameplate highlight stays default-on.
+- **v2.7.1**: outnumbered override so a 2v4 doesn't read as DEFEND mode forever (a no-kill-target state with the engine recommending nothing is worse than a doomed kill attempt).
+- **v2.7.2**: stale-state lifecycle fixes — KILL pre-gates no longer carry stale 15% target HP across matches.
+- **v2.7.3**: outnumbered override narrowed after Codex review (was too eager).
+- **v2.7.4-v2.7.6**: PvP logic pass + arena run cues + CI test parity.
+
+### v2.8 — DBM-style HUD
+
+- **v2.8.0**: `assignments.lua` — explicit per-player actions surface ("Refresh Tremor", "Cleanse Roots") emitted by the engine as `signals[].kind == "player_action"`.
+- **v2.8.1-v2.8.3**: arcade cues, subtle edge cue, stale fade.
+- **v2.8.4**: CurseForge copy refresh.
+- **v2.8.5**: rated-arena quality pass — kill windows must be target-specific, comp callouts are gated by roster capabilities (no Cleanse advice for a Cleanse-less team).
+- **v2.8.50-v2.8.55**: signal pipeline — `recommendation.signals[]` typed records, replay reports, golden fixtures, classify-friendly-hybrids precisely, target-specific kill windows, WeakAura typed-state helpers, release-gate workflow.
+
+### v2.9 — Facts-first
+
+- `FactsHUD.lua` (M9 deliverable that arrived late): per-enemy rows showing observed trinket CC-break status, the downed major defensive coming back soonest, downed interrupts (a visible free-cast window), DR badges per CC category. Pure model layer, fully headless-tested. Toggle via `/acc facts on|off`.
+- `Sounds.byEvent` (observed-event audio): `ENEMY_TRINKET_USED` loud chord when an enemy burns the PvP medallion or WotF; `ENEMY_DEFENSIVE_USED` short ding when an enemy burns an immunity. Fired from CLEU, deduped per guid+spell in a 3s window, arena-only.
+- **Burst gate fixed** for comps without a warrior + enhancement shaman. `BurstDecision`'s `ms_active` gate required healing-reduction whenever `callBurstOnlyWhenMSActive` was set (default on) — even for teams without a MS source — so the kill-window-dependent gate was dead for most real 2v2/3v3 comps.
+- `major_defensive_down` weight now actually fires; narrowed to the target's OWN class immunity via `CLASS_SELF_IMMUNITY`.
+- Default bracket 5 → 3 (Anniversary is a 2s/3s game).
+- Rank-ID coverage for Kick / Pummel / Earth Shock / Counterspell / Divine Shield / BoP / Evasion / Vanish — a level-70 cast carries the rank-specific ID, which the trackers were not matching.
+- Dead positional weights (`role_melee_overext`, `target_unreachable`, `target_los_blocked`) removed.
+
+### v2.10 — Class-keyed alert + always-on learning
+
+- **Class-keyed middle alert.** Big middle line on the DBM-style alert now ALWAYS reads `Class: Name` ("Mage: Sam", "Priest: Holyman", ...) coloured to the target class. Mode urgency stays legible via the kicker text and `f.modeAccent` strip; concrete actions and personal player actions ("YOU: Refresh Tremor") both demote to the sub-line. The user-facing requirement was explicit: "should always be class:name", so the override is unconditional whenever a target is known.
+- **Always-on opponent profile learning.** `record` + `trace` default to `enabled = true`. New CLEU hook (`_ObserveTendencyFromCLEU`) classifies events into `OpponentProfile` Bayesian updates as combat unfolds: `trinketsFear` (fear-then-trinket within 6s = positive), `iceBlockBelow30` (mage Ice Block at < 30% HP = positive). `_PrintPostMatchLearning` on `PLAYER_REGEN_ENABLED` prints any tendency with ≥ 5 observations. `/acc learned` exposes the same dump on demand.
+- **Spell icons on Facts HUD rows.** Defensive + interrupt cells get a 16 px spell icon to the left of the countdown via `GetSpellTexture(spellID)`. FRAME_WIDTH 360 → 396 to fit.
+- Shared `Classes:Color` / `:DisplayName` / `:ColorHex` helpers in `Data/Classes.lua` are the single source of truth for class colours — FactsHUD's local copy is gone.
+
+### Themes implicit across v2.1-v2.10
 
 - **Calibration over confidence** held — every "the engine should learn X" feature added since M12 went through the same Beta-prior + per-team profile machinery rather than a new modelling layer.
 - **No automation** held — no new code can set raid markers, target enemies, or send chat.
 - **Local-only learning** held — `db.profiles` and `db.classPriors` never leave the SavedVariables file. No cloud telemetry shipped.
-- **99% coverage** held — 608 tests as of v2.3.0 (up from 538 at v2.0).
+- **99% coverage** held — current test count + percentage live in CHANGELOG.md.

@@ -1,6 +1,6 @@
 # ArenaCoachTBC — Roadmap (v1, retrospective)
 
-> **Status (as of v2.3.0, May 2026):** M1-M5 substantially shipped. M6 hardening deferred. See **ROADMAP-v2.md** for the engine-depth roadmap (M7-M12) and the "What shipped after M12" section there for everything that landed beyond.
+> **Status — frozen at v2.3.0 (May 2026).** This v1 roadmap is kept for posterity. M1-M5 substantially shipped; M6 hardening deferred. For the engine-depth roadmap (M7-M12, June 2026 onward) see **ROADMAP-v2.md**. For everything that actually shipped after v2.3 (v2.4 quiet HUD, v2.5 perf budget, v2.6 wiki/demo, v2.7 outnumbered override, v2.8 DBM alert HUD + assignments, v2.9 Facts HUD + observed-event cues, v2.10 class-keyed alert + always-on opponent learning, ...) see **CHANGELOG.md**.
 
 Three permanent swim-lanes run through every milestone:
 
@@ -153,7 +153,7 @@ These survive across milestones; if a planned feature violates one, it gets cut.
 
 1. **No automation, ever.** Visual / audio / text only. Any feature that crosses into protected actions is rejected.
 2. **Engine stays pure Lua + testable outside WoW.** UI is the only WoW-coupled layer.
-3. **99% test coverage is the floor, not the goal.** Coverage gate stays in CI. (608 tests as of v2.3.0.)
+3. **99% test coverage is the floor, not the goal.** Coverage gate stays in CI. (Current test count lives in CHANGELOG.md.)
 4. **Capability-first.** New advice belongs in `Data/OwnComps.lua` capabilities or `Data/Strategies.lua` comps. Hardcoding classes into the engine is a regression.
 5. **No telemetry without opt-in.** Default off, easy to wipe. Local-only `/acc record` shipped; cloud telemetry deferred indefinitely.
 6. **Backwards-compatible SavedVariables.** `Core.lua > DEFAULTS` is merged into existing `ArenaCoachTBCDB` on login; old user configs always load.

@@ -100,7 +100,31 @@ Enemies are scored with transparent PvP signals: role, class armor type, health,
 
 ### Spec-Aware Composition Matching
 
-The catalog currently contains **40 enemy strategy entries** across 2v2, 3v3, 5v5, and dynamic matchups. Spec inference uses **57 spell/spec hints**. For example, a priest can start as an unknown Priest and later become Disc, Holy, or Shadow after the addon observes defining spells.
+The catalog contains named enemy strategy entries across 2v2, 3v3, 5v5, and dynamic matchups. Spec inference uses a curated set of spec-defining spell hints — for example, a priest can start as an unknown Priest and later become Disc, Holy, or Shadow after the addon observes defining spells.
+
+### Facts HUD (v2.9)
+
+A separate movable panel shows one row per living enemy with the **observed facts** serious arena players run a dedicated cooldown tracker for:
+
+- Trinket status (`T+` up / red countdown after a medallion or WotF use)
+- The downed major defensive coming back soonest (Ice Block, Divine Shield, BoP, Cloak of Shadows, Pain Suppression, Nature's Swiftness, Barkskin, Evasion, Vanish, Deterrence, Shamanistic Rage) — v2.10 shows a small spell icon next to the countdown
+- Downed interrupts (Kick, Counterspell, Spell Lock, Pummel, Earth Shock) — a visible free-cast window for your healer
+- Diminishing-returns badges per CC category (`S:1/2`, `F:IMM`)
+
+Cells stay empty until a use is observed — the HUD never guesses. Toggle via `/acc facts on|off`. Companion audio cues fire only on observed enemy actions: a loud chord when an enemy burns their CC-break, a short ding when they burn an immunity. Arena-only, deduped per guid+spell in a 3s window.
+
+### Class-Keyed Middle Alert (v2.10)
+
+The big middle line on the DBM-style alert always reads `Class: Name` ("Mage: Sam", "Priest: Holyman", ...) coloured to the target class — mage blue, priest white, warrior brown, druid orange, paladin pink, hunter green, rogue yellow, shaman blue, warlock purple. Mode urgency stays legible via the kicker text and the mode-colour accent strip; concrete actions and personal jobs move down to the sub-line.
+
+### Always-On Opponent Profile Learning (v2.10)
+
+Every match accumulates a Bayesian opponent profile from the live combat log — no `/acc record on` step required. Currently learned tendencies:
+
+- `trinketsFear` — does this opponent break fears with their PvP trinket?
+- `iceBlockBelow30` — does this opponent's mage Ice Block panic at < 30% HP?
+
+After ~5 observations against the same team signature, the profile becomes opinionated and the engine begins using it. After every arena, a `Learned this match:` summary prints. `/acc learned` exposes the same dump on demand.
 
 ### Burst Gate
 
@@ -182,19 +206,29 @@ Learning and recordings are local SavedVariables only. `/acc reset` clears saved
 |---|---|
 | `/acc help` | Show all commands |
 | `/acc test` | Run a readable ~1-minute realistic 3v3 arena replay through the engine |
-| `/acc test hud` | Run the visual-only arena HUD demo |
+| `/acc test hud` | Run the visual-only arena HUD demo (current display mode) |
 | `/acc test bg` | Run a battleground demo |
 | `/acc test world` | Run a world-PvP demo |
+| `/acc test print` | Legacy chat-only summary of sample comps |
+| `/acc enemy <classes>` | Simulate a custom enemy comp (e.g. `/acc enemy war mage priest`) |
 | `/acc toggle` | Show or hide the HUD |
 | `/acc lock` / `/acc unlock` | Lock or drag/resize the HUD |
 | `/acc off` / `/acc on` | Master disable or enable |
-| `/acc glow on/off` | Toggle the optional thin edge cue |
-| `/acc nameplate on/off` | Toggle nameplate highlights |
-| `/acc strategy safe/balanced/greedy` | Set aggression manually |
+| `/acc hud alert\|board\|both` | Choose live DBM alert, full board, or both |
+| `/acc verbose on\|off` | Toggle multi-callout HUD (default: only the top callout) |
+| `/acc highcontrast on\|off` (alias `/acc hc`) | High-contrast skin |
+| `/acc glow on\|off` | Toggle the optional thin edge cue |
+| `/acc nameplate on\|off` | Toggle nameplate highlights |
+| `/acc facts on\|off` | Toggle the per-enemy Facts HUD (v2.9) |
+| `/acc learned` | Print Bayesian tendencies learned about the current opponent (v2.10) |
+| `/acc strategy safe\|balanced\|greedy` | Set aggression manually |
 | `/acc selftest verbose` | Run in-client validation |
-| `/acc trace on/dump/clear` | Inspect decisions |
-| `/acc record on/dump/clear` | Manage local CLEU recording |
+| `/acc trace on\|off\|dump\|clear\|status` | Inspect engine decisions (default-on in v2.10) |
+| `/acc record on\|off\|dump\|clear\|status` | Manage local CLEU recording (default-on in v2.10) |
+| `/acc whatif skip <i>` | Counterfactual replay of the current recording |
+| `/acc simulate <key>` | Run a named scripted scenario through the engine |
 | `/acc bugreport` | Print sanitized diagnostic text |
+| `/acc debug` | Toggle debug logging |
 | `/acc reset` | Wipe SavedVariables and reload |
 
 ## Installation
@@ -219,17 +253,19 @@ ArenaCoachTBC currently ships:
 - English (`enUS`)
 - Simplified Chinese (`zhCN`)
 
-Both locales are parity-checked in CI. Current locale parity is **168 keys per locale**. Spell names are resolved by the WoW client through spell IDs, so they follow the language of your client where Blizzard provides localized spell data.
+Both locales are parity-checked in CI; the per-locale key count is published in `CHANGELOG.md` alongside each release. Spell names are resolved by the WoW client through spell IDs, so they follow the language of your client where Blizzard provides localized spell data.
 
 ## Project Quality
 
-The addon is developed as a pure Lua 5.1 project with headless tests for the strategy engine and WoW API stubs for UI/core behavior. Current local release validation:
+The addon is developed as a pure Lua 5.1 project with headless tests for the strategy engine and WoW API stubs for UI/core behavior. Current release validation (test count + coverage percentage refresh with each release — see `CHANGELOG.md`):
 
-- **748 tests passing**
-- **99.06% coverage**
+- ≥ 99% line coverage gate (build fails below)
 - Locale parity check
-- Lua syntax check
+- Lua syntax check across every `.lua` in the addon
+- Golden replay regression
+- Package shape verification (TOC, release zip layout, no Tests/ in the zip)
 - GitHub Actions on push and release tags
+- BigWigs packager → CurseForge + Wago upload on stable tags
 
 ## Links
 

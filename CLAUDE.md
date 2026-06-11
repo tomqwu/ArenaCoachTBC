@@ -11,7 +11,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-# Full test suite with coverage (748 tests as of v2.8.53, must stay >= 99% line coverage)
+# Full test suite with coverage (must stay >= 99% line coverage; current
+# count + percentage live in CHANGELOG.md, not pinned here)
 lua5.1 -lluacov ArenaCoachTBC/Tests/run_all.lua
 luacov && tail -n 20 luacov.report.out
 
