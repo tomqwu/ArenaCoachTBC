@@ -5,7 +5,7 @@ All notable changes to **ArenaCoachTBC** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.10.1] - 2026-06-14
 
 ### Fixed
 - **Advice + Facts HUD stayed on screen in a city right after an arena (user report: full KILL callout in Shattrath after a 5v5).** Two causes:
@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Facts HUD column header strip** (always visible) so first-time users see `Name / Trinket / Defensive / Interrupt / DR` labels above the abbreviated row data.
 - **Facts HUD DR legend** at the bottom decoding `S=Stun  F=Fear  D=Disorient  P=Incap  R=Root  C=Cyclone  ·  1/2=half  1/4=quarter  IMM=immune` (enUS) / `S=眩晕 F=恐惧 D=致盲 P=变形/闷棍 R=定身 C=飓风 · 1/2=半时长 1/4=四分之一 IMM=免疫` (zhCN). Stops users having to ask "what does R:1/4 mean". Veterans can hide it with `/acc facts legend off` (`db.factsHud.showLegend`, takes effect after `/reload`).
+
+### Tests
+- Validated with the full release gate: 819 Lua 5.1 tests passing, 99.11% total coverage, golden replay matched, locale parity at 181 keys per locale, package-shape gate, release-gate check, standalone strategy smoke spec, and `git diff --check`.
 
 ## [2.10.0] - 2026-06-11
 

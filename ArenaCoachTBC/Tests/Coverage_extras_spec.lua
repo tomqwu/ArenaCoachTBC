@@ -178,10 +178,10 @@ H.it(g, "UI DBM alert fallback branches stay concrete", function()
     UI.railFrame = nil
     UI.assignFrame = nil
     local f = UI:CreateFrame()
-    H.assertEq(f.versionText:GetText(), "v2.10.0")
-    _G.ArenaCoachTBC = { GetVersion = function() return "2.10.0-api" end }
+    H.assertEq(f.versionText:GetText(), "v2.10.1")
+    _G.ArenaCoachTBC = { GetVersion = function() return "2.10.1-api" end }
     UI:RefreshVersionText()
-    H.assertEq(f.versionText:GetText(), "v2.10.0-api")
+    H.assertEq(f.versionText:GetText(), "v2.10.1-api")
 
     UI:Apply({ mode = "OPEN", callouts = {}, priority = "LOW", _forceShow = true })
     H.assertEq(f.bigText:GetText(), "Prepare opener")
