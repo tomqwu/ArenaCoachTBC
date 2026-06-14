@@ -506,6 +506,15 @@ function FH:Repaint()
     -- (which Shows first) and the ticker (which doesn't run hidden in
     -- the real client). Guards stale paints from any other caller.
     if f.IsShown and not f:IsShown() then return end
+    -- Live PvP-context guard. The ticker repaints from the last state
+    -- snapshot, and in the client that snapshot is the live Core.state
+    -- table, so its pvpContext tracks the real context. Without this the
+    -- panel stayed populated after a match when the player walked into a
+    -- city — Core stops calling Update once context goes idle, but the
+    -- ticker kept the stale rows alive. Mirror Update's gate so the panel
+    -- self-hides within one tick.
+    local ctx = self._lastState.pvpContext
+    if ctx == "none" or ctx == "world_idle" then f:Hide(); return end
     self._lastPaint = now()
     local rows = self:BuildModel(self._lastState)
     for i = 1, self.MAX_ROWS do

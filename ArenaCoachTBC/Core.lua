@@ -514,14 +514,18 @@ function Core:DetectPvPContext()
         return self.state.pvpContext or "none"
     end
 
-    if haveBattlefield and IsActiveBattlefieldArena() then
-        self.state.pvpContext = "arena"
-        return "arena"
-    end
-
+    -- GetInstanceInfo() is authoritative about where the player
+    -- physically is, so it is consulted FIRST. IsActiveBattlefieldArena()
+    -- can stay true for a beat after a match while the client ports you
+    -- out; trusting it first left the HUD stuck on stale arena advice in
+    -- the city you land in (user report: full KILL callout in Shattrath
+    -- right after a 5v5). When a resolved instance type says we are not
+    -- in an arena/BG instance, we are not — the lingering flag loses.
+    local instanceType
     if haveInstance then
-        local _name, instanceType = GetInstanceInfo()
-        -- arena instance type is "arena"; battlegrounds are "pvp"
+        local _name
+        _name, instanceType = GetInstanceInfo()
+        -- arena instance type is "arena"; battlegrounds are "pvp".
         if instanceType == "arena" then
             self.state.pvpContext = "arena"
             return "arena"
@@ -529,6 +533,15 @@ function Core:DetectPvPContext()
             self.state.pvpContext = "bg"
             return "bg"
         end
+    end
+
+    -- Battlefield-flag fallback: trusted only when GetInstanceInfo gave
+    -- no resolved type (unavailable, or nil before the zone settles).
+    -- A resolved non-PvP type ("none"/"party"/"raid") suppresses it so a
+    -- lingering arena flag can't win in a city or PvE instance.
+    if haveBattlefield and instanceType == nil and IsActiveBattlefieldArena() then
+        self.state.pvpContext = "arena"
+        return "arena"
     end
 
     -- Outside instances. World PvP if flagged + recent enemy contact.

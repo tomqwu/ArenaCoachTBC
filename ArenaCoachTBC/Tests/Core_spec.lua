@@ -1879,6 +1879,44 @@ H.it(g, "DetectPvPContext returns 'none' when nothing PvP", function()
     H.assertEq(Core:DetectPvPContext(), "none")
 end)
 
+H.it(g, "DetectPvPContext: lingering arena flag in a city does NOT win (v2.10.1)", function()
+    -- User report: full KILL callout still showing in Shattrath right
+    -- after a 5v5. IsActiveBattlefieldArena() stays true for a beat while
+    -- the client ports you out; GetInstanceInfo() already reports the
+    -- city ("none"). The city must win so the HUD's auto-hide gate fires.
+    clearWoWApis()
+    _G.IsActiveBattlefieldArena = function() return true end   -- lingering
+    _G.GetInstanceInfo          = function() return "Shattrath City", "none" end
+    _G.UnitIsPVP                = function() return false end
+    Core.state.pvpContext = "arena"  -- cached from the just-finished match
+    H.assertEq(Core:DetectPvPContext(), "none",
+        "resolved city instanceType must override the lingering arena flag")
+    H.assertEq(Core.state.pvpContext, "none")
+end)
+
+H.it(g, "DetectPvPContext: lingering arena flag while flagged in a city -> world_idle", function()
+    clearWoWApis()
+    _G.IsActiveBattlefieldArena = function() return true end
+    _G.GetInstanceInfo          = function() return "Shattrath City", "none" end
+    _G.UnitIsPVP                = function(u) return u == "player" end
+    H._gameTime = 1000
+    Core.state.pvpContext = "arena"
+    Core._lastWorldHostileTs = 900  -- >30s ago
+    -- Still gated off (world_idle is in the hide set), just not "arena".
+    H.assertEq(Core:DetectPvPContext(), "world_idle")
+end)
+
+H.it(g, "DetectPvPContext: battlefield flag still wins when instance info is nil (mid-port)", function()
+    -- During the load screen GetInstanceInfo can return nil before the
+    -- zone resolves; the battlefield flag is the only signal, so trust it
+    -- rather than mislabel a real arena entry.
+    clearWoWApis()
+    _G.IsActiveBattlefieldArena = function() return true end
+    _G.GetInstanceInfo          = function() return nil, nil end
+    Core.state.pvpContext = nil
+    H.assertEq(Core:DetectPvPContext(), "arena")
+end)
+
 H.it(g, "DetectPvPContext is permissive headless (preserves fixture)", function()
     clearWoWApis()
     Core.state.pvpContext = "arena"  -- test fixture
