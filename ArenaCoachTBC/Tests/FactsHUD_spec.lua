@@ -256,6 +256,25 @@ H.it(g, "ticker repaint runs through the OnUpdate accumulator", function()
     H.assertNotNil(handler)
     handler(FH.frame, FH.REFRESH_INTERVAL + 0.1)  -- must not error
 end)
+
+H.it(g, "v2.10.1: ticker self-hides when the live context goes idle", function()
+    -- The snapshot held by the ticker is the live Core.state table in
+    -- the client, so mutating its pvpContext to an idle value (player
+    -- left arena for a city) must make the next Repaint hide the panel,
+    -- even though Update is never called again.
+    reset()
+    _G.ArenaCoachTBCDB = { factsHud = { enabled = true } }
+    FH.frame = nil
+    FH:CreateFrame()
+    local state = { enemies = { arena1 = freshEnemy() }, pvpContext = "arena" }
+    FH:Update(state)
+    H.assertTrue(FH.frame:IsShown(), "shows while in arena")
+    -- Match ends, player zones into a city: live context drops.
+    state.pvpContext = "none"
+    FH:Repaint()
+    H.assertFalse(FH.frame:IsShown(),
+        "ticker repaint must hide the panel once context is idle")
+end)
 H.it(g, "FormatRow renders the actual interrupt spell name + seconds countdown", function()
     -- v2.10.1: interrupt cell shows GetSpellInfo(spellID), not always
     -- the static "KICK" label — keeps it consistent with the defensive
