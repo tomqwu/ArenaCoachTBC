@@ -5,6 +5,11 @@ on:
     branches: [main]
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      stable_version:
+        description: "Cut a STABLE release for this version (e.g. 2.10.1), tagging the current ref. Must match ## Version: in the TOC. Leave blank for a dev prerelease."
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -32,8 +37,22 @@ jobs:
         run: |
           set -euo pipefail
           base=$(grep '^## Version:' ArenaCoachTBC/ArenaCoachTBC.toc | awk '{print $3}')
+          manual="${{ github.event.inputs.stable_version }}"
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             tag="${GITHUB_REF#refs/tags/}"
+            kind="release"
+            prerelease="false"
+          elif [[ -n "$manual" ]]; then
+            # Manual stable cut via workflow_dispatch — the proxy-independent
+            # path. softprops/action-gh-release creates the tag at this run's
+            # SHA, and the BigWigs packager builds from a local checkout, so
+            # no `git push` of the tag is required.
+            ver="${manual#v}"
+            if [[ "$ver" != "$base" ]]; then
+              echo "Manual stable version v$ver does not match TOC version $base; refusing."
+              exit 1
+            fi
+            tag="v${ver}"
             kind="release"
             prerelease="false"
           else
