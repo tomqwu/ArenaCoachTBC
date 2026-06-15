@@ -5,6 +5,15 @@ All notable changes to **ArenaCoachTBC** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.2] - 2026-06-15
+
+### Changed
+- **Persistent Obsidian board now stacks vertically instead of using a left/center/right horizontal cockpit.** The board is narrower and taller, with full-width action, focus, strategy, and player-action sections so each section has more reading room during live play.
+- **Board shell is more transparent.** The main board, module plates, drag strip, and detached assignment module use lighter alpha values while keeping text shadows and brass rules for readability.
+
+### Tests
+- Validated with the full release gate: 819 Lua 5.1 tests passing, 99.13% total coverage, golden replay matched, locale parity at 181 keys per locale, package-shape gate, release-gate check, standalone strategy smoke spec, and `git diff --check`.
+
 ## [2.10.1] - 2026-06-14
 
 ### Fixed

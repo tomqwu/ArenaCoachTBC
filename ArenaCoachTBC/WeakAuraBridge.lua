@@ -243,12 +243,12 @@ function API.GetDebugState()
     return {
         last       = WAB._last,
         state      = WAB._state,
-        version    = "2.10.1",
+        version    = "2.10.2",
         bridgeSchemaVersion = BRIDGE_SCHEMA_VERSION,
         addon      = ADDON_NAME,
     }
 end
-function API.GetVersion() return "2.10.1" end
+function API.GetVersion() return "2.10.2" end
 
 function WAB:Publish(recommendation, state)
     self._last  = recommendation

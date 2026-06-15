@@ -178,7 +178,7 @@ H.it(g, "UI DBM alert fallback branches stay concrete", function()
     UI.railFrame = nil
     UI.assignFrame = nil
     local f = UI:CreateFrame()
-    H.assertEq(f.versionText:GetText(), "v2.10.1")
+    H.assertEq(f.versionText:GetText(), "v2.10.2")
     _G.ArenaCoachTBC = { GetVersion = function() return "2.10.1-api" end }
     UI:RefreshVersionText()
     H.assertEq(f.versionText:GetText(), "v2.10.1-api")

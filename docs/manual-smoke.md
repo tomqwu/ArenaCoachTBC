@@ -42,16 +42,16 @@ behaviour is what tests can't see.
 - [ ] Alert version marker matches the installed addon release; `/acc hud board` still shows the board top-right version marker
 - [ ] Default alert is compact, centered, movable, low-background, and does not cover party frames, arena frames, action bars, cast bars, nameplates, DBM bars, WeakAura clusters, chat, or damage meters
 - [ ] Default alert main line reads like a DBM boss warning with the mechanic/action first: `Purge Holyman`, `Tremor down - shaman refresh`, `BURST NOW`, `Kill Holyman`, or `Swap Mage`; abstract mode words such as `KILL`, `DEFEND`, `攻`, or `守` are not the big center text when a specific action exists
-- [ ] `/acc hud board` shows the optional Obsidian board zones inside one visible frame: left status stack, center action, center player-info/assignments, and right cue/icon rail, including waiting/pre-gate placeholders before live target data arrives
-- [ ] Optional board reads as Obsidian Signal: warm obsidian translucent shell, brass rules/reticles, cyan information accents, bone-white data text, restrained crimson signal colour, top drag strip/grip, signal/ruler accents, lower-right resize grip, internal dividers, slot backgrounds, target health bar, and mode-coloured center accent
+- [ ] `/acc hud board` shows the optional Obsidian board zones inside one visible vertical frame: full-width action panel, focus stack, strategy/cue stack, then player-action cards, including waiting/pre-gate placeholders before live target data arrives
+- [ ] Optional board reads as Obsidian Signal: lighter warm obsidian translucent shell, brass rules/reticles, cyan information accents, bone-white data text, restrained crimson signal colour, top drag strip/grip, signal/ruler accents, lower-right resize grip, horizontal internal dividers, slot backgrounds, target health bar, and mode-coloured center accent
 - [ ] Board metadata strip shows `OBSIDIAN / SIGNAL / <mode>` while still keeping the top-right version marker visible
 - [ ] Focus and cue headers do not wrap or split words on the optional compact board
 - [ ] DEFEND and RESET hide the inactive target-health bar/label so defensive advice has a clean center panel
 - [ ] Dragging the alert moves only the alert; dragging the board lower-right grip resizes the integrated board when `/acc hud board` is active
-- [ ] On the optional compact board, the center action/detail text stays inside the center action section and never crosses into the player-info/assignment section
-- [ ] Bottom assignment strip divides into 1, 2, 3, or 5 small cards based on current player actions/bracket; unused cells are hidden in 2v2, and 5v5 uses five stable cells
-- [ ] Bottom assignment strip highlights the player's own card first with `YOU` / `你`, a stronger plate, and a readable action line before teammate cards
-- [ ] On a taller/wider resized board with `/acc verbose on`, the player-info cards remain inside the bottom strip without colliding with the center action or right cue rail
+- [ ] On the optional compact board, the center action/detail text stays inside the top action section and never crosses into the focus, strategy, or assignment sections
+- [ ] Bottom assignment section divides into 1, 2, 3, or 5 vertical action cards based on current player actions/bracket; unused cells are hidden in 2v2, and 5v5 uses five stable cells
+- [ ] Bottom assignment section highlights the player's own card first with `YOU` / `你`, a stronger plate, and a readable action line before teammate cards
+- [ ] On a taller/wider resized board with `/acc verbose on`, the player-info cards remain inside the bottom section without colliding with the action, focus, or strategy sections
 - [ ] `/acc unlock` lets the alert move and the integrated board drag/resize; `/acc lock` prevents movement/resizing
 - [ ] Signal strip stays passive (`SIGNAL · LIVE`) while the big center line carries the actual DBM-style action
 - [ ] Target stats row shows `HP <n>%   kill <n>%   BURST READY` when there's a primary target; hidden on DEFEND / RESET

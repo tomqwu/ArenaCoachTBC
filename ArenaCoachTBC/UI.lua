@@ -15,18 +15,18 @@ local UI = ns.UI
 UI.frame = nil
 UI.alertFrame = nil
 
-local ADDON_VERSION = "2.10.1"
+local ADDON_VERSION = "2.10.2"
 local STALE_FADE_START = 7.0
 local STALE_FADE_SECONDS = 5.0
 local ACTION_BAR_SECONDS = 10.0
 local ALERT_WIDTH = 460
 local ALERT_HEIGHT = 92
-local COMPACT_WIDTH = 540
-local COMPACT_HEIGHT = 212
-local MIN_COMPACT_WIDTH = 500
-local MIN_COMPACT_HEIGHT = 196
-local MAX_COMPACT_WIDTH = 820
-local MAX_COMPACT_HEIGHT = 360
+local COMPACT_WIDTH = 380
+local COMPACT_HEIGHT = 380
+local MIN_COMPACT_WIDTH = 340
+local MIN_COMPACT_HEIGHT = 320
+local MAX_COMPACT_WIDTH = 620
+local MAX_COMPACT_HEIGHT = 560
 local GRID_PADDING = 8
 local PANEL_GUTTER = 8
 local BOARD_BOTTOM_PADDING = 8
@@ -38,8 +38,8 @@ local UNIT_WIDTH = 150
 local UNIT_HEIGHT = 96
 local RAIL_WIDTH = 150
 local RAIL_HEIGHT = 118
-local ASSIGN_WIDTH = 300
-local ASSIGN_HEIGHT = 76
+local ASSIGN_WIDTH = 240
+local ASSIGN_HEIGHT = 150
 local DEFAULT_ACTION_LINES = 3
 local VERBOSE_ACTION_LINES = 5
 local OBSIDIAN_R, OBSIDIAN_G, OBSIDIAN_B = 0.018, 0.015, 0.011
@@ -427,24 +427,21 @@ local function boardMetrics(frame)
     local contentW = math.max(0, width - (GRID_PADDING * 2))
     local bodyY = GRID_TOP_Y
     local bodyH = math.max(112, height - math.abs(bodyY) - BOARD_BOTTOM_PADDING)
-    local leftW = clamp(math.floor(contentW * 0.25), 120, 176)
-    local rightW = clamp(math.floor(contentW * 0.22), 104, 160)
-    local centerW = contentW - leftW - rightW - (PANEL_GUTTER * 2)
-    if centerW < 178 then
-        centerW = 178
-        local remaining = math.max(0, contentW - centerW - (PANEL_GUTTER * 2))
-        leftW = clamp(math.floor(remaining * 0.55), 112, 160)
-        rightW = math.max(96, remaining - leftW)
-    end
 
     local leftX = GRID_PADDING
-    local centerX = leftX + leftW + PANEL_GUTTER
-    local rightX = centerX + centerW + PANEL_GUTTER
-    local assignH = clamp(math.floor(bodyH * 0.36), ASSIGN_PANEL_HEIGHT, 92)
-    local actionH = math.max(70, bodyH - assignH - PANEL_GUTTER)
-    local assignY = bodyY - actionH - PANEL_GUTTER
-    local centerSubLines = (actionH >= 118 and 3) or (actionH >= 94 and 2) or 1
-    local cueLines = clamp(math.floor((bodyH - 22) / 14), 2, VERBOSE_ACTION_LINES)
+    local centerX = leftX
+    local rightX = leftX
+    local panelW = contentW
+    local availableH = math.max(120, bodyH - (PANEL_GUTTER * 3))
+    local centerH = clamp(math.floor(availableH * 0.30), 78, 116)
+    local leftH = clamp(math.floor(availableH * 0.18), 46, 80)
+    local rightH = clamp(math.floor(availableH * 0.24), 60, 104)
+    local assignH = math.max(72, availableH - centerH - leftH - rightH)
+    local leftY = bodyY - centerH - PANEL_GUTTER
+    local rightY = leftY - leftH - PANEL_GUTTER
+    local assignY = rightY - rightH - PANEL_GUTTER
+    local centerSubLines = clamp(math.floor((centerH - 54) / 14), 1, 4)
+    local cueLines = VERBOSE_ACTION_LINES
     local assignLines = clamp(math.floor((assignH - 15) / 11), 2, VERBOSE_ACTION_LINES)
 
     return {
@@ -457,12 +454,17 @@ local function boardMetrics(frame)
         leftX = leftX,
         centerX = centerX,
         rightX = rightX,
+        leftY = leftY,
+        rightY = rightY,
         assignY = assignY,
-        topH = actionH,
-        actionH = actionH,
-        leftW = leftW,
-        rightW = rightW,
-        centerW = centerW,
+        topH = centerH,
+        actionH = centerH,
+        leftH = leftH,
+        rightH = rightH,
+        centerH = centerH,
+        leftW = panelW,
+        rightW = panelW,
+        centerW = panelW,
         assignH = assignH,
         centerSubLines = centerSubLines,
         cueLines = cueLines,
@@ -494,19 +496,19 @@ local function layoutMainBoard(f)
 
     if f.leftPanel then
         clearPoints(f.leftPanel)
-        size(f.leftPanel, m.leftW, m.actionH)
-        point(f.leftPanel, "TOPLEFT", f, "TOPLEFT", m.leftX, m.topY)
+        size(f.leftPanel, m.leftW, m.leftH)
+        point(f.leftPanel, "TOPLEFT", f, "TOPLEFT", m.leftX, m.leftY)
         layoutPanelSlots(f.leftPanel, "left", 4, 26)
     end
     if f.centerPanel then
         clearPoints(f.centerPanel)
-        size(f.centerPanel, m.centerW, m.actionH)
+        size(f.centerPanel, m.centerW, m.centerH)
         point(f.centerPanel, "TOPLEFT", f, "TOPLEFT", m.centerX, m.topY)
     end
     if f.rightPanel then
         clearPoints(f.rightPanel)
-        size(f.rightPanel, m.rightW, m.actionH)
-        point(f.rightPanel, "TOPLEFT", f, "TOPLEFT", m.rightX, m.topY)
+        size(f.rightPanel, m.rightW, m.rightH)
+        point(f.rightPanel, "TOPLEFT", f, "TOPLEFT", m.rightX, m.rightY)
         layoutPanelSlots(f.rightPanel, "right", 4, 26)
     end
     if f.assignPanel then
@@ -518,8 +520,8 @@ local function layoutMainBoard(f)
         layoutAssignmentSlots(f, activeSlots)
     end
 
-    placeLine(f, "leftDivider", 1, m.actionH, m.centerX - math.floor(PANEL_GUTTER / 2), m.bodyY, 0.42)
-    placeLine(f, "rightDivider", 1, m.actionH, m.rightX - math.floor(PANEL_GUTTER / 2), m.bodyY, 0.42)
+    placeLine(f, "leftDivider", m.contentW, 1, m.leftX, m.leftY + 3, 0.42)
+    placeLine(f, "rightDivider", m.contentW, 1, m.leftX, m.rightY + 3, 0.42)
     placeLine(f, "assignDivider", m.contentW, 1, m.leftX, m.assignY + 1, 0.58)
 
     if f.modeAccent then
@@ -567,14 +569,14 @@ local function layoutMainBoard(f)
         clearPoints(f.subText)
         point(f.subText, "TOP", f.statsText or (f.centerPanel or f), f.statsText and "BOTTOM" or "TOP", 0, -2)
         if f.subText.SetWidth then pcall(f.subText.SetWidth, f.subText, centerTextW) end
-        height(f.subText, math.max(14, m.actionH - 88))
+        height(f.subText, math.max(14, m.centerH - 88))
     end
     if f.unitText and f.unitText.SetWidth then pcall(f.unitText.SetWidth, f.unitText, math.max(76, m.leftW - 16)) end
     if f.railText and f.railText.SetWidth then pcall(f.railText.SetWidth, f.railText, math.max(76, m.rightW - 16)) end
     if f.assignText and f.assignText.SetWidth then pcall(f.assignText.SetWidth, f.assignText, math.max(120, m.contentW - 20)) end
     if f.assignHeader and f.assignHeader.SetWidth then pcall(f.assignHeader.SetWidth, f.assignHeader, math.max(120, m.contentW - 20)) end
-    height(f.unitText, math.max(20, m.actionH - 12))
-    height(f.railText, math.max(20, m.actionH - 12))
+    height(f.unitText, math.max(20, m.leftH - 12))
+    height(f.railText, math.max(20, m.rightH - 12))
     height(f.assignText, math.max(20, m.assignH - 12))
     f._accCenterSubLines = m.centerSubLines
     f._accCueLines = m.cueLines
@@ -644,8 +646,8 @@ function UI:CreateFrame()
     if f.SetFrameLevel then pcall(f.SetFrameLevel, f, 20) end
 
     -- Backdrop (TBC client uses Backdrop trait built-in for Frame)
-    setBackdrop(f, 0.22, 12)
-    skinPanel(f, 0.40, 0.78)
+    setBackdrop(f, 0.14, 12)
+    skinPanel(f, 0.28, 0.70)
 
     -- Title: small identity marker, not a full header row.
     f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -665,7 +667,7 @@ function UI:CreateFrame()
         L("UI_MODULE_STRATEGY"), L("REASON_DEFAULT")))
     improveTextContrast(f.metaText, 0.85)
 
-    local dragBar = solidTexture(f, "dragBar", "BACKGROUND", OBSIDIAN_WARM_R, OBSIDIAN_WARM_G, OBSIDIAN_WARM_B, 0.56)
+    local dragBar = solidTexture(f, "dragBar", "BACKGROUND", OBSIDIAN_WARM_R, OBSIDIAN_WARM_G, OBSIDIAN_WARM_B, 0.40)
     if dragBar then
         clearPoints(dragBar)
         point(dragBar, "TOPLEFT", f, "TOPLEFT", 2, -2)
@@ -675,17 +677,17 @@ function UI:CreateFrame()
 
     local m = boardMetrics(f)
 
-    local leftPanel = createChildPanel(f, "leftPanel", m.leftW, m.actionH,
-        "TOPLEFT", "TOPLEFT", m.leftX, m.bodyY, 0.34)
-    local centerPanel = createChildPanel(f, "centerPanel", m.centerW, m.actionH,
-        "TOPLEFT", "TOPLEFT", m.centerX, m.bodyY, 0.36)
-    local rightPanel = createChildPanel(f, "rightPanel", m.rightW, m.actionH,
-        "TOPLEFT", "TOPLEFT", m.rightX, m.bodyY, 0.34)
+    local leftPanel = createChildPanel(f, "leftPanel", m.leftW, m.leftH,
+        "TOPLEFT", "TOPLEFT", m.leftX, m.leftY, 0.22)
+    local centerPanel = createChildPanel(f, "centerPanel", m.centerW, m.centerH,
+        "TOPLEFT", "TOPLEFT", m.centerX, m.bodyY, 0.24)
+    local rightPanel = createChildPanel(f, "rightPanel", m.rightW, m.rightH,
+        "TOPLEFT", "TOPLEFT", m.rightX, m.rightY, 0.22)
     local assignPanel = createChildPanel(f, "assignPanel", m.contentW, m.assignH,
-        "TOPLEFT", "TOPLEFT", m.leftX, m.assignY, 0.34)
+        "TOPLEFT", "TOPLEFT", m.leftX, m.assignY, 0.22)
 
-    placeLine(f, "leftDivider", 1, m.actionH, m.centerX - math.floor(PANEL_GUTTER / 2), m.bodyY, 0.42)
-    placeLine(f, "rightDivider", 1, m.actionH, m.rightX - math.floor(PANEL_GUTTER / 2), m.bodyY, 0.42)
+    placeLine(f, "leftDivider", m.contentW, 1, m.leftX, m.leftY + 3, 0.42)
+    placeLine(f, "rightDivider", m.contentW, 1, m.leftX, m.rightY + 3, 0.42)
     placeLine(f, "assignDivider", m.contentW, 1, m.leftX, m.assignY + 1, 0.58)
     if centerPanel and centerPanel.CreateTexture then
         f.modeAccent = centerPanel:CreateTexture(nil, "ARTWORK")
@@ -1055,8 +1057,8 @@ function UI:CreateAssignmentsFrame()
     af:EnableMouse(true)
     if af.SetFrameStrata then pcall(af.SetFrameStrata, af, "HIGH") end
 
-    setBackdrop(af, 0.30, 10)
-    skinPanel(af, 0.30, 0.42)
+    setBackdrop(af, 0.20, 10)
+    skinPanel(af, 0.22, 0.36)
 
     af.actionText = af:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     af.actionText:SetPoint("TOPLEFT", af, "TOPLEFT", 10, -8)
